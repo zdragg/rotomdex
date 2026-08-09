@@ -13,15 +13,22 @@ pub struct InputWidget {
 }
 
 impl InputWidget {
+    /// Extracts the stored String and resets.
     pub fn take(&mut self) -> String {
         let str = std::mem::take(&mut self.input);
         self.input_mode = InputMode::Idle;
         str
     }
-    pub fn clear(&mut self) {
-        self.input.clear();
-        self.input_mode = InputMode::Idle;
+
+    /// Remove one character.
+    pub fn backspace(&mut self) {
+        self.input.pop();
+        if self.input.is_empty() {
+            self.input_mode = InputMode::Idle;
+        };
     }
+
+    /// Input one character.
     pub fn handle_input(&mut self, ch: char) {
         self.input.push(ch);
         self.input_mode = InputMode::Editing;
@@ -48,7 +55,7 @@ impl Widget for &InputWidget {
             height: 3,
         }; // A fixed, centered rectangle of size 14x3. 14 = 12 (pokemon name) + borders, 3 = 1 + borders
 
-        Clear::default().render(area, buf);
+        Clear.render(area, buf);
         let input = Paragraph::new(self.input.clone())
             .block(Block::bordered().title("Input Pokémon name:"));
         input.render(area, buf);
