@@ -15,7 +15,6 @@ pub struct OfflinePokemon {
     variants: Vec<Pokemon>,
     variant_sprites: Vec<Option<DynamicImage>>,
     current_idx: usize,
-    default_idx: usize,
 }
 
 impl OfflinePokemon {
@@ -26,12 +25,8 @@ impl OfflinePokemon {
     ) -> Result<OfflinePokemon> {
         let species = pokemon::pokemon_species::get_by_name(name, &rustemon_client).await?;
         let mut variants = Vec::new();
-        let mut default_idx = 0;
-        for (i, v) in species.varieties.iter().enumerate() {
+        for v in species.varieties.iter() {
             let pkmn = v.pokemon.follow(&rustemon_client).await?;
-            if pkmn.is_default {
-                default_idx = i;
-            }
             variants.push(pkmn);
         }
         let variant_sprites = vec![None; variants.len()];
@@ -40,7 +35,6 @@ impl OfflinePokemon {
             variants,
             variant_sprites,
             current_idx: 0,
-            default_idx,
         })
     }
 
@@ -79,13 +73,7 @@ impl OfflinePokemon {
     // Get the pokemon sprite associated with the variant specified by the index.
     // Some(&DynamicImage) if it exists, None if there is no image loaded.
     pub fn get_current_sprite(&self) -> Option<&DynamicImage> {
-        if let Some(sprite) = &self.variant_sprites[self.current_idx] {
-            return Some(sprite);
-        }
-        // if let Some(sprite) = &self.variant_sprites[self.default_idx] {
-        //     return Some(sprite);
-        // }
-        None
+        self.variant_sprites[self.current_idx].as_ref()
     }
 
     /// Shifts variant index forward.

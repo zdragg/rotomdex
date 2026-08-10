@@ -1,4 +1,4 @@
-mod pokemon;
+mod pkmn;
 mod widgets;
 
 use std::{sync::Arc, time::Duration};
@@ -22,7 +22,7 @@ use tokio::{
 use tokio_stream::StreamExt;
 
 use crate::{
-    pokemon::OfflinePokemon,
+    pkmn::OfflinePokemon,
     widgets::{InputMode, InputWidget, RotomDexWidget},
 };
 
