@@ -30,7 +30,7 @@ impl<'a> Widget for &SpriteWidget<'a> {
             .marker(Marker::HalfBlock)
             .paint(|ctx| {
                 ctx.draw(&RotomDexSprite {
-                    sprite: &self.sprite,
+                    sprite: self.sprite,
                     side_len: self.side_len,
                 });
             })

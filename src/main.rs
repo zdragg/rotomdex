@@ -1,7 +1,7 @@
 mod pkmn;
 mod widgets;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use color_eyre::Result;
 use crossterm::event::{EventStream, KeyModifiers};
@@ -38,8 +38,6 @@ async fn main() -> Result<()> {
 #[derive(SmartDefault)]
 struct App {
     should_quit: bool,
-    #[default = true]
-    should_update: bool,
 
     fetch_state: Arc<Mutex<FetchState>>,
 
@@ -51,11 +49,7 @@ struct App {
 }
 
 impl App {
-    const FRAMES_PER_SECOND: f32 = 60.0;
-
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
-        let period = Duration::from_secs_f32(1.0 / Self::FRAMES_PER_SECOND);
-        let mut interval = tokio::time::interval(period);
         let mut events = EventStream::new();
 
         let (pkmn_data_tx, mut pkmn_data_rx) = mpsc::channel(32);
@@ -65,10 +59,6 @@ impl App {
 
         while !self.should_quit {
             tokio::select! {
-                _ = interval.tick(), if self.should_update => {
-                    terminal.draw(|frame| self.render(frame))?;
-                    self.should_update = false;
-                },
                 Some(Ok(event)) = events.next() => self.handle_event(&event, pkmn_data_tx.clone()),
                 Some(result) = pkmn_data_rx.recv(), if *self.fetch_state.lock() == FetchState::LoadingData => {
                     self.handle_pkmn_data(result, pkmn_sprite_tx.clone());
@@ -77,6 +67,7 @@ impl App {
                     self.handle_pkmn_sprite(result);
                 }
             }
+            terminal.draw(|frame| self.render(frame))?;
         }
         Ok(())
     }
@@ -90,31 +81,25 @@ impl App {
                 }
                 (_, KeyCode::Enter) if self.input_widget.input_mode == InputMode::Editing => {
                     self.start_pkmn_data_fetch(pkmn_tx);
-                    self.should_update = true;
                 }
                 (_, KeyCode::Right) => {
                     if let Some(widget) = &mut self.dex_widget {
                         widget.pkmn.next();
-                        self.should_update = true;
                     }
                 }
                 (_, KeyCode::Left) => {
                     if let Some(widget) = &mut self.dex_widget {
                         widget.pkmn.prev();
-                        self.should_update = true;
                     }
                 }
                 (_, KeyCode::Backspace) => {
                     self.input_widget.backspace();
-                    self.should_update = true;
                 }
                 (_, KeyCode::Char(ch)) => {
                     self.input_widget.handle_input(ch);
-                    self.should_update = true;
                 }
                 _ => {}
             },
-            Event::Resize(_, _) => self.should_update = true,
             _ => {}
         }
     }
@@ -138,13 +123,12 @@ impl App {
         match res {
             Ok(pkmn) => {
                 self.start_pkmn_sprite_fetch(tx, &pkmn);
-                self.dex_widget = Some(RotomDexWidget { pkmn });
+                self.dex_widget = Some(RotomDexWidget::new(pkmn));
             }
             Err(e) => {
                 self.update_fetch_state(FetchState::Error(e.to_string()));
             }
         };
-        self.should_update = true;
     }
 
     /// Spawns (as) many tasks (as the number of variants with existing sprite links) to fetch pokemon sprites
@@ -223,9 +207,8 @@ impl App {
             SpriteFetchEvent::Error { err } => {
                 self.update_fetch_state(FetchState::Error(err.to_string()))
             }
-            SpriteFetchEvent::Finished => *self.fetch_state.lock() = FetchState::Loaded,
+            SpriteFetchEvent::Finished => self.update_fetch_state(FetchState::Loaded),
         }
-        self.should_update = true;
     }
 
     /// Updates `FetchState` - how the construction of `OfflinePokemon` is going
@@ -233,12 +216,12 @@ impl App {
         *self.fetch_state.lock() = state;
     }
 
-    fn render(&self, frame: &mut Frame) {
+    fn render(&mut self, frame: &mut Frame) {
         let block = Block::new().title_bottom(format!("{:?}", self.fetch_state.lock()));
         let area_without_status_bar = block.inner(frame.area());
         frame.render_widget(block, frame.area());
 
-        if let Some(dex_widget) = &self.dex_widget {
+        if let Some(dex_widget) = &mut self.dex_widget {
             frame.render_widget(dex_widget, area_without_status_bar);
         }
         if self.input_widget.input_mode == InputMode::Editing {

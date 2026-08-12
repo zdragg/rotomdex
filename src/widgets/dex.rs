@@ -1,5 +1,5 @@
-mod sprite;
-mod title;
+pub mod name;
+pub mod sprite;
 
 use ratatui::{
     buffer::Buffer,
@@ -9,21 +9,32 @@ use ratatui::{
 
 use crate::{
     pkmn::OfflinePokemon,
-    widgets::dex::{sprite::SpriteWidget, title::TitleWidget},
+    widgets::{
+        dex::{name::NameWidget, sprite::SpriteWidget},
+        name::TitleState,
+    },
 };
 
 pub struct RotomDexWidget {
     pub pkmn: OfflinePokemon,
+    pub title_state: TitleState,
 }
 
-impl Widget for &RotomDexWidget {
+impl RotomDexWidget {
+    pub fn new(pkmn: OfflinePokemon) -> Self {
+        let title_state = TitleState::default();
+        Self { pkmn, title_state }
+    }
+}
+
+impl Widget for &mut RotomDexWidget {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let variant = self.pkmn.get_current_pkmn();
 
         // Title
         // let [title_area, area] =
         //     Layout::vertical([Constraint::Fill(1), Constraint::Fill(4)]).areas(area);
-        TitleWidget::new(&variant.name).render(area, buf);
+        NameWidget::new(&variant.name, &mut self.title_state).render(area, buf);
 
         // Sprites
         let sprite_side_len = area.height * 2;

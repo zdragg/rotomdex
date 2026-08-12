@@ -39,7 +39,7 @@ impl OfflinePokemon {
     }
 
     /// Inject a sprite into the pokemon at the specified index.
-    /// Does nothing if the index is invalid,
+    /// Does nothing if the index is invalid.
     pub fn inject_sprite(&mut self, idx: usize, image: DynamicImage) {
         if idx >= self.variant_sprites.len() {
             return;
