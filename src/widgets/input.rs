@@ -4,7 +4,7 @@ use ratatui::{
     widgets::{Block, Clear, Paragraph, StatefulWidget, Widget},
 };
 
-pub struct InputWidget {}
+pub struct InputWidget;
 
 #[derive(Default)]
 pub struct InputState {
@@ -32,7 +32,7 @@ impl InputState {
     }
 }
 
-impl StatefulWidget for &InputWidget {
+impl StatefulWidget for InputWidget {
     type State = InputState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         if state.is_empty() {

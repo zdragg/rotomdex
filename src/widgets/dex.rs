@@ -16,12 +16,6 @@ pub struct RotomDexWidget<'a> {
     pub pkmn: &'a OfflinePokemon,
 }
 
-impl<'a> RotomDexWidget<'a> {
-    pub fn new(pkmn: &'a OfflinePokemon) -> Self {
-        Self { pkmn }
-    }
-}
-
 #[derive(Default)]
 pub struct RotomDexState {
     pub variant_cursor: isize,

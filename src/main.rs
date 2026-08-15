@@ -64,15 +64,15 @@ impl App {
                 Some(Ok(event)) = events.next() => {self.handle_event(&event);}
                 Some(event) = self.pkmn.ping() => {self.pkmn.handle_fetch_event(event).await}
             }
-            terminal.draw(|frame| self.render(frame))?;
+            terminal.draw(|frame| self.render(frame.area(), frame.buffer_mut()))?;
         }
         Ok(())
     }
 
     /// Handles crossterm events like keybinds and terminal resizes
     fn handle_event(&mut self, event: &Event) {
-        match event {
-            Event::Key(key) => match (key.modifiers, key.code) {
+        if let Event::Key(key) = event {
+            match (key.modifiers, key.code) {
                 (_, KeyCode::Esc) | (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
                     self.should_quit = true;
                 }
@@ -92,8 +92,7 @@ impl App {
                     self.input_state.handle_input(ch);
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
     }
 
@@ -106,23 +105,15 @@ impl App {
         );
     }
 
-    fn render(&mut self, frame: &mut Frame) {
+    fn render(&mut self, area: Rect, buf: &mut Buffer) {
         let [area, status_area] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(frame.area());
-        frame.render_widget(
-            &StatusBarWidget {
-                progress: self.pkmn.fetch_progress(),
-            },
-            status_area,
-        );
-
-        frame.render_stateful_widget(
-            RotomDexWidget { pkmn: &self.pkmn },
-            area,
-            &mut self.dex_state,
-        );
-        if !self.input_state.is_empty() {
-            frame.render_stateful_widget(&InputWidget {}, area, &mut self.input_state); // Overlaid on top
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
+        StatusBarWidget {
+            progress: self.pkmn.fetch_progress(),
         }
+        .render(status_area, buf);
+
+        RotomDexWidget { pkmn: &self.pkmn }.render(area, buf, &mut self.dex_state);
+        InputWidget.render(area, buf, &mut self.input_state);
     }
 }

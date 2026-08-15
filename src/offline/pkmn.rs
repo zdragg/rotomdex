@@ -52,7 +52,7 @@ impl OfflinePokemon {
             variants: Vec::new(),
             sprites: Vec::new(),
         };
-        pkmn.spawn_fetch_pokemon(); // Starts fetching data as soon as this is initialized
+        pkmn.spawn_pokemon_fetch(); // Starts fetching data as soon as this is initialized
         pkmn
     }
 
@@ -70,12 +70,12 @@ impl OfflinePokemon {
             // maybe make it atomic later if i figure out what atomic means
             FetchEvent::Species { species } => {
                 self.adjust_variant_cnt(species.varieties.len());
-                self.species = Some(species);
-                self.spawn_fetch_variants();
+                self.species = Some(*species);
+                self.spawn_variants_fetch();
             }
             FetchEvent::Variant { idx, variant } => {
-                self.variants[idx] = Some(variant);
-                self.spawn_fetch_sprite(idx);
+                self.variants[idx] = Some(*variant);
+                self.spawn_sprite_fetch(idx);
             }
             FetchEvent::Sprite { idx, sprite } => {
                 self.sprites[idx] = Some(sprite);
@@ -101,24 +101,27 @@ impl OfflinePokemon {
         &self.sprites
     }
 
-    fn spawn_fetch_pokemon(&mut self) {
+    fn spawn_pokemon_fetch(&mut self) {
         let name = self.name.clone();
         let tx = self.tx.clone();
         let client = self.rustemon_client.clone();
         self.joinset.spawn(async move {
             match pokemon::pokemon_species::get_by_name(&name, &client).await {
                 Ok(species) => {
-                    let _ = tx.send(FetchEvent::Species { species }).await;
+                    let _ = tx
+                        .send(FetchEvent::Species {
+                            species: Box::new(species),
+                        })
+                        .await;
                 }
                 Err(e) => {
                     let _ = tx.send(FetchEvent::Error { err: e.into() }).await;
                 }
             }
-            ()
         });
     }
 
-    fn spawn_fetch_variants(&mut self) {
+    fn spawn_variants_fetch(&mut self) {
         let Some(species) = &self.species else {
             todo!("log error: attempted to fetch variant when species not found");
             return;
@@ -136,19 +139,22 @@ impl OfflinePokemon {
             self.joinset.spawn(async move {
                 let variant: Result<OfflineVariant> = async {
                     let variant = v.follow(&client).await?;
-                    Ok(OfflineVariant::try_from(variant)?)
+                    OfflineVariant::try_from(variant)
                 }
                 .await;
                 let event = match variant {
-                    Ok(variant) => FetchEvent::Variant { idx, variant },
-                    Err(e) => FetchEvent::Error { err: e.into() },
+                    Ok(variant) => FetchEvent::Variant {
+                        idx,
+                        variant: Box::new(variant),
+                    },
+                    Err(e) => FetchEvent::Error { err: e },
                 };
                 let _ = tx.send(event).await;
             });
         }
     }
 
-    fn spawn_fetch_sprite(&mut self, idx: usize) {
+    fn spawn_sprite_fetch(&mut self, idx: usize) {
         let Some(variant) = &self.variants[idx] else {
             todo!("log error: attempted to fetch sprite when corresponding variant not found");
             return;
@@ -251,8 +257,18 @@ pub enum Progress {
 }
 
 pub enum FetchEvent {
-    Species { species: PokemonSpecies },
-    Variant { idx: usize, variant: OfflineVariant },
-    Sprite { idx: usize, sprite: OfflineSprite },
-    Error { err: color_eyre::eyre::Report },
+    Species {
+        species: Box<PokemonSpecies>,
+    },
+    Variant {
+        idx: usize,
+        variant: Box<OfflineVariant>,
+    },
+    Sprite {
+        idx: usize,
+        sprite: OfflineSprite,
+    },
+    Error {
+        err: color_eyre::eyre::Report,
+    },
 }
