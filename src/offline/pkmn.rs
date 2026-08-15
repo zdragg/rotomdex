@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use color_eyre::eyre::Result;
 use image::{DynamicImage, GenericImageView, Pixel};
@@ -21,6 +21,8 @@ pub struct OfflinePokemon {
     variant_cnt: usize,
     variants: Vec<Option<OfflineVariant>>,
     sprites: Vec<Option<OfflineSprite>>,
+
+    benchmark: Instant,
 }
 
 impl OfflinePokemon {
@@ -39,6 +41,8 @@ impl OfflinePokemon {
             variant_cnt: 0,
             variants: Vec::new(),
             sprites: Vec::new(),
+
+            benchmark: Instant::now(),
         };
         pkmn.spawn_pokemon_fetch(); // Starts fetching data as soon as this is initialized
         pkmn
@@ -57,17 +61,31 @@ impl OfflinePokemon {
             // because fetch progress decides whether or not to fetch actual (loaded/total variant cnt) only when species exist
             // maybe make it atomic later if i figure out what atomic means
             FetchEvent::Species { species } => {
+                log::info!(
+                    "received species for {}, {} variants discovered",
+                    self.name,
+                    species.varieties.len()
+                );
                 self.adjust_variant_cnt(species.varieties.len());
                 self.species = Some(*species);
                 self.spawn_variants_fetch();
             }
             FetchEvent::Variant { idx, variant } => {
                 self.variants[idx] = Some(*variant);
+                log::debug!("received data for variant {idx} of {}", self.name);
                 self.spawn_sprite_fetch(idx);
             }
             FetchEvent::Sprite { idx, sprite } => {
                 self.sprites[idx] = Some(sprite);
+                log::debug!("received sprite for variant {idx} of {}", self.name)
             }
+        }
+        if self.fetch_progress().is_fully_loaded() {
+            log::info!(
+                "{} fully fetched in {}ms",
+                self.name,
+                self.benchmark.elapsed().as_millis()
+            )
         }
     }
 
@@ -90,6 +108,7 @@ impl OfflinePokemon {
     }
 
     fn spawn_pokemon_fetch(&mut self) {
+        log::info!("fetching {}", self.name);
         let name = self.name.clone();
         let client = self.rustemon_client.clone();
         self.joinset.spawn(async move {
@@ -103,6 +122,7 @@ impl OfflinePokemon {
     }
 
     fn spawn_variants_fetch(&mut self) {
+        log::debug!("fetching variant data for {}", self.name);
         let Some(species) = &self.species else {
             log::error!("attempted to fetch variant when no species to fetch variant from was found");
             return;
@@ -130,9 +150,13 @@ impl OfflinePokemon {
 
     fn spawn_sprite_fetch(&mut self, idx: usize) {
         let Some(variant) = &self.variants[idx] else {
-            log::error!("attempted to fetch sprite when the corresponding variant was not found");
+            log::error!(
+                "attempted to fetch sprite for variant {idx} of {}, but the variant doesn't exist",
+                self.name
+            );
             return;
         };
+        log::debug!("fetching sprite for {}", variant.pkmn.name);
         let sprite_link = variant
             .pkmn
             .sprites
@@ -141,6 +165,18 @@ impl OfflinePokemon {
             .black_white
             .front_default
             .clone();
+
+        let client = self.reqwest_client.clone();
+        let Some(link) = sprite_link else {
+            log::warn!("sprite not found for {}", variant.pkmn.name);
+            self.joinset.spawn(async move {
+                FetchEvent::Sprite {
+                    idx,
+                    sprite: OfflineSprite { sprite: None },
+                }
+            });
+            return;
+        };
 
         let crop = |image: DynamicImage| -> DynamicImage {
             let (mut min_x, mut max_x, mut min_y, mut max_y) = (image.width(), 0, image.height(), 0);
@@ -158,16 +194,7 @@ impl OfflinePokemon {
             let (corner_x, corner_y) = (mid_x.saturating_sub(side_len / 2), mid_y.saturating_sub(side_len / 2));
             image.crop_imm(corner_x, corner_y, side_len, side_len)
         };
-
-        let client = self.reqwest_client.clone();
         self.joinset.spawn(async move {
-            let Some(link) = sprite_link else {
-                return FetchEvent::Sprite {
-                    idx,
-                    sprite: OfflineSprite { sprite: None },
-                };
-            };
-
             let result: Result<DynamicImage> = async {
                 let image_bytes = client.get(link).send().await?.bytes().await?;
                 let image = image::load_from_memory(&image_bytes)?;
@@ -214,9 +241,27 @@ pub struct FetchProgress {
     pub sprites: Progress,
 }
 
+impl FetchProgress {
+    pub fn is_fully_loaded(&self) -> bool {
+        self.species_loaded && self.variants.is_fully_loaded() && self.sprites.is_fully_loaded()
+    }
+}
+
 pub enum Progress {
     Indeterminate,
     Determinate { completed: usize, total: usize },
+}
+
+impl Progress {
+    pub fn is_fully_loaded(&self) -> bool {
+        if let Progress::Determinate { completed, total } = self
+            && completed == total
+        {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 pub enum FetchEvent {

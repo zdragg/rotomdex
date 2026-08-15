@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+chrono = "0.4.45"
 color-eyre = "0.6.5"
 colorgrad = "0.8.0"
 crossterm = { version = "0.29.0", features = ["event-stream"] }
+etcetera = "0.11.0"
+fern = "0.7.1"
 image = "0.25.10"
 log = "0.4.33"
 parking_lot = "0.12.5"

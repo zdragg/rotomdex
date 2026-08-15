@@ -1,10 +1,11 @@
 mod offline;
 mod widgets;
 
-use std::sync::Arc;
+use std::{fs, sync::Arc};
 
-use color_eyre::Result;
+use color_eyre::{Result, eyre::OptionExt};
 use crossterm::event::{EventStream, KeyModifiers};
+use etcetera::{AppStrategy, AppStrategyArgs};
 use ratatui::{
     DefaultTerminal,
     crossterm::event::{Event, KeyCode},
@@ -21,11 +22,37 @@ use crate::{
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
-    tui_logger::init_logger(log::LevelFilter::Warn)?;
+    setup_logs()?;
     let terminal = ratatui::init();
     let app_result = App::default().run(terminal).await;
     ratatui::restore();
     app_result
+}
+
+fn setup_logs() -> Result<()> {
+    let mut log_path = etcetera::choose_app_strategy(AppStrategyArgs {
+        top_level_domain: "dev".to_string(),
+        author: "zerodrag".to_string(),
+        app_name: "rotomdex".to_string(),
+    })?
+    .state_dir()
+    .ok_or_eyre("log output dir not found")?;
+    fs::create_dir_all(&log_path)?;
+    log_path.push("app.log");
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}] {:<5} {}",
+                chrono::Local::now().format("%H:%M:%S%.3f"),
+                record.level(),
+                message,
+            ))
+        })
+        .level(log::LevelFilter::Info)
+        .chain(fern::log_file(log_path)?)
+        .apply()?;
+    log::info!("──────── session started ────────");
+    Ok(())
 }
 
 struct App {
@@ -75,6 +102,7 @@ impl App {
         if let Event::Key(key) = event {
             match (key.modifiers, key.code) {
                 (_, KeyCode::Esc) | (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
+                    log::info!("───────── session ended ─────────");
                     self.should_quit = true;
                 }
                 (_, KeyCode::Enter) if !self.input_state.is_empty() => {
