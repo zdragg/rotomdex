@@ -1,51 +1,41 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    widgets::{Block, Clear, Paragraph, Widget},
+    widgets::{Block, Clear, Paragraph, StatefulWidget, Widget},
 };
-use smart_default::SmartDefault;
 
-#[derive(SmartDefault)]
-pub struct InputWidget {
-    #[default = "rotom"]
+pub struct InputWidget {}
+
+#[derive(Default)]
+pub struct InputState {
     input: String,
-    pub input_mode: InputMode,
 }
 
-impl InputWidget {
+impl InputState {
     /// Extracts the stored String and resets.
     pub fn take(&mut self) -> String {
-        let str = std::mem::take(&mut self.input);
-        self.input_mode = InputMode::Idle;
-        str
+        std::mem::take(&mut self.input)
     }
 
     /// Remove one character.
     pub fn backspace(&mut self) {
         self.input.pop();
-        if self.input.is_empty() {
-            self.input_mode = InputMode::Idle;
-        };
     }
 
     /// Input one character.
     pub fn handle_input(&mut self, ch: char) {
         self.input.push(ch);
-        self.input_mode = InputMode::Editing;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.input.is_empty()
     }
 }
 
-/// Idle = no words, Editing = has words
-#[derive(Default, PartialEq)]
-pub enum InputMode {
-    #[default]
-    Idle,
-    Editing,
-}
-
-impl Widget for &InputWidget {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        if self.input_mode == InputMode::Idle {
+impl StatefulWidget for &InputWidget {
+    type State = InputState;
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        if state.is_empty() {
             return;
         }
         let area = Rect {
@@ -56,7 +46,7 @@ impl Widget for &InputWidget {
         }; // A fixed, centered rectangle of size 14x3. 14 = 12 (pokemon name) + borders, 3 = 1 + borders
 
         Clear.render(area, buf);
-        let input = Paragraph::new(self.input.clone())
+        let input = Paragraph::new(state.input.as_str())
             .block(Block::bordered().title("Input Pokémon name:"));
         input.render(area, buf);
     }

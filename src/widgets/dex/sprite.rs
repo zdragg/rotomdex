@@ -9,13 +9,15 @@ use ratatui::{
     },
 };
 
+use crate::offline::OfflineSprite;
+
 pub struct SpriteWidget<'a> {
-    pub sprite: &'a DynamicImage,
+    pub sprite: &'a OfflineSprite,
     pub side_len: u16,
 }
 
 impl<'a> SpriteWidget<'a> {
-    pub fn new(sprite: &'a DynamicImage, side_len: u16) -> Self {
+    pub fn new(sprite: &'a OfflineSprite, side_len: u16) -> Self {
         Self { sprite, side_len }
     }
 }
@@ -24,6 +26,9 @@ impl<'a> Widget for &SpriteWidget<'a> {
     // Renders the pokemon sprite. The side length needs to be equal to h * 2, or how many "pixels" the height can show.
     // Since the sprite is square, the pixel count of the height would also be the pixel count of the width.
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let Some(sprite) = &self.sprite.sprite else {
+            return; // TODO: handle missing sprite case. maybe render some kind of image that shows that there is no sprite
+        };
         let area = area.inner(Margin::new(2, 1));
         Canvas::default()
             .x_bounds([0.0, self.side_len as f64])
@@ -31,7 +36,7 @@ impl<'a> Widget for &SpriteWidget<'a> {
             .marker(Marker::HalfBlock)
             .paint(|ctx| {
                 ctx.draw(&RotomDexSprite {
-                    sprite: self.sprite,
+                    sprite,
                     side_len: self.side_len,
                 });
             })

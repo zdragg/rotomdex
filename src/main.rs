@@ -1,29 +1,21 @@
-mod pkmn;
+mod offline;
 mod widgets;
 
 use std::sync::Arc;
 
 use color_eyre::Result;
 use crossterm::event::{EventStream, KeyModifiers};
-use image::{DynamicImage, GenericImageView, Pixel};
-use parking_lot::Mutex;
 use ratatui::{
     DefaultTerminal,
     crossterm::event::{Event, KeyCode},
     prelude::*,
-    widgets::Block,
 };
 use rustemon::client::RustemonClient;
-use smart_default::SmartDefault;
-use tokio::{
-    sync::mpsc::{self, Sender},
-    task::JoinSet,
-};
 use tokio_stream::StreamExt;
 
 use crate::{
-    pkmn::OfflinePokemon,
-    widgets::{InputMode, InputWidget, RotomDexWidget},
+    offline::OfflinePokemon,
+    widgets::{InputState, InputWidget, RotomDexState, RotomDexWidget, StatusBarWidget},
 };
 
 #[tokio::main]
@@ -35,37 +27,42 @@ async fn main() -> Result<()> {
     app_result
 }
 
-#[derive(SmartDefault)]
 struct App {
     should_quit: bool,
-
-    fetch_state: Arc<Mutex<FetchState>>,
 
     reqwest_client: reqwest::Client,
     rustemon_client: Arc<RustemonClient>,
 
-    dex_widget: Option<RotomDexWidget>,
-    input_widget: InputWidget,
+    pkmn: OfflinePokemon,
+
+    dex_state: RotomDexState,
+    input_state: InputState,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        let pkmn_name = "rotom".to_string();
+        let reqwest_client = reqwest::Client::new();
+        let rustemon_client = Arc::new(RustemonClient::default());
+        Self {
+            should_quit: false,
+            pkmn: OfflinePokemon::new(pkmn_name, reqwest_client.clone(), rustemon_client.clone()),
+            reqwest_client,
+            rustemon_client,
+            input_state: InputState::default(),
+            dex_state: RotomDexState::default(),
+        }
+    }
 }
 
 impl App {
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         let mut events = EventStream::new();
 
-        let (pkmn_data_tx, mut pkmn_data_rx) = mpsc::channel(32);
-        let (pkmn_sprite_tx, mut pkmn_sprite_rx) = mpsc::channel(32);
-
-        self.start_pkmn_data_fetch(pkmn_data_tx.clone());
-
         while !self.should_quit {
             tokio::select! {
-                Some(Ok(event)) = events.next() => self.handle_event(&event, pkmn_data_tx.clone()),
-                Some(result) = pkmn_data_rx.recv(), if *self.fetch_state.lock() == FetchState::LoadingData => {
-                    self.handle_pkmn_data(result, pkmn_sprite_tx.clone());
-                }
-                Some(result) = pkmn_sprite_rx.recv(), if *self.fetch_state.lock() == FetchState::LoadingSprite => {
-                    self.handle_pkmn_sprite(result);
-                }
+                Some(Ok(event)) = events.next() => {self.handle_event(&event);}
+                Some(event) = self.pkmn.ping() => {self.pkmn.handle_fetch_event(event).await}
             }
             terminal.draw(|frame| self.render(frame))?;
         }
@@ -73,30 +70,26 @@ impl App {
     }
 
     /// Handles crossterm events like keybinds and terminal resizes
-    fn handle_event(&mut self, event: &Event, pkmn_tx: Sender<Result<OfflinePokemon>>) {
+    fn handle_event(&mut self, event: &Event) {
         match event {
             Event::Key(key) => match (key.modifiers, key.code) {
                 (_, KeyCode::Esc) | (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
                     self.should_quit = true;
                 }
-                (_, KeyCode::Enter) if self.input_widget.input_mode == InputMode::Editing => {
-                    self.start_pkmn_data_fetch(pkmn_tx);
+                (_, KeyCode::Enter) if !self.input_state.is_empty() => {
+                    self.new_pokemon();
                 }
                 (_, KeyCode::Right) => {
-                    if let Some(widget) = &mut self.dex_widget {
-                        widget.pkmn.next();
-                    }
+                    self.dex_state.next();
                 }
                 (_, KeyCode::Left) => {
-                    if let Some(widget) = &mut self.dex_widget {
-                        widget.pkmn.prev();
-                    }
+                    self.dex_state.prev();
                 }
                 (_, KeyCode::Backspace) => {
-                    self.input_widget.backspace();
+                    self.input_state.backspace();
                 }
                 (_, KeyCode::Char(ch)) => {
-                    self.input_widget.handle_input(ch);
+                    self.input_state.handle_input(ch);
                 }
                 _ => {}
             },
@@ -104,149 +97,32 @@ impl App {
         }
     }
 
-    /// Spawns task to fetch pokemon. Returns `Receiver` for the task.
-    fn start_pkmn_data_fetch(&mut self, tx: Sender<Result<OfflinePokemon>>) {
-        if let FetchState::LoadingData | FetchState::LoadingSprite = *self.fetch_state.lock() {
-            return;
-        }
-        self.update_fetch_state(FetchState::LoadingData);
-        let name = self.input_widget.take();
-        let rustemon_client = self.rustemon_client.clone();
-        tokio::spawn(async move {
-            let result = OfflinePokemon::fetch_data(&name, rustemon_client).await;
-            let _ = tx.send(result).await;
-        });
-    }
-
-    /// Handles `Result` returned by `OfflinePokemon::fetch()`.
-    fn handle_pkmn_data(&mut self, res: Result<OfflinePokemon>, tx: Sender<SpriteFetchEvent>) {
-        match res {
-            Ok(pkmn) => {
-                self.start_pkmn_sprite_fetch(tx, &pkmn);
-                self.dex_widget = Some(RotomDexWidget::new(pkmn));
-            }
-            Err(e) => {
-                self.update_fetch_state(FetchState::Error(e.to_string()));
-            }
-        };
-    }
-
-    /// Spawns (as) many tasks (as the number of variants with existing sprite links) to fetch pokemon sprites
-    fn start_pkmn_sprite_fetch(&mut self, tx: Sender<SpriteFetchEvent>, pkmn: &OfflinePokemon) {
-        if *self.fetch_state.lock() != FetchState::LoadingData {
-            return;
-        }; // Must happen right after fetching pkmn data
-
-        self.update_fetch_state(FetchState::LoadingSprite);
-
-        let trim_image = |image: &DynamicImage| -> DynamicImage {
-            let (mut min_x, mut max_x, mut min_y, mut max_y) =
-                (image.width(), 0, image.height(), 0);
-            for (x, y, color) in image.pixels() {
-                if color.alpha() == 0 {
-                    continue;
-                }
-                min_x = min_x.min(x);
-                max_x = max_x.max(x);
-                min_y = min_y.min(y);
-                max_y = max_y.max(y);
-            }
-            let (mid_x, mid_y) = ((min_x + max_x) / 2, (min_y + max_y) / 2);
-            let side_len = (max_x - min_x).max(max_y - min_y) + 2; // leave some space
-            let (corner_x, corner_y) = (
-                mid_x.saturating_sub(side_len / 2),
-                mid_y.saturating_sub(side_len / 2),
-            );
-            image.crop_imm(corner_x, corner_y, side_len, side_len)
-        };
-
-        let client = self.reqwest_client.clone();
-        let links = pkmn.get_sprite_links();
-        tokio::spawn(async move {
-            let mut tasks = JoinSet::new();
-
-            for (variant_idx, link) in links {
-                let client = client.clone();
-                tasks.spawn(async move {
-                    let image_result: Result<(usize, DynamicImage)> = async {
-                        let image_bytes = client.get(link).send().await?.bytes().await?;
-                        let image = image::load_from_memory(&image_bytes)?;
-                        Ok((variant_idx, trim_image(&image)))
-                    }
-                    .await;
-                    match image_result {
-                        Ok((variant_idx, image)) => SpriteFetchEvent::Sprite { variant_idx, image },
-                        Err(err) => SpriteFetchEvent::Error { err },
-                    }
-                });
-            }
-
-            while let Some(res) = tasks.join_next().await {
-                match res {
-                    Ok(event) => {
-                        let _ = tx.send(event).await;
-                    }
-                    Err(e) => {
-                        let _ = tx.send(SpriteFetchEvent::Error { err: e.into() }).await;
-                    }
-                }
-            }
-            let _ = tx.send(SpriteFetchEvent::Finished).await;
-        });
-    }
-
-    /// Handles the fetched pokemon sprite events from `start_pkmn_sprite_fetch`
-    fn handle_pkmn_sprite(&mut self, event: SpriteFetchEvent) {
-        match event {
-            SpriteFetchEvent::Sprite { variant_idx, image } => {
-                let Some(widget) = &mut self.dex_widget else {
-                    return; // Probably not reachable.
-                };
-                widget.pkmn.inject_sprite(variant_idx, image);
-            }
-            SpriteFetchEvent::Error { err } => {
-                self.update_fetch_state(FetchState::Error(err.to_string()))
-            }
-            SpriteFetchEvent::Finished => self.update_fetch_state(FetchState::Loaded),
-        }
-    }
-
-    /// Updates `FetchState` - how the construction of `OfflinePokemon` is going
-    fn update_fetch_state(&mut self, state: FetchState) {
-        *self.fetch_state.lock() = state;
+    fn new_pokemon(&mut self) {
+        self.dex_state.reset();
+        self.pkmn = OfflinePokemon::new(
+            self.input_state.take(),
+            self.reqwest_client.clone(),
+            self.rustemon_client.clone(),
+        );
     }
 
     fn render(&mut self, frame: &mut Frame) {
-        let block = Block::new().title_bottom(format!("{:?}", self.fetch_state.lock()));
-        let area_without_status_bar = block.inner(frame.area());
-        frame.render_widget(block, frame.area());
+        let [area, status_area] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(frame.area());
+        frame.render_widget(
+            &StatusBarWidget {
+                progress: self.pkmn.fetch_progress(),
+            },
+            status_area,
+        );
 
-        if let Some(dex_widget) = &mut self.dex_widget {
-            frame.render_widget(dex_widget, area_without_status_bar);
-        }
-        if self.input_widget.input_mode == InputMode::Editing {
-            frame.render_widget(&self.input_widget, area_without_status_bar); // Overlaid on top
+        frame.render_stateful_widget(
+            RotomDexWidget { pkmn: &self.pkmn },
+            area,
+            &mut self.dex_state,
+        );
+        if !self.input_state.is_empty() {
+            frame.render_stateful_widget(&InputWidget {}, area, &mut self.input_state); // Overlaid on top
         }
     }
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-enum FetchState {
-    #[default]
-    Unloaded,
-    LoadingData,
-    LoadingSprite,
-    Loaded,
-    Error(String),
-}
-
-enum SpriteFetchEvent {
-    Sprite {
-        variant_idx: usize,
-        image: DynamicImage,
-    },
-    Error {
-        err: color_eyre::eyre::Report,
-    },
-    Finished,
 }
