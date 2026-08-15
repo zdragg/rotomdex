@@ -53,15 +53,13 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
         // Sprites
         let sprite_side_len = area.height * 2;
         let [sprite_area, area] =
-            Layout::horizontal([Constraint::Length(sprite_side_len), Constraint::Fill(1)])
-                .areas(area);
+            Layout::horizontal([Constraint::Length(sprite_side_len), Constraint::Fill(1)]).areas(area);
         if let Some(sprite) = &self.pkmn.sprites()[normalized_cursor] {
             SpriteWidget::new(sprite, sprite_side_len).render(sprite_area, buf);
         }
 
         // Pokemon Name
-        let [name_area, area] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Fill(3)]).areas(area);
+        let [name_area, area] = Layout::vertical([Constraint::Fill(1), Constraint::Fill(3)]).areas(area);
 
         NameWidget { variant }.render(name_area, buf);
     }

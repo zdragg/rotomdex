@@ -3,10 +3,7 @@ use std::sync::Arc;
 use color_eyre::eyre::Result;
 use image::{DynamicImage, GenericImageView, Pixel};
 use rustemon::{Follow, client::RustemonClient, model::pokemon::PokemonSpecies, pokemon};
-use tokio::{
-    sync::mpsc::{self, Receiver, Sender},
-    task::JoinSet,
-};
+use tokio::task::JoinSet;
 
 use crate::offline::{OfflineSprite, OfflineVariant};
 
@@ -17,9 +14,7 @@ pub struct OfflinePokemon {
     rustemon_client: Arc<RustemonClient>,
     reqwest_client: reqwest::Client,
 
-    joinset: JoinSet<()>, // all async tasks spawn from this. If the struct drops, all async tasks drop along with this JoinSet
-    tx: Sender<FetchEvent>,
-    rx: Receiver<FetchEvent>,
+    joinset: JoinSet<FetchEvent>, // all async tasks spawn from this. If the struct drops, all async tasks drop along with this JoinSet
 
     species: Option<PokemonSpecies>,
 
@@ -29,12 +24,7 @@ pub struct OfflinePokemon {
 }
 
 impl OfflinePokemon {
-    pub fn new(
-        name: String,
-        reqwest_client: reqwest::Client,
-        rustemon_client: Arc<RustemonClient>,
-    ) -> Self {
-        let (tx, rx) = mpsc::channel(32);
+    pub fn new(name: String, reqwest_client: reqwest::Client, rustemon_client: Arc<RustemonClient>) -> Self {
         let joinset = JoinSet::new();
         let mut pkmn = Self {
             name,
@@ -43,8 +33,6 @@ impl OfflinePokemon {
             rustemon_client,
 
             joinset,
-            tx,
-            rx,
 
             species: None,
 
@@ -57,13 +45,13 @@ impl OfflinePokemon {
     }
 
     pub async fn ping(&mut self) -> Option<FetchEvent> {
-        self.rx.recv().await
+        self.joinset.join_next().await.transpose().unwrap() // join error -> just panic entire program because it shouldnt happen
     }
 
-    pub async fn handle_fetch_event(&mut self, event: FetchEvent) {
+    pub fn handle_fetch_event(&mut self, event: FetchEvent) {
         match event {
             FetchEvent::Error { err } => {
-                todo!("report to a logging library")
+                log::error!("error occurred during fetching: {err}");
             }
             // PROBABLY SHOULD ADJUST COUNT BEFORE PUTTING SPECIES OR ELSE FETCH PROGRESS MAY BREAK
             // because fetch progress decides whether or not to fetch actual (loaded/total variant cnt) only when species exist
@@ -103,38 +91,25 @@ impl OfflinePokemon {
 
     fn spawn_pokemon_fetch(&mut self) {
         let name = self.name.clone();
-        let tx = self.tx.clone();
         let client = self.rustemon_client.clone();
         self.joinset.spawn(async move {
             match pokemon::pokemon_species::get_by_name(&name, &client).await {
-                Ok(species) => {
-                    let _ = tx
-                        .send(FetchEvent::Species {
-                            species: Box::new(species),
-                        })
-                        .await;
-                }
-                Err(e) => {
-                    let _ = tx.send(FetchEvent::Error { err: e.into() }).await;
-                }
+                Ok(species) => FetchEvent::Species {
+                    species: Box::new(species),
+                },
+                Err(e) => FetchEvent::Error { err: e.into() },
             }
         });
     }
 
     fn spawn_variants_fetch(&mut self) {
         let Some(species) = &self.species else {
-            todo!("log error: attempted to fetch variant when species not found");
+            log::error!("attempted to fetch variant when no species to fetch variant from was found");
             return;
         };
         let client = self.rustemon_client.clone();
-        let variants: Vec<_> = species
-            .varieties
-            .iter()
-            .map(|v| &v.pokemon)
-            .cloned()
-            .collect();
+        let variants: Vec<_> = species.varieties.iter().map(|v| &v.pokemon).cloned().collect();
         for (idx, v) in variants.into_iter().enumerate() {
-            let tx = self.tx.clone();
             let client = client.clone();
             self.joinset.spawn(async move {
                 let variant: Result<OfflineVariant> = async {
@@ -142,21 +117,20 @@ impl OfflinePokemon {
                     OfflineVariant::try_from(variant)
                 }
                 .await;
-                let event = match variant {
+                match variant {
                     Ok(variant) => FetchEvent::Variant {
                         idx,
                         variant: Box::new(variant),
                     },
                     Err(e) => FetchEvent::Error { err: e },
-                };
-                let _ = tx.send(event).await;
+                }
             });
         }
     }
 
     fn spawn_sprite_fetch(&mut self, idx: usize) {
         let Some(variant) = &self.variants[idx] else {
-            todo!("log error: attempted to fetch sprite when corresponding variant not found");
+            log::error!("attempted to fetch sprite when the corresponding variant was not found");
             return;
         };
         let sprite_link = variant
@@ -169,8 +143,7 @@ impl OfflinePokemon {
             .clone();
 
         let crop = |image: DynamicImage| -> DynamicImage {
-            let (mut min_x, mut max_x, mut min_y, mut max_y) =
-                (image.width(), 0, image.height(), 0);
+            let (mut min_x, mut max_x, mut min_y, mut max_y) = (image.width(), 0, image.height(), 0);
             for (x, y, color) in image.pixels() {
                 if color.alpha() == 0 {
                     continue;
@@ -182,24 +155,17 @@ impl OfflinePokemon {
             }
             let (mid_x, mid_y) = ((min_x + max_x) / 2, (min_y + max_y) / 2);
             let side_len = (max_x - min_x).max(max_y - min_y) + 2; // leave some space
-            let (corner_x, corner_y) = (
-                mid_x.saturating_sub(side_len / 2),
-                mid_y.saturating_sub(side_len / 2),
-            );
+            let (corner_x, corner_y) = (mid_x.saturating_sub(side_len / 2), mid_y.saturating_sub(side_len / 2));
             image.crop_imm(corner_x, corner_y, side_len, side_len)
         };
 
         let client = self.reqwest_client.clone();
-        let tx = self.tx.clone();
         self.joinset.spawn(async move {
             let Some(link) = sprite_link else {
-                let _ = tx
-                    .send(FetchEvent::Sprite {
-                        idx,
-                        sprite: OfflineSprite { sprite: None },
-                    })
-                    .await;
-                return;
+                return FetchEvent::Sprite {
+                    idx,
+                    sprite: OfflineSprite { sprite: None },
+                };
             };
 
             let result: Result<DynamicImage> = async {
@@ -209,16 +175,13 @@ impl OfflinePokemon {
             }
             .await;
 
-            let event = match result {
+            match result {
                 Ok(image) => FetchEvent::Sprite {
                     idx,
-                    sprite: OfflineSprite {
-                        sprite: Some(image),
-                    },
+                    sprite: OfflineSprite { sprite: Some(image) },
                 },
                 Err(e) => FetchEvent::Error { err: e },
-            };
-            let _ = tx.send(event).await;
+            }
         });
     }
 
@@ -257,18 +220,8 @@ pub enum Progress {
 }
 
 pub enum FetchEvent {
-    Species {
-        species: Box<PokemonSpecies>,
-    },
-    Variant {
-        idx: usize,
-        variant: Box<OfflineVariant>,
-    },
-    Sprite {
-        idx: usize,
-        sprite: OfflineSprite,
-    },
-    Error {
-        err: color_eyre::eyre::Report,
-    },
+    Species { species: Box<PokemonSpecies> },
+    Variant { idx: usize, variant: Box<OfflineVariant> },
+    Sprite { idx: usize, sprite: OfflineSprite },
+    Error { err: color_eyre::eyre::Report },
 }

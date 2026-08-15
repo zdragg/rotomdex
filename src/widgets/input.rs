@@ -46,8 +46,7 @@ impl StatefulWidget for InputWidget {
         }; // A fixed, centered rectangle of size 14x3. 14 = 12 (pokemon name) + borders, 3 = 1 + borders
 
         Clear.render(area, buf);
-        let input = Paragraph::new(state.input.as_str())
-            .block(Block::bordered().title("Input Pokémon name:"));
+        let input = Paragraph::new(state.input.as_str()).block(Block::bordered().title("Input Pokémon name:"));
         input.render(area, buf);
     }
 }

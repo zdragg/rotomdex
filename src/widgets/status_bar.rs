@@ -14,12 +14,8 @@ pub struct StatusBarWidget {
 
 impl Widget for StatusBarWidget {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [variant_area, instructions_area, sprite_area] = Layout::horizontal([
-            Constraint::Length(3),
-            Constraint::Fill(1),
-            Constraint::Length(3),
-        ])
-        .areas(area);
+        let [variant_area, instructions_area, sprite_area] =
+            Layout::horizontal([Constraint::Length(3), Constraint::Fill(1), Constraint::Length(3)]).areas(area);
 
         if let Progress::Determinate { completed, total } = self.progress.variants {
             if completed == total {
@@ -42,7 +38,7 @@ impl Widget for StatusBarWidget {
             .render(sprite_area, buf);
         };
 
-        Line::from("Type to search - ← / → to select variant - Esc / Ctrl-C to quit")
+        Line::from("← / → to select variant ・ Type anything to search ・ Esc / Ctrl-C to quit")
             .style(Color::DarkGray)
             .centered()
             .render(instructions_area, buf);

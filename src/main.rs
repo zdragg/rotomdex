@@ -21,6 +21,7 @@ use crate::{
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
+    tui_logger::init_logger(log::LevelFilter::Warn)?;
     let terminal = ratatui::init();
     let app_result = App::default().run(terminal).await;
     ratatui::restore();
@@ -61,8 +62,8 @@ impl App {
 
         while !self.should_quit {
             tokio::select! {
-                Some(Ok(event)) = events.next() => {self.handle_event(&event);}
-                Some(event) = self.pkmn.ping() => {self.pkmn.handle_fetch_event(event).await}
+                Some(Ok(event)) = events.next() => self.handle_event(&event),
+                Some(event) = self.pkmn.ping() => self.pkmn.handle_fetch_event(event),
             }
             terminal.draw(|frame| self.render(frame.area(), frame.buffer_mut()))?;
         }
@@ -106,8 +107,7 @@ impl App {
     }
 
     fn render(&mut self, area: Rect, buf: &mut Buffer) {
-        let [area, status_area] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
+        let [area, status_area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
         StatusBarWidget {
             progress: self.pkmn.fetch_progress(),
         }

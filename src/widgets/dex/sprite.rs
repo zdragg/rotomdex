@@ -51,11 +51,9 @@ struct RotomDexSprite<'a> {
 
 impl<'a> Shape for RotomDexSprite<'a> {
     fn draw(&self, painter: &mut Painter) {
-        let sprite = self.sprite.resize(
-            self.side_len as u32,
-            self.side_len as u32,
-            FilterType::Nearest,
-        );
+        let sprite = self
+            .sprite
+            .resize(self.side_len as u32, self.side_len as u32, FilterType::Nearest);
 
         for (x, y, color) in sprite.pixels() {
             if color.alpha() < 128 {
