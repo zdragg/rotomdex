@@ -95,6 +95,10 @@ impl OfflinePokemon {
         self.variant_cnt = variant_cnt;
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn variant_cnt(&self) -> usize {
         self.variant_cnt
     }

@@ -12,6 +12,12 @@ pub struct StatusBarWidget {
     pub progress: FetchProgress,
 }
 
+impl StatusBarWidget {
+    pub fn new(progress: FetchProgress) -> Self {
+        Self { progress }
+    }
+}
+
 impl Widget for StatusBarWidget {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let [variant_area, instructions_area, sprite_area] =

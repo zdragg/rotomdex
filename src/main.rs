@@ -16,7 +16,7 @@ use tokio_stream::StreamExt;
 
 use crate::{
     offline::OfflinePokemon,
-    widgets::{InputState, InputWidget, RotomDexState, RotomDexWidget, StatusBarWidget},
+    widgets::{InputState, InputWidget, RotomDexWidget, VariantState},
 };
 
 #[tokio::main]
@@ -63,7 +63,7 @@ struct App {
 
     pkmn: OfflinePokemon,
 
-    dex_state: RotomDexState,
+    dex_state: VariantState,
     input_state: InputState,
 }
 
@@ -78,7 +78,7 @@ impl Default for App {
             reqwest_client,
             rustemon_client,
             input_state: InputState::default(),
-            dex_state: RotomDexState::default(),
+            dex_state: VariantState::default(),
         }
     }
 }
@@ -135,13 +135,7 @@ impl App {
     }
 
     fn render(&mut self, area: Rect, buf: &mut Buffer) {
-        let [area, status_area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
-        StatusBarWidget {
-            progress: self.pkmn.fetch_progress(),
-        }
-        .render(status_area, buf);
-
-        RotomDexWidget { pkmn: &self.pkmn }.render(area, buf, &mut self.dex_state);
+        RotomDexWidget::new(&self.pkmn).render(area, buf, &mut self.dex_state);
         InputWidget.render(area, buf, &mut self.input_state);
     }
 }

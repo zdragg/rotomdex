@@ -3226,6 +3226,7 @@ dependencies = [
  "etcetera",
  "fern",
  "image",
+ "itertools 0.15.0",
  "log",
  "parking_lot",
  "ratatui",

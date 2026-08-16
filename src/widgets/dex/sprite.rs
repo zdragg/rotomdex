@@ -13,54 +13,52 @@ use crate::offline::OfflineSprite;
 
 pub struct SpriteWidget<'a> {
     pub sprite: &'a OfflineSprite,
-    pub side_len: u16,
 }
 
 impl<'a> SpriteWidget<'a> {
-    pub fn new(sprite: &'a OfflineSprite, side_len: u16) -> Self {
-        Self { sprite, side_len }
+    pub fn new(sprite: &'a OfflineSprite) -> Self {
+        Self { sprite }
     }
 }
 
 impl<'a> Widget for &SpriteWidget<'a> {
-    // Renders the pokemon sprite. The side length needs to be equal to h * 2, or how many "pixels" the height can show.
-    // Since the sprite is square, the pixel count of the height would also be the pixel count of the width.
     fn render(self, area: Rect, buf: &mut Buffer) {
         let Some(sprite) = &self.sprite.sprite else {
             return; // TODO: handle missing sprite case. maybe render some kind of image that shows that there is no sprite
         };
         let area = area.inner(Margin::new(2, 1));
+        let side_len = area.width.min(area.height.saturating_mul(2));
+        let side_len = side_len - side_len % 2;
+        if side_len < 2 {
+            return;
+        }
+
+        let area = area.centered(Constraint::Length(side_len), Constraint::Length(side_len / 2));
+        let sprite = sprite.resize_exact(side_len.into(), side_len.into(), FilterType::Nearest);
+        let max = f64::from(side_len - 1);
+
         Canvas::default()
-            .x_bounds([0.0, self.side_len as f64])
-            .y_bounds([0.0, self.side_len as f64])
+            .x_bounds([0.0, max])
+            .y_bounds([0.0, max])
             .marker(Marker::HalfBlock)
             .paint(|ctx| {
-                ctx.draw(&RotomDexSprite {
-                    sprite,
-                    side_len: self.side_len,
-                });
+                ctx.draw(&RotomDexSprite(&sprite));
             })
             .render(area, buf);
     }
 }
 
-struct RotomDexSprite<'a> {
-    sprite: &'a DynamicImage,
-    side_len: u16,
-}
+struct RotomDexSprite<'a>(&'a DynamicImage);
 
 impl<'a> Shape for RotomDexSprite<'a> {
     fn draw(&self, painter: &mut Painter) {
-        let sprite = self
-            .sprite
-            .resize(self.side_len as u32, self.side_len as u32, FilterType::Nearest);
+        let height = self.0.height();
 
-        for (x, y, color) in sprite.pixels() {
+        for (x, y, color) in self.0.pixels() {
             if color.alpha() < 128 {
                 continue;
             }
-            let (canvas_x, canvas_y) = (x, self.side_len as u32 - y - 1); // If it works don't touch it. something about coordinates not being same
-            if let Some((x, y)) = painter.get_point(canvas_x as f64, canvas_y as f64) {
+            if let Some((x, y)) = painter.get_point(x.into(), (height - y - 1).into()) {
                 let color = Color::Rgb(color.0[0], color.0[1], color.0[2]);
                 painter.paint(x, y, color);
             }

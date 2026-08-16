@@ -1,6 +1,6 @@
 use ratatui::{
     buffer::Buffer,
-    layout::Rect,
+    layout::{Constraint, Rect},
     widgets::{Block, Clear, Paragraph, StatefulWidget, Widget},
 };
 
@@ -38,15 +38,10 @@ impl StatefulWidget for InputWidget {
         if state.is_empty() {
             return;
         }
-        let area = Rect {
-            x: (area.width.max(28) - 28) / 2,
-            y: (area.height.max(3) - 3) / 2,
-            width: 28,
-            height: 3,
-        }; // A fixed, centered rectangle of size 14x3. 14 = 12 (pokemon name) + borders, 3 = 1 + borders
+        let area = area.centered(Constraint::Length(28), Constraint::Length(3));
 
         Clear.render(area, buf);
-        let input = Paragraph::new(state.input.as_str()).block(Block::bordered().title("Input Pokémon name:"));
+        let input = Paragraph::new(state.input.as_str()).block(Block::bordered().title("Enter Pokémon name:"));
         input.render(area, buf);
     }
 }

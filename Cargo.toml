@@ -11,6 +11,7 @@ crossterm = { version = "0.29.0", features = ["event-stream"] }
 etcetera = "0.11.0"
 fern = "0.7.1"
 image = "0.25.10"
+itertools = "0.15.0"
 log = "0.4.33"
 parking_lot = "0.12.5"
 ratatui = "0.30.2"
