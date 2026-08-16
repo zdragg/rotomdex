@@ -5,7 +5,7 @@ use ratatui::{
 };
 use tui_big_text::{BigText, PixelSize};
 
-use crate::offline::OfflineTypes;
+use crate::offline::types::OfflineTypes;
 
 pub struct NameWidget<'a> {
     pub name: &'a str,

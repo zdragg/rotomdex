@@ -1,5 +1,5 @@
 use color_eyre::eyre::{Error, eyre};
-use colorgrad::{Color, Gradient, GradientBuilder, LinearGradient};
+use colorgrad::{Gradient, GradientBuilder, LinearGradient};
 use ratatui::text::Span;
 use rustemon::model::pokemon::PokemonType;
 
@@ -13,9 +13,9 @@ impl OfflineTypes {
     pub fn spans_iter(&self, name: &str) -> Vec<Span<'_>> {
         let mut builder = GradientBuilder::new();
         let grad = if let Some(secondary) = &self.secondary {
-            builder.colors(&[self.primary.color(), secondary.color()])
+            builder.html_colors(&[self.primary.color(), secondary.color()])
         } else {
-            builder.colors(&[self.primary.color()])
+            builder.html_colors(&[self.primary.color()])
         }
         .mode(colorgrad::BlendMode::Oklab)
         .build::<LinearGradient>()
@@ -107,34 +107,27 @@ impl TryFrom<&PokemonType> for OfflineType {
 }
 
 impl OfflineType {
-    pub fn color(&self) -> Color {
-        let rgb = |r: u8, g: u8, b: u8| Color {
-            r: r as f32 / 255.0,
-            g: g as f32 / 255.0,
-            b: b as f32 / 255.0,
-            a: 1.0,
-        };
-
+    pub const fn color(&self) -> &'static str {
         // Source: https://bulbapedia.bulbagarden.net/wiki/Help%3AColor_templates#Video_game_types
         match self {
-            Self::Normal => rgb(0x9F, 0xA1, 0x9F),
-            Self::Fire => rgb(0xE6, 0x28, 0x29),
-            Self::Water => rgb(0x29, 0x80, 0xEF),
-            Self::Electric => rgb(0xFA, 0xC0, 0x00),
-            Self::Grass => rgb(0x3F, 0xA1, 0x29),
-            Self::Ice => rgb(0x3D, 0xCE, 0xF3),
-            Self::Fighting => rgb(0xFF, 0x80, 0x00),
-            Self::Poison => rgb(0x91, 0x41, 0xCB),
-            Self::Ground => rgb(0x91, 0x51, 0x21),
-            Self::Flying => rgb(0x81, 0xB9, 0xEF),
-            Self::Psychic => rgb(0xEF, 0x41, 0x79),
-            Self::Bug => rgb(0x91, 0xA1, 0x19),
-            Self::Rock => rgb(0xAF, 0xA9, 0x81),
-            Self::Ghost => rgb(0x70, 0x41, 0x70),
-            Self::Dragon => rgb(0x50, 0x60, 0xE1),
-            Self::Dark => rgb(0x62, 0x4D, 0x4E),
-            Self::Steel => rgb(0x60, 0xA1, 0xB8),
-            Self::Fairy => rgb(0xEF, 0x70, 0xEF),
+            Self::Normal => "#9FA19F",
+            Self::Fire => "#E62829",
+            Self::Water => "#2980EF",
+            Self::Electric => "#FAC000",
+            Self::Grass => "#3FA129",
+            Self::Ice => "#3DCEF3",
+            Self::Fighting => "#FF8000",
+            Self::Poison => "#9141CB",
+            Self::Ground => "#915121",
+            Self::Flying => "#81B9EF",
+            Self::Psychic => "#EF4179",
+            Self::Bug => "#91A119",
+            Self::Rock => "#AFA981",
+            Self::Ghost => "#704170",
+            Self::Dragon => "#5060E1",
+            Self::Dark => "#624D4E",
+            Self::Steel => "#60A1B8",
+            Self::Fairy => "#EF70EF",
         }
     }
 }

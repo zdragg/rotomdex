@@ -26,7 +26,6 @@ impl<'a> Widget for &SpriteWidget<'a> {
         let Some(sprite) = &self.sprite.sprite else {
             return; // TODO: handle missing sprite case. maybe render some kind of image that shows that there is no sprite
         };
-        let area = area.inner(Margin::new(2, 1));
         let side_len = area.width.min(area.height.saturating_mul(2));
         let side_len = side_len - side_len % 2;
         if side_len < 2 {
