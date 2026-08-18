@@ -74,7 +74,7 @@ impl Default for App {
         let rustemon_client = Arc::new(RustemonClient::default());
         Self {
             should_quit: false,
-            pkmn: OfflinePokemon::new(pkmn_name, reqwest_client.clone(), rustemon_client.clone()),
+            pkmn: OfflinePokemon::new(pkmn_name, rustemon_client.clone(), reqwest_client.clone()),
             reqwest_client,
             rustemon_client,
             input_state: InputState::default(),
@@ -90,7 +90,7 @@ impl App {
         while !self.should_quit {
             tokio::select! {
                 Some(Ok(event)) = events.next() => self.handle_event(&event),
-                Some(event) = self.pkmn.ping() => self.pkmn.handle_fetch_event(event),
+                () = self.pkmn.ping() => {}, // just ping it, it'll handle the rest
             }
             terminal.draw(|frame| self.render(frame.area(), frame.buffer_mut()))?;
         }
@@ -129,8 +129,8 @@ impl App {
         self.dex_state.reset();
         self.pkmn = OfflinePokemon::new(
             self.input_state.take(),
-            self.reqwest_client.clone(),
             self.rustemon_client.clone(),
+            self.reqwest_client.clone(),
         );
     }
 

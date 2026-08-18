@@ -5,22 +5,26 @@ use ratatui::{
 };
 use tui_big_text::{BigText, PixelSize};
 
-use crate::offline::types::OfflineTypes;
+use crate::offline::OfflineTypes;
 
 pub struct NameWidget<'a> {
     pub name: &'a str,
-    pub types: &'a OfflineTypes,
+    pub types: Option<&'a OfflineTypes>,
 }
 
 impl<'a> NameWidget<'a> {
-    pub fn new(name: &'a str, types: &'a OfflineTypes) -> Self {
+    pub fn new(name: &'a str, types: Option<&'a OfflineTypes>) -> Self {
         Self { name, types }
     }
 }
 
 impl<'a> Widget for &NameWidget<'_> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        let line = Line::from(self.types.spans_iter(self.name));
+        let line = if let Some(types) = self.types {
+            Line::from(types.spans_iter(&self.name.to_uppercase()))
+        } else {
+            Line::from(self.name.to_uppercase())
+        };
         let Some((area, pixel_size)) = calculate_size(area, self.name.len()) else {
             let [area] = Layout::vertical([Constraint::Length(1)]).flex(Flex::Center).areas(area);
             line.centered().render(area, buf);

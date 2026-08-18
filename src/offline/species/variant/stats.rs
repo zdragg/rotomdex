@@ -1,4 +1,4 @@
-use color_eyre::eyre::{Error, eyre};
+use color_eyre::eyre::{Result, eyre};
 use rustemon::model::pokemon::PokemonStat;
 
 #[derive(Debug, Clone)]
@@ -11,9 +11,8 @@ pub struct OfflineStats {
     pub spe: u32,
 }
 
-impl TryFrom<&[PokemonStat]> for OfflineStats {
-    type Error = Error;
-    fn try_from(value: &[PokemonStat]) -> Result<Self, Self::Error> {
+impl OfflineStats {
+    pub fn new(value: &[PokemonStat]) -> Result<Self> {
         let mut stats: [Option<u32>; 6] = [None; 6];
         for stat in value {
             let stat_index = match stat.stat.name.as_str() {

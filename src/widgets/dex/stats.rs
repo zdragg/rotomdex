@@ -1,14 +1,12 @@
-use color_eyre::eyre::Result;
 use colorgrad::{BasisGradient, Gradient, GradientBuilder};
 use ratatui::{
     layout::{Constraint, Flex, Layout},
     style::Color,
     symbols,
-    text::Line,
     widgets::{LineGauge, Widget},
 };
 
-use crate::offline::stats::OfflineStats;
+use crate::offline::OfflineStats;
 
 pub struct StatsWidget<'a> {
     stats: &'a OfflineStats,

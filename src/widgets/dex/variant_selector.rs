@@ -5,14 +5,17 @@ use ratatui::{
     widgets::{StatefulWidget, Widget},
 };
 
-use crate::{offline::OfflineVariant, widgets::VariantState};
+use crate::{
+    offline::{LoadState, OfflineVariant},
+    widgets::VariantState,
+};
 
 pub struct VariantSelectorWidget<'a> {
-    pkmn: &'a [Option<OfflineVariant>],
+    pkmn: &'a [LoadState<OfflineVariant>],
 }
 
 impl<'a> VariantSelectorWidget<'a> {
-    pub fn new(pkmn: &'a [Option<OfflineVariant>]) -> Self {
+    pub fn new(pkmn: &'a [LoadState<OfflineVariant>]) -> Self {
         Self { pkmn }
     }
 }
@@ -27,9 +30,9 @@ impl<'a> StatefulWidget for VariantSelectorWidget<'a> {
             .pkmn
             .iter()
             .enumerate()
-            .map(|(i, v)| match v.as_ref() {
-                Some(v) => {
-                    let mut spans = v.types.spans_iter(&v.pkmn.name);
+            .map(|(i, v)| match v {
+                LoadState::Loaded(v) => {
+                    let mut spans = v.types().spans_iter(&v.inner().name);
                     if state.variant_cursor == i as isize {
                         for span in &mut spans {
                             span.style = span.style.underlined().bold().italic();
@@ -37,7 +40,8 @@ impl<'a> StatefulWidget for VariantSelectorWidget<'a> {
                     }
                     spans
                 }
-                None => vec![Span::raw("loading").style(Color::DarkGray)],
+                LoadState::Failed(e) => vec![Span::raw(format!("error: {e}")).style(Color::Red)],
+                LoadState::Loading => vec![Span::raw("loading").style(Color::DarkGray)],
             })
             .intersperse(vec![Span::raw(" | ").style(Color::DarkGray)])
             .flatten()

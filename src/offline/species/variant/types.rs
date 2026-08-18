@@ -1,4 +1,4 @@
-use color_eyre::eyre::{Error, eyre};
+use color_eyre::eyre::{Result, eyre};
 use colorgrad::{Gradient, GradientBuilder, LinearGradient};
 use ratatui::text::Span;
 use rustemon::model::pokemon::PokemonType;
@@ -31,25 +31,24 @@ impl OfflineTypes {
                     (color.g * 255.0).round() as u8,
                     (color.b * 255.0).round() as u8,
                 );
-                Span::styled(ch.to_ascii_uppercase().to_string(), tui_color)
+                Span::styled(ch.to_string(), tui_color)
             })
             .collect()
     }
 }
 
-impl TryFrom<&[PokemonType]> for OfflineTypes {
-    type Error = Error;
-    fn try_from(value: &[PokemonType]) -> std::prelude::v1::Result<Self, Self::Error> {
+impl OfflineTypes {
+    pub fn new(value: &[PokemonType]) -> Result<Self> {
         let primary = value
             .iter()
             .find(|model| model.slot == 1)
-            .map(OfflineType::try_from)
+            .map(OfflineType::new)
             .transpose()?
             .ok_or_else(|| eyre!("no primary type found"))?;
         let secondary = value
             .iter()
             .find(|model| model.slot == 2)
-            .map(OfflineType::try_from)
+            .map(OfflineType::new)
             .transpose()?;
 
         Ok(Self { primary, secondary })
@@ -78,9 +77,8 @@ pub enum OfflineType {
     Fairy,
 }
 
-impl TryFrom<&PokemonType> for OfflineType {
-    type Error = Error;
-    fn try_from(value: &PokemonType) -> std::prelude::v1::Result<Self, Self::Error> {
+impl OfflineType {
+    fn new(value: &PokemonType) -> Result<Self> {
         let type_ = match value.type_.name.as_str() {
             "normal" => Self::Normal,
             "fire" => Self::Fire,
