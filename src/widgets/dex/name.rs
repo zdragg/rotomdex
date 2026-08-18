@@ -5,7 +5,7 @@ use ratatui::{
 };
 use tui_big_text::{BigText, PixelSize};
 
-use crate::offline::OfflineTypes;
+use crate::offline::{OfflineSpecies, OfflineTypes, OfflineVariant};
 
 pub struct NameWidget<'a> {
     pub name: &'a str,
@@ -13,12 +13,15 @@ pub struct NameWidget<'a> {
 }
 
 impl<'a> NameWidget<'a> {
-    pub fn new(name: &'a str, types: Option<&'a OfflineTypes>) -> Self {
-        Self { name, types }
+    pub fn new(species: &'a OfflineSpecies, variant: Option<&'a OfflineVariant>) -> Self {
+        Self {
+            name: &species.inner().name,
+            types: variant.map(|v| v.types()),
+        }
     }
 }
 
-impl<'a> Widget for &NameWidget<'_> {
+impl<'a> Widget for NameWidget<'_> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
         let line = if let Some(types) = self.types {
             Line::from(types.spans_iter(&self.name.to_uppercase()))

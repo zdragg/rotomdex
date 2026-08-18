@@ -17,8 +17,6 @@ parking_lot = "0.12.5"
 ratatui = "0.30.2"
 reqwest = "0.13.4"
 rustemon = "4.6.0"
-smart-default = "0.7.1"
 tokio = { version = "1.53.1", features = ["full"] }
 tokio-stream = "0.1.19"
 tui-big-text = "0.8.8"
-tui-logger = { version = "0.18.3", features = ["crossterm"] }

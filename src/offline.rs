@@ -9,11 +9,31 @@ use rustemon::client::RustemonClient;
 pub use species::*;
 use tokio::task::JoinSet;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum LoadState<T> {
+    #[default]
     Loading,
     Loaded(T),
     Failed(color_eyre::eyre::Report),
+}
+
+impl<T> LoadState<T> {
+    pub fn as_loaded(&self) -> Option<&T> {
+        if let Self::Loaded(inner) = self {
+            Some(inner)
+        } else {
+            None
+        }
+    }
+
+    pub fn log_error(err: color_eyre::eyre::Report) -> Self {
+        log::error!("{err}");
+        Self::Failed(err)
+    }
+
+    pub fn is_loaded(&self) -> bool {
+        matches!(self, LoadState::Loaded(_))
+    }
 }
 
 enum FetchEvent {
@@ -104,7 +124,7 @@ impl OfflinePokemon {
                     let species = OfflineSpecies::new(species, pkmn_client, req_client);
                     LoadState::Loaded(species)
                 }
-                Err(e) => LoadState::Failed(e.into()),
+                Err(e) => LoadState::log_error(e.into()),
             };
             FetchEvent::Species { species }
         });

@@ -1,15 +1,169 @@
-use rustemon::model::pokemon::Ability;
+use std::{
+    sync::Arc,
+    task::{Context, Poll},
+};
+
+use color_eyre::eyre::{OptionExt, Result, eyre};
+use rustemon::{
+    Follow,
+    client::RustemonClient,
+    model::{
+        pokemon::{Ability, PokemonAbility},
+        resource::NamedApiResource,
+    },
+};
+use tokio::task::JoinSet;
+
+use crate::offline::LoadState;
+
+#[derive(Debug)]
+pub struct OfflineAbilities {
+    joinset: JoinSet<(usize, LoadState<OfflineAbility>)>,
+    pkmn_client: Arc<RustemonClient>,
+
+    layout: AbilitiesLayout,
+}
+
+impl OfflineAbilities {
+    pub fn new(abilities: &[PokemonAbility], pkmn_client: Arc<RustemonClient>) -> Result<Self> {
+        let mut mask = 0b000;
+        let apis = abilities
+            .iter()
+            .map(|a| {
+                mask = mask | (0b1 << a.slot - 1);
+                a.ability
+                    .clone()
+                    .ok_or_eyre("ability not found")
+                    .map(|api| (a.slot as usize - 1, api))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let mut result = Self {
+            joinset: JoinSet::new(),
+            pkmn_client,
+
+            layout: AbilitiesLayout::new(mask)?,
+        };
+        result.spawn_abilities_fetch(apis);
+        Ok(result)
+    }
+
+    pub(super) fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        if let Poll::Ready(Some(event)) = self.joinset.poll_join_next(cx) {
+            self.handle_event(event.unwrap());
+            return Poll::Ready(());
+        }
+        Poll::Pending
+    }
+
+    fn handle_event(&mut self, (idx, ability): (usize, LoadState<OfflineAbility>)) {
+        *self
+            .layout
+            .get_mut(idx)
+            .expect("fetched an ability for a variant without a slot for it") = ability;
+    }
+
+    pub fn layout(&self) -> &AbilitiesLayout {
+        &self.layout
+    }
+
+    fn spawn_abilities_fetch(&mut self, apis: Vec<(usize, NamedApiResource<Ability>)>) {
+        for (idx, api) in apis {
+            let pkmn_client = self.pkmn_client.clone();
+            self.joinset.spawn(async move {
+                match api.follow(&pkmn_client).await {
+                    Ok(ability) => (idx, LoadState::Loaded(OfflineAbility::new(ability))),
+                    Err(e) => (idx, LoadState::log_error(e.into())),
+                }
+            });
+        }
+    }
+
+    pub fn is_fully_loaded(&self) -> bool {
+        self.layout.is_fully_loaded()
+    }
+}
+
+#[derive(Debug)]
+pub enum AbilitiesLayout {
+    P {
+        primary: LoadState<OfflineAbility>,
+    },
+    PS {
+        primary: LoadState<OfflineAbility>,
+        secondary: LoadState<OfflineAbility>,
+    },
+    PH {
+        primary: LoadState<OfflineAbility>,
+        hidden: LoadState<OfflineAbility>,
+    },
+    PSH {
+        primary: LoadState<OfflineAbility>,
+        secondary: LoadState<OfflineAbility>,
+        hidden: LoadState<OfflineAbility>,
+    },
+}
+
+impl AbilitiesLayout {
+    // 0b1 for primary, 0b10 for secondary, 0b100 for hidden
+    fn new(mask: u8) -> Result<Self> {
+        Ok(match mask {
+            0b001 => Self::P {
+                primary: LoadState::Loading,
+            },
+            0b011 => Self::PS {
+                primary: LoadState::Loading,
+                secondary: LoadState::Loading,
+            },
+            0b101 => Self::PH {
+                primary: LoadState::Loading,
+                hidden: LoadState::Loading,
+            },
+            0b111 => Self::PSH {
+                primary: LoadState::Loading,
+                secondary: LoadState::Loading,
+                hidden: LoadState::Loading,
+            },
+            _ => return Err(eyre!("invalid ability set found")),
+        })
+    }
+
+    fn get_mut(&mut self, idx: usize) -> Option<&mut LoadState<OfflineAbility>> {
+        match (self, idx) {
+            (Self::P { primary }, 0)
+            | (Self::PS { primary, .. }, 0)
+            | (Self::PH { primary, .. }, 0)
+            | (Self::PSH { primary, .. }, 0) => Some(primary),
+
+            (Self::PS { secondary, .. }, 1) | (Self::PSH { secondary, .. }, 1) => Some(secondary),
+
+            (Self::PH { hidden, .. }, 2) | (Self::PSH { hidden, .. }, 2) => Some(hidden),
+
+            _ => None,
+        }
+    }
+
+    fn is_fully_loaded(&self) -> bool {
+        match self {
+            Self::P { primary } => primary.is_loaded(),
+            Self::PH { primary, hidden } => primary.is_loaded() && hidden.is_loaded(),
+            Self::PS { primary, secondary } => primary.is_loaded() && secondary.is_loaded(),
+            Self::PSH {
+                primary,
+                secondary,
+                hidden,
+            } => primary.is_loaded() && secondary.is_loaded() && hidden.is_loaded(),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct OfflineAbility {
-    inner: Option<(String, String)>, // name, effect description
+    inner: (String, String), // name, effect description
 }
 
 impl OfflineAbility {
-    pub fn new(ability: Option<Ability>) -> Self {
-        let Some(ability) = ability else {
-            return Self { inner: None };
-        };
+    pub fn new(ability: Ability) -> Self {
         let name = ability.name;
         let effect_description = ability
             .effect_entries
@@ -18,11 +172,11 @@ impl OfflineAbility {
             .unwrap()
             .effect;
         Self {
-            inner: Some((name, effect_description)),
+            inner: (name, effect_description),
         }
     }
 
-    pub fn get(&self) -> Option<&(String, String)> {
-        self.inner.as_ref()
+    pub fn get(&self) -> &(String, String) {
+        &self.inner
     }
 }

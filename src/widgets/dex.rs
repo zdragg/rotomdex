@@ -1,3 +1,4 @@
+mod ability;
 mod name;
 mod sprite;
 mod stats;
@@ -6,15 +7,15 @@ mod variant_selector;
 
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Margin, Rect},
+    layout::{Constraint, Layout, Rect},
     widgets::{StatefulWidget, Widget},
 };
 
 use crate::{
-    offline::{LoadState, OfflinePokemon},
+    offline::OfflinePokemon,
     widgets::dex::{
-        name::NameWidget, sprite::SpriteWidget, stats::StatsWidget, status_bar::StatusBarWidget,
-        variant_selector::VariantSelectorWidget,
+        ability::AbilitiesWidget, name::NameWidget, sprite::SpriteWidget, stats::StatsWidget,
+        status_bar::StatusBarWidget, variant_selector::VariantSelectorWidget,
     },
 };
 
@@ -48,21 +49,18 @@ impl VariantState {
 impl<'a> StatefulWidget for RotomDexWidget<'a> {
     type State = VariantState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        // Fetch species
-        let (species, variant) = if let LoadState::Loaded(species) = self.pkmn.species() {
-            let normalized_cursor = state.variant_cursor.rem_euclid(species.variants_cnt() as isize) as usize;
-            state.variant_cursor = normalized_cursor as isize;
-            let variant = if let LoadState::Loaded(variant) = &species.variants()[normalized_cursor] {
-                Some(variant)
-            } else {
-                None
-            };
-            (Some(species), variant)
-        } else {
-            (None, None)
+        // Load all the shit
+        let species = self.pkmn.species().as_loaded();
+        let variant = match species {
+            Some(species) => {
+                // Normalize
+                let normalized_cursor = state.variant_cursor.rem_euclid(species.variants_cnt() as isize) as usize;
+                state.variant_cursor = normalized_cursor as isize;
+                species.variants()[normalized_cursor].as_loaded()
+            }
+            None => None,
         };
-
-        let area = area.inner(Margin::new(2, 0)); // leave some padding on the sides
+        let sprite = variant.map(|v| v.sprite().as_loaded()).flatten();
 
         // Status bar
         let [area, status_area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
@@ -71,11 +69,7 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
         // Sprite
         let [sprite_area, _padding, area] =
             Layout::horizontal([Constraint::Fill(1), Constraint::Length(2), Constraint::Fill(1)]).areas(area);
-        if let Some(variant) = variant {
-            if let LoadState::Loaded(sprite) = variant.sprite() {
-                SpriteWidget::new(sprite).render(sprite_area, buf);
-            }
-        }
+        sprite.map(SpriteWidget::new).render(sprite_area, buf);
 
         let [name_area, variants_area, stats_area, area] = Layout::vertical([
             Constraint::Fill(1),
@@ -84,12 +78,13 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
             Constraint::Fill(1),
         ])
         .areas(area);
-        if let Some(species) = species {
-            NameWidget::new(&species.inner().name, variant.map(|v| v.types())).render(name_area, buf);
-            VariantSelectorWidget::new(species.variants()).render(variants_area, buf, state);
-            if let Some(variant) = variant {
-                StatsWidget::new(&variant.stats()).render(stats_area, buf);
-            }
-        }
+        species
+            .map(|species| NameWidget::new(species, variant))
+            .render(name_area, buf);
+        species
+            .map(|species| VariantSelectorWidget::new(species, state.variant_cursor as usize))
+            .render(variants_area, buf);
+        variant.map(StatsWidget::new).render(stats_area, buf);
+        variant.map(AbilitiesWidget::new).render(area, buf);
     }
 }

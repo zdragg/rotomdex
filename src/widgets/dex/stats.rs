@@ -6,15 +6,15 @@ use ratatui::{
     widgets::{LineGauge, Widget},
 };
 
-use crate::offline::OfflineStats;
+use crate::offline::{OfflineStats, OfflineVariant};
 
 pub struct StatsWidget<'a> {
     stats: &'a OfflineStats,
 }
 
 impl<'a> StatsWidget<'a> {
-    pub fn new(stats: &'a OfflineStats) -> Self {
-        Self { stats }
+    pub fn new(variant: &'a OfflineVariant) -> Self {
+        Self { stats: variant.stats() }
     }
 }
 

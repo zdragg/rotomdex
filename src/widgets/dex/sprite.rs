@@ -21,7 +21,7 @@ impl<'a> SpriteWidget<'a> {
     }
 }
 
-impl<'a> Widget for &SpriteWidget<'a> {
+impl<'a> Widget for SpriteWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let Some(sprite) = &self.sprite.sprite else {
             return; // TODO: handle missing sprite case. maybe render some kind of image that shows that there is no sprite

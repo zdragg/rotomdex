@@ -14,20 +14,14 @@ use std::{
 };
 
 use color_eyre::eyre::Result;
-use rustemon::{Follow, client::RustemonClient, model::pokemon::Pokemon};
+use rustemon::{client::RustemonClient, model::pokemon::Pokemon};
 
 use tokio::task::JoinSet;
 
 use crate::offline::LoadState;
 
 enum VariantFetchEvent {
-    Ability {
-        idx: usize,
-        ability: LoadState<OfflineAbility>,
-    },
-    Sprite {
-        sprite: LoadState<OfflineSprite>,
-    },
+    Sprite { sprite: LoadState<OfflineSprite> },
 }
 
 #[derive(Debug)]
@@ -39,7 +33,7 @@ pub struct OfflineVariant {
     types: OfflineTypes,
     stats: OfflineStats,
     sprite: LoadState<OfflineSprite>,
-    abilities: [LoadState<OfflineAbility>; 3],
+    abilities: OfflineAbilities,
 
     inner: Pokemon,
 }
@@ -48,17 +42,16 @@ impl OfflineVariant {
     pub fn new(variant: Pokemon, pkmn_client: Arc<RustemonClient>, req_client: reqwest::Client) -> Result<Self> {
         let mut result = Self {
             joinset: JoinSet::new(),
-            pkmn_client,
+            pkmn_client: pkmn_client.clone(),
             req_client,
 
-            types: OfflineTypes::new(&variant.types[..])?,
-            stats: OfflineStats::new(&variant.stats[..])?,
+            types: OfflineTypes::new(&variant.types)?,
+            stats: OfflineStats::new(&variant.stats)?,
             sprite: LoadState::Loading,
-            abilities: std::array::from_fn(|_| LoadState::Loading),
+            abilities: OfflineAbilities::new(&variant.abilities, pkmn_client)?,
 
             inner: variant,
         };
-        result.spawn_abilities_fetch();
         result.spawn_sprite_fetch();
         Ok(result)
     }
@@ -66,17 +59,16 @@ impl OfflineVariant {
     pub(super) fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         if let Poll::Ready(Some(event)) = self.joinset.poll_join_next(cx) {
             self.handle_event(event.unwrap());
-            Poll::Ready(())
-        } else {
-            Poll::Pending
+            return Poll::Ready(());
         }
+        if self.abilities.poll_load(cx).is_ready() {
+            return Poll::Ready(());
+        }
+        Poll::Pending
     }
 
     fn handle_event(&mut self, event: VariantFetchEvent) {
         match event {
-            VariantFetchEvent::Ability { idx, ability } => {
-                self.abilities[idx] = ability;
-            }
             VariantFetchEvent::Sprite { sprite } => {
                 self.sprite = sprite;
             }
@@ -99,28 +91,8 @@ impl OfflineVariant {
         &self.sprite
     }
 
-    pub fn abilities(&self) -> &[LoadState<OfflineAbility>] {
+    pub fn abilities(&self) -> &OfflineAbilities {
         &self.abilities
-    }
-
-    fn spawn_abilities_fetch(&mut self) {
-        for ability in self.inner.abilities.clone() {
-            let client = self.pkmn_client.clone();
-            self.joinset.spawn(async move {
-                let idx = ability.slot as usize - 1;
-                let ability = {
-                    if let Some(api) = ability.ability {
-                        match api.follow(&client).await {
-                            Ok(a) => LoadState::Loaded(OfflineAbility::new(Some(a))),
-                            Err(e) => LoadState::Failed(e.into()),
-                        }
-                    } else {
-                        LoadState::Loaded(OfflineAbility::new(None))
-                    }
-                };
-                VariantFetchEvent::Ability { idx, ability }
-            });
-        }
     }
 
     fn spawn_sprite_fetch(&mut self) {
@@ -173,14 +145,13 @@ impl OfflineVariant {
                     sprite: LoadState::Loaded(OfflineSprite { sprite: Some(image) }),
                 },
                 Err(e) => VariantFetchEvent::Sprite {
-                    sprite: LoadState::Failed(e),
+                    sprite: LoadState::log_error(e),
                 },
             }
         });
     }
 
     pub fn is_fully_loaded(&self) -> bool {
-        matches!(self.sprite, LoadState::Loaded(_))
-            && self.abilities().iter().all(|a| matches!(a, LoadState::Loaded(_)))
+        matches!(self.sprite, LoadState::Loaded(_)) && self.abilities.is_fully_loaded()
     }
 }

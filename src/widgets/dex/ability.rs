@@ -1,0 +1,62 @@
+use ratatui::{
+    layout::{Constraint, Layout},
+    style::Stylize,
+    text::{Line, Span},
+    widgets::Widget,
+};
+
+use crate::offline::{AbilitiesLayout, LoadState, OfflineAbilities, OfflineAbility, OfflineVariant};
+
+pub struct AbilitiesWidget<'a> {
+    abilities: &'a OfflineAbilities,
+}
+
+impl<'a> AbilitiesWidget<'a> {
+    pub fn new(variant: &'a OfflineVariant) -> Self {
+        Self {
+            abilities: variant.abilities(),
+        }
+    }
+}
+
+impl<'a> Widget for AbilitiesWidget<'a> {
+    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
+        let lines = match self.abilities.layout() {
+            AbilitiesLayout::P { primary } => {
+                vec![get_line(1, primary)]
+            }
+            AbilitiesLayout::PS { primary, secondary } => {
+                vec![get_line(1, primary), get_line(2, secondary)]
+            }
+            AbilitiesLayout::PH { primary, hidden } => {
+                vec![get_line(1, primary), get_line(3, hidden)]
+            }
+            AbilitiesLayout::PSH {
+                primary,
+                secondary,
+                hidden,
+            } => {
+                vec![get_line(1, primary), get_line(2, secondary), get_line(3, hidden)]
+            }
+        };
+        let rects = Layout::vertical(vec![Constraint::Fill(1); lines.len()]).split(area);
+
+        for (i, line) in lines.into_iter().enumerate() {
+            line.render(rects[i], buf);
+        }
+    }
+}
+
+fn get_line(slot: usize, ability: &LoadState<OfflineAbility>) -> Option<Line<'_>> {
+    let number = Span::raw(match slot {
+        1 => "  1.",
+        2 => "  2.",
+        3 => "hid.",
+        _ => unreachable!(),
+    })
+    .dark_gray();
+    ability.as_loaded().map(|ability| {
+        let (name, desc) = ability.get();
+        Line::raw(format!("{} {}: {}", number, name, desc))
+    })
+}

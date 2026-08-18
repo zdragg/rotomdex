@@ -59,7 +59,7 @@ impl OfflineSpecies {
         Poll::Pending
     }
 
-    pub fn handle_event(&mut self, event: SpeciesFetchEvent) {
+    fn handle_event(&mut self, event: SpeciesFetchEvent) {
         match event {
             SpeciesFetchEvent::Variant { idx, variant } => {
                 self.variants[idx] = variant;
@@ -92,7 +92,7 @@ impl OfflineSpecies {
                 .await;
                 let variant = match variant {
                     Ok(variant) => LoadState::Loaded(variant),
-                    Err(e) => LoadState::Failed(e.into()),
+                    Err(e) => LoadState::log_error(e.into()),
                 };
                 SpeciesFetchEvent::Variant { idx, variant }
             });
