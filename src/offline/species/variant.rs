@@ -27,7 +27,6 @@ enum VariantFetchEvent {
 #[derive(Debug)]
 pub struct OfflineVariant {
     joinset: JoinSet<VariantFetchEvent>,
-    pkmn_client: Arc<RustemonClient>,
     req_client: reqwest::Client,
 
     types: OfflineTypes,
@@ -42,7 +41,6 @@ impl OfflineVariant {
     pub fn new(variant: Pokemon, pkmn_client: Arc<RustemonClient>, req_client: reqwest::Client) -> Result<Self> {
         let mut result = Self {
             joinset: JoinSet::new(),
-            pkmn_client: pkmn_client.clone(),
             req_client,
 
             types: OfflineTypes::new(&variant.types)?,

@@ -8,7 +8,8 @@ mod variant_selector;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    widgets::{StatefulWidget, Widget},
+    style::Color,
+    widgets::{Block, StatefulWidget, Widget},
 };
 
 use crate::{
@@ -62,9 +63,17 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
         };
         let sprite = variant.map(|v| v.sprite().as_loaded()).flatten();
 
+        let block = Block::bordered().border_style(if let Some(species) = species {
+            species.get_ratatui_color()
+        } else {
+            Color::DarkGray
+        });
+        let inner_area = block.inner(area);
+        block.render(area, buf);
+
         // Status bar
         let [area, _padding, status_area] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Length(1), Constraint::Length(1)]).areas(area);
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(1), Constraint::Length(1)]).areas(inner_area);
         StatusBarWidget.render(status_area, buf);
 
         let [left_area, _padding, right_area] =
@@ -78,13 +87,9 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
             .map(|variant| StatsWidget::new(variant, species.unwrap())) // Species has to exist if variant exists
             .render(stats_area, buf);
 
-        let [name_area, variants_area, stats_area, area] = Layout::vertical([
-            Constraint::Percentage(25),
-            Constraint::Length(1),
-            Constraint::Percentage(15),
-            Constraint::Fill(1),
-        ])
-        .areas(right_area);
+        let [name_area, variants_area, area] =
+            Layout::vertical([Constraint::Percentage(25), Constraint::Length(3), Constraint::Fill(1)])
+                .areas(right_area);
         species
             .map(|species| NameWidget::new(species, variant))
             .render(name_area, buf);

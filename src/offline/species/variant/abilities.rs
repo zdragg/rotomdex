@@ -86,6 +86,7 @@ impl OfflineAbilities {
 
 #[derive(Debug)]
 pub enum AbilitiesLayout {
+    None, // Pokemon like Zygarde-Mega has no abilities in Z-A. Maybe it will have one later after introduced in Champions
     P {
         primary: LoadState<OfflineAbility>,
     },
@@ -108,6 +109,7 @@ impl AbilitiesLayout {
     // 0b1 for primary, 0b10 for secondary, 0b100 for hidden
     fn new(mask: u8) -> Result<Self> {
         Ok(match mask {
+            0b000 => Self::None,
             0b001 => Self::P {
                 primary: LoadState::Loading,
             },
@@ -145,6 +147,7 @@ impl AbilitiesLayout {
 
     fn is_fully_loaded(&self) -> bool {
         match self {
+            Self::None => true,
             Self::P { primary } => primary.is_loaded(),
             Self::PH { primary, hidden } => primary.is_loaded() && hidden.is_loaded(),
             Self::PS { primary, secondary } => primary.is_loaded() && secondary.is_loaded(),
@@ -166,12 +169,27 @@ pub struct OfflineAbility {
 impl OfflineAbility {
     pub fn new(ability: Ability) -> Self {
         let name = ability.name;
-        let desc = ability
+        let (_rank, desc) = ability
             .flavor_text_entries
             .into_iter()
-            .find(|e| e.language.name == "en" && e.version_group.name == "scarlet-violet")
-            .unwrap()
-            .flavor_text;
+            .filter_map(|e| {
+                if e.language.name != "en" {
+                    return None;
+                }
+                let rank = match e.version_group.name.as_str() {
+                    "scarlet-violet" => 9,
+                    "sword-shield" => 8,
+                    "sun-moon" => 7,
+                    "x-y" | "omega-ruby-alpha-sapphire" => 7,
+                    "black-white" | "black-2-white-2" => 5,
+                    "diamond-pearl" | "platinum" | "heartgold-soulsilver" => 4,
+                    "ruby-sapphire" | "emerald" | "firered-leafgreen" => 3,
+                    _ => 0,
+                };
+                Some((rank, e.flavor_text))
+            })
+            .max_by_key(|(rank, _)| *rank)
+            .unwrap();
         Self { name, desc }
     }
 

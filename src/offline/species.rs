@@ -6,6 +6,7 @@ use std::{
 };
 
 use color_eyre::eyre::Result;
+use ratatui::style::Color;
 use rustemon::{Follow, client::RustemonClient, model::pokemon::PokemonSpecies};
 use tokio::task::JoinSet;
 
@@ -77,6 +78,22 @@ impl OfflineSpecies {
 
     pub fn variants(&self) -> &[LoadState<OfflineVariant>] {
         &self.variants
+    }
+
+    pub fn get_ratatui_color(&self) -> Color {
+        match self.inner.color.name.as_str() {
+            "black" => Color::Black,
+            "blue" => Color::Blue,
+            "brown" => Color::Yellow,
+            "gray" => Color::Gray,
+            "green" => Color::Green,
+            "pink" => Color::LightMagenta,
+            "purple" => Color::Magenta,
+            "red" => Color::Red,
+            "white" => Color::White,
+            "yellow" => Color::Yellow,
+            _ => unreachable!(),
+        }
     }
 
     fn spawn_variants_fetch(&mut self) {

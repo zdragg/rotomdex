@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Constraint, Flex, Layout, Margin, Rect},
+    layout::{Constraint, Flex, Layout, Rect},
     text::Line,
     widgets::Widget,
 };
@@ -23,7 +23,6 @@ impl<'a> NameWidget<'a> {
 
 impl<'a> Widget for NameWidget<'_> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        let area = area.inner(Margin::new(0, 1));
         let line = if let Some(types) = self.types {
             Line::from(types.spans_iter(&self.name.to_uppercase()))
         } else {

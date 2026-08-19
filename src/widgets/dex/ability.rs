@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Constraint, Layout},
     style::Stylize,
-    text::{Line, Span},
+    text::Span,
     widgets::{Paragraph, Widget, Wrap},
 };
 
@@ -22,6 +22,9 @@ impl<'a> AbilitiesWidget<'a> {
 impl<'a> Widget for AbilitiesWidget<'a> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
         let lines = match self.abilities.layout() {
+            AbilitiesLayout::None => {
+                vec![]
+            }
             AbilitiesLayout::P { primary } => {
                 vec![get_paragraph(1, primary)]
             }
