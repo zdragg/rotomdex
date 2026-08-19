@@ -159,24 +159,27 @@ impl AbilitiesLayout {
 
 #[derive(Debug)]
 pub struct OfflineAbility {
-    inner: (String, String), // name, effect description
+    name: String,
+    desc: String,
 }
 
 impl OfflineAbility {
     pub fn new(ability: Ability) -> Self {
         let name = ability.name;
-        let effect_description = ability
-            .effect_entries
+        let desc = ability
+            .flavor_text_entries
             .into_iter()
-            .find(|e| e.language.name == "en")
+            .find(|e| e.language.name == "en" && e.version_group.name == "scarlet-violet")
             .unwrap()
-            .effect;
-        Self {
-            inner: (name, effect_description),
-        }
+            .flavor_text;
+        Self { name, desc }
     }
 
-    pub fn get(&self) -> &(String, String) {
-        &self.inner
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn desc(&self) -> &str {
+        &self.desc
     }
 }

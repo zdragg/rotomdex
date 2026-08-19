@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Constraint, Layout},
     style::Stylize,
     text::{Line, Span},
-    widgets::Widget,
+    widgets::{Paragraph, Widget, Wrap},
 };
 
 use crate::offline::{AbilitiesLayout, LoadState, OfflineAbilities, OfflineAbility, OfflineVariant};
@@ -23,20 +23,24 @@ impl<'a> Widget for AbilitiesWidget<'a> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
         let lines = match self.abilities.layout() {
             AbilitiesLayout::P { primary } => {
-                vec![get_line(1, primary)]
+                vec![get_paragraph(1, primary)]
             }
             AbilitiesLayout::PS { primary, secondary } => {
-                vec![get_line(1, primary), get_line(2, secondary)]
+                vec![get_paragraph(1, primary), get_paragraph(2, secondary)]
             }
             AbilitiesLayout::PH { primary, hidden } => {
-                vec![get_line(1, primary), get_line(3, hidden)]
+                vec![get_paragraph(1, primary), get_paragraph(3, hidden)]
             }
             AbilitiesLayout::PSH {
                 primary,
                 secondary,
                 hidden,
             } => {
-                vec![get_line(1, primary), get_line(2, secondary), get_line(3, hidden)]
+                vec![
+                    get_paragraph(1, primary),
+                    get_paragraph(2, secondary),
+                    get_paragraph(3, hidden),
+                ]
             }
         };
         let rects = Layout::vertical(vec![Constraint::Fill(1); lines.len()]).split(area);
@@ -47,7 +51,7 @@ impl<'a> Widget for AbilitiesWidget<'a> {
     }
 }
 
-fn get_line(slot: usize, ability: &LoadState<OfflineAbility>) -> Option<Line<'_>> {
+fn get_paragraph(slot: usize, ability: &LoadState<OfflineAbility>) -> Option<Paragraph<'_>> {
     let number = Span::raw(match slot {
         1 => "  1.",
         2 => "  2.",
@@ -56,7 +60,8 @@ fn get_line(slot: usize, ability: &LoadState<OfflineAbility>) -> Option<Line<'_>
     })
     .dark_gray();
     ability.as_loaded().map(|ability| {
-        let (name, desc) = ability.get();
-        Line::raw(format!("{} {}: {}", number, name, desc))
+        let name = ability.name();
+        let desc = ability.desc();
+        Paragraph::new(format!("{number} {name}\n{desc}")).wrap(Wrap { trim: false })
     })
 }

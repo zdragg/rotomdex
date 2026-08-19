@@ -63,28 +63,34 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
         let sprite = variant.map(|v| v.sprite().as_loaded()).flatten();
 
         // Status bar
-        let [area, status_area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
+        let [area, _padding, status_area] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(1), Constraint::Length(1)]).areas(area);
         StatusBarWidget.render(status_area, buf);
 
+        let [left_area, _padding, right_area] =
+            Layout::horizontal([Constraint::Percentage(35), Constraint::Length(1), Constraint::Fill(1)]).areas(area);
+
         // Sprite
-        let [sprite_area, _padding, area] =
-            Layout::horizontal([Constraint::Fill(1), Constraint::Length(2), Constraint::Fill(1)]).areas(area);
+        let [sprite_area, _padding, stats_area] =
+            Layout::vertical([Constraint::Percentage(70), Constraint::Length(1), Constraint::Fill(1)]).areas(left_area);
         sprite.map(SpriteWidget::new).render(sprite_area, buf);
+        variant
+            .map(|variant| StatsWidget::new(variant, species.unwrap())) // Species has to exist if variant exists
+            .render(stats_area, buf);
 
         let [name_area, variants_area, stats_area, area] = Layout::vertical([
-            Constraint::Fill(1),
-            Constraint::Fill(1),
-            Constraint::Fill(1),
+            Constraint::Percentage(25),
+            Constraint::Length(1),
+            Constraint::Percentage(15),
             Constraint::Fill(1),
         ])
-        .areas(area);
+        .areas(right_area);
         species
             .map(|species| NameWidget::new(species, variant))
             .render(name_area, buf);
         species
             .map(|species| VariantSelectorWidget::new(species, state.variant_cursor as usize))
             .render(variants_area, buf);
-        variant.map(StatsWidget::new).render(stats_area, buf);
         variant.map(AbilitiesWidget::new).render(area, buf);
     }
 }

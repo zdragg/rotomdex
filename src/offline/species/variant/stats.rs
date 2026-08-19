@@ -39,4 +39,12 @@ impl OfflineStats {
             spe,
         })
     }
+    pub fn highest(&self) -> u32 {
+        self.hp
+            .max(self.atk)
+            .max(self.def)
+            .max(self.spa)
+            .max(self.spd)
+            .max(self.spe)
+    }
 }
