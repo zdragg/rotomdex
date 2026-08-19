@@ -79,6 +79,14 @@ impl OfflineVariant {
         &self.inner
     }
 
+    pub fn get_variant_name(&self) -> &str {
+        &self
+            .inner
+            .name
+            .strip_prefix(&format!("{}-", self.inner.species.name))
+            .unwrap_or("base")
+    }
+
     pub fn types(&self) -> &OfflineTypes {
         &self.types
     }
