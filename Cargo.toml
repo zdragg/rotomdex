@@ -20,3 +20,10 @@ rustemon = { git = "https://github.com/zdragg/rustemon" }
 tokio = { version = "1.53.1", features = ["full"] }
 tokio-stream = "0.1.19"
 tui-big-text = "0.8.8"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
