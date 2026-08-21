@@ -23,7 +23,7 @@ jobs:
 
       - name: build with trunk
         working-directory: rotomdex-web
-        run: trunk build --release
+        run: trunk build --release --public-url /rotomdex/
 
       - name: upload artifacts
         uses: actions/upload-pages-artifact@v5
