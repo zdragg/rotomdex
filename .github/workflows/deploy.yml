@@ -12,6 +12,9 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v7
 
+      - name: add rustup target
+        run: rustup target add wasm32-unknown-unknown
+
       - name: install cargo-binstall
         uses: cargo-bins/cargo-binstall@v1.21.1
 
