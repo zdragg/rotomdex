@@ -3,7 +3,6 @@ pub use abilities::*;
 mod sprite;
 use futures::{StreamExt, stream::FuturesUnordered};
 use image::{DynamicImage, GenericImageView, Pixel};
-use reqwest_middleware::ClientWithMiddleware;
 pub use sprite::*;
 mod stats;
 pub use stats::*;
@@ -18,12 +17,12 @@ use std::{
 use color_eyre::eyre::Result;
 use rustemon::{client::RustemonClient, model::pokemon::Pokemon};
 
-use crate::offline::{LoadState, TaskSet};
+use crate::offline::{HttpClient, LoadState, TaskSet};
 
 #[derive(Debug)]
 pub struct OfflineVariant {
     futures: TaskSet<LoadState<OfflineSprite>>,
-    req_client: ClientWithMiddleware,
+    req_client: HttpClient,
 
     types: OfflineTypes,
     stats: OfflineStats,
@@ -34,7 +33,7 @@ pub struct OfflineVariant {
 }
 
 impl OfflineVariant {
-    pub fn new(variant: Pokemon, pkmn_client: Arc<RustemonClient>, req_client: ClientWithMiddleware) -> Result<Self> {
+    pub fn new(variant: Pokemon, pkmn_client: Arc<RustemonClient>, req_client: HttpClient) -> Result<Self> {
         let mut result = Self {
             futures: FuturesUnordered::new(),
             req_client,

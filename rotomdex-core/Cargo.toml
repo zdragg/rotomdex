@@ -3,21 +3,23 @@ name = "rotomdex-core"
 version = "0.1.0"
 edition = "2024"
 
-[features]
-cache = ["rustemon/cache", "dep:http-cache-reqwest"]
-
 [dependencies]
 color-eyre = "0.6.5"
 colorgrad = "0.8.0"
 futures = "0.3.34"
-http-cache-reqwest = { version = "=1.0.0-alpha.8", features = ["manager-cacache"], optional = true }
+http-cache-reqwest = { version = "=1.0.0-alpha.8", features = [
+  "manager-cacache"
+], optional = true }
 image = "0.25.10"
 itertools = "0.15.0"
 log = "0.4.33"
 parking_lot = "0.12.5"
 ratatui = { version = "0.30.2", default-features = false, features = ["std"] }
 reqwest = "0.13.4"
-reqwest-middleware = "0.5.2"
+reqwest-middleware = { version = "0.5.2", optional = true }
 rustemon = { git = "https://github.com/zdragg/rustemon", default-features = false }
 tui-big-text = "0.8.8"
 web-time = "1.1.0"
+
+[features]
+cache = ["dep:http-cache-reqwest", "dep:reqwest-middleware", "rustemon/cache"]

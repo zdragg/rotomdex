@@ -5,7 +5,6 @@ use std::{
 };
 
 use futures::{StreamExt, future::LocalBoxFuture, stream::FuturesUnordered};
-use reqwest_middleware::ClientWithMiddleware;
 use rustemon::client::RustemonClient;
 use web_time::Instant;
 
@@ -44,12 +43,17 @@ enum FetchEvent {
     Species { species: LoadState<OfflineSpecies> },
 }
 
+#[cfg(feature = "cache")]
+type HttpClient = reqwest_middleware::ClientWithMiddleware;
+#[cfg(not(feature = "cache"))]
+type HttpClient = reqwest::Client;
+
 pub struct OfflinePokemon {
     name: String,
 
     futures: TaskSet<FetchEvent>,
     pkmn_client: Arc<RustemonClient>,
-    req_client: ClientWithMiddleware,
+    req_client: HttpClient,
 
     benchmark: Instant,
 
@@ -59,7 +63,7 @@ pub struct OfflinePokemon {
 }
 
 impl OfflinePokemon {
-    pub fn new(name: String, pkmn_client: Arc<RustemonClient>, req_client: ClientWithMiddleware) -> Self {
+    pub fn new(name: String, pkmn_client: Arc<RustemonClient>, req_client: HttpClient) -> Self {
         let mut result = Self {
             name,
 

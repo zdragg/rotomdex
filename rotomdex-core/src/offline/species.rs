@@ -8,18 +8,17 @@ use std::{
 use color_eyre::eyre::Result;
 use futures::{StreamExt, stream::FuturesUnordered};
 use ratatui::style::Color;
-use reqwest_middleware::ClientWithMiddleware;
 use rustemon::{Follow, client::RustemonClient, model::pokemon::PokemonSpecies};
 
 pub use variant::*;
 
-use crate::offline::{LoadState, TaskSet};
+use crate::offline::{HttpClient, LoadState, TaskSet};
 
 #[derive(Debug)]
 pub struct OfflineSpecies {
     futures: TaskSet<(usize, LoadState<OfflineVariant>)>,
     pkmn_client: Arc<RustemonClient>,
-    req_client: ClientWithMiddleware,
+    req_client: HttpClient,
 
     variants: Vec<LoadState<OfflineVariant>>,
 
@@ -27,7 +26,7 @@ pub struct OfflineSpecies {
 }
 
 impl OfflineSpecies {
-    pub fn new(species: PokemonSpecies, pkmn_client: Arc<RustemonClient>, req_client: ClientWithMiddleware) -> Self {
+    pub fn new(species: PokemonSpecies, pkmn_client: Arc<RustemonClient>, req_client: HttpClient) -> Self {
         let mut pkmn = Self {
             pkmn_client,
             req_client,
