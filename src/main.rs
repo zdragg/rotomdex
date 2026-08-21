@@ -19,7 +19,7 @@ use crate::{
     widgets::{InputState, InputWidget, RotomDexWidget, VariantState},
 };
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     color_eyre::install()?;
     setup_logs()?;
