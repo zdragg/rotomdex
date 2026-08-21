@@ -12,7 +12,10 @@ use rustemon::{Follow, client::RustemonClient, model::pokemon::PokemonSpecies};
 
 pub use variant::*;
 
-use crate::offline::{HttpClient, LoadState, TaskSet};
+use crate::{
+    HttpClient,
+    offline::{LoadState, TaskSet},
+};
 
 #[derive(Debug)]
 pub struct OfflineSpecies {

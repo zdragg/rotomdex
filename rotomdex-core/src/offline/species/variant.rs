@@ -17,7 +17,10 @@ use std::{
 use color_eyre::eyre::Result;
 use rustemon::{client::RustemonClient, model::pokemon::Pokemon};
 
-use crate::offline::{HttpClient, LoadState, TaskSet};
+use crate::{
+    HttpClient,
+    offline::{LoadState, TaskSet},
+};
 
 #[derive(Debug)]
 pub struct OfflineVariant {

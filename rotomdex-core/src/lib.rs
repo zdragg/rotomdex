@@ -2,11 +2,12 @@ mod offline;
 mod widgets;
 
 #[cfg(feature = "cache")]
+use reqwest_middleware::ClientBuilder;
+#[cfg(feature = "cache")]
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use ratatui::prelude::*;
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use rustemon::client::RustemonClient;
 
 use crate::{
@@ -22,9 +23,13 @@ pub enum Action {
     LeftArrow,
     Ignore,
 }
+#[cfg(feature = "cache")]
+type HttpClient = reqwest_middleware::ClientWithMiddleware;
+#[cfg(not(feature = "cache"))]
+type HttpClient = reqwest::Client;
 
 pub struct RotomDexCore {
-    req_client: ClientWithMiddleware,
+    req_client: HttpClient,
     pkmn_client: Arc<RustemonClient>,
 
     pkmn: OfflinePokemon,
@@ -42,19 +47,19 @@ impl RotomDexCore {
 
         let pkmn_name = "rotom".to_string();
 
-        let new_cache_manager = http_cache_reqwest::CACacheManager::new(cache_dir.clone(), false);
+        let non_pokeapi_cache_manager = http_cache_reqwest::CACacheManager::new(cache_dir.join("non-pokeapi"), false);
         let req_client = ClientBuilder::new(reqwest::Client::new())
             .with(Cache(HttpCache {
                 mode: CacheMode::Default,
-                manager: new_cache_manager,
+                manager: non_pokeapi_cache_manager,
                 options: HttpCacheOptions::default(),
             }))
             .build();
 
-        let old_cache_manager = rustemon::client::CACacheManager::new(cache_dir, false);
+        let pokeapi_cache_manager = rustemon::client::CACacheManager::new(cache_dir.join("pokeapi"), false);
         let pkmn_client = Arc::new(
             RustemonClientBuilder::default()
-                .with_manager(old_cache_manager)
+                .with_manager(pokeapi_cache_manager)
                 .try_build()
                 .unwrap(),
         );
@@ -71,7 +76,7 @@ impl RotomDexCore {
     #[cfg(not(feature = "cache"))]
     pub fn new(bottom_text: impl Into<String>) -> Self {
         let pkmn_name = "rotom".to_string();
-        let req_client = ClientBuilder::new(reqwest::Client::new()).build();
+        let req_client = reqwest::Client::new();
         let pkmn_client = Arc::new(RustemonClient::default());
         Self {
             pkmn: OfflinePokemon::new(pkmn_name, pkmn_client.clone(), req_client.clone()),

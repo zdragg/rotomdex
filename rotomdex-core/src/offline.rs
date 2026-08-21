@@ -10,6 +10,8 @@ use web_time::Instant;
 
 pub use species::*;
 
+use crate::HttpClient;
+
 type TaskSet<T> = FuturesUnordered<LocalBoxFuture<'static, T>>;
 
 #[derive(Debug, Default)]
@@ -42,11 +44,6 @@ impl<T> LoadState<T> {
 enum FetchEvent {
     Species { species: LoadState<OfflineSpecies> },
 }
-
-#[cfg(feature = "cache")]
-type HttpClient = reqwest_middleware::ClientWithMiddleware;
-#[cfg(not(feature = "cache"))]
-type HttpClient = reqwest::Client;
 
 pub struct OfflinePokemon {
     name: String,
