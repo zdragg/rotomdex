@@ -6,19 +6,20 @@ use std::{
 };
 
 use color_eyre::eyre::Result;
+use futures::{StreamExt, stream::FuturesUnordered};
 use ratatui::style::Color;
+use reqwest_middleware::ClientWithMiddleware;
 use rustemon::{Follow, client::RustemonClient, model::pokemon::PokemonSpecies};
-use tokio::task::JoinSet;
 
 pub use variant::*;
 
-use crate::offline::LoadState;
+use crate::offline::{LoadState, TaskSet};
 
 #[derive(Debug)]
 pub struct OfflineSpecies {
-    joinset: JoinSet<SpeciesFetchEvent>, // all async tasks spawn from this. If the struct drops, all async tasks drop along with this JoinSet
+    futures: TaskSet<(usize, LoadState<OfflineVariant>)>,
     pkmn_client: Arc<RustemonClient>,
-    req_client: reqwest::Client,
+    req_client: ClientWithMiddleware,
 
     variants: Vec<LoadState<OfflineVariant>>,
 
@@ -26,12 +27,12 @@ pub struct OfflineSpecies {
 }
 
 impl OfflineSpecies {
-    pub fn new(species: PokemonSpecies, pkmn_client: Arc<RustemonClient>, req_client: reqwest::Client) -> Self {
+    pub fn new(species: PokemonSpecies, pkmn_client: Arc<RustemonClient>, req_client: ClientWithMiddleware) -> Self {
         let mut pkmn = Self {
             pkmn_client,
             req_client,
 
-            joinset: JoinSet::new(),
+            futures: FuturesUnordered::new(),
 
             variants: std::iter::repeat_with(|| LoadState::Loading)
                 .take(species.varieties.len())
@@ -44,8 +45,8 @@ impl OfflineSpecies {
     }
 
     pub(super) fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Poll::Ready(Some(event)) = self.joinset.poll_join_next(cx) {
-            self.handle_event(event.unwrap());
+        if let Poll::Ready(Some(event)) = self.futures.poll_next_unpin(cx) {
+            self.handle_event(event);
             return Poll::Ready(());
         }
 
@@ -60,12 +61,8 @@ impl OfflineSpecies {
         Poll::Pending
     }
 
-    fn handle_event(&mut self, event: SpeciesFetchEvent) {
-        match event {
-            SpeciesFetchEvent::Variant { idx, variant } => {
-                self.variants[idx] = variant;
-            }
-        }
+    fn handle_event(&mut self, (idx, variant): (usize, LoadState<OfflineVariant>)) {
+        self.variants[idx] = variant;
     }
 
     pub fn inner(&self) -> &PokemonSpecies {
@@ -101,7 +98,7 @@ impl OfflineSpecies {
         for (idx, api) in variants {
             let pkmn_client = self.pkmn_client.clone();
             let req_client = self.req_client.clone();
-            self.joinset.spawn(async move {
+            self.futures.push(Box::pin(async move {
                 let variant: Result<OfflineVariant> = async {
                     let variant = api.follow(&pkmn_client).await?;
                     OfflineVariant::new(variant, pkmn_client, req_client)
@@ -111,8 +108,8 @@ impl OfflineSpecies {
                     Ok(variant) => LoadState::Loaded(variant),
                     Err(e) => LoadState::log_error(e.into()),
                 };
-                SpeciesFetchEvent::Variant { idx, variant }
-            });
+                (idx, variant)
+            }));
         }
     }
 
@@ -121,11 +118,4 @@ impl OfflineSpecies {
             .iter()
             .all(|v| matches!(&v, &LoadState::Loaded(variant) if variant.is_fully_loaded()))
     }
-}
-
-pub enum SpeciesFetchEvent {
-    Variant {
-        idx: usize,
-        variant: LoadState<OfflineVariant>,
-    },
 }

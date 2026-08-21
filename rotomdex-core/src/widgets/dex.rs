@@ -2,13 +2,13 @@ mod ability;
 mod name;
 mod sprite;
 mod stats;
-mod status_bar;
 mod variant_selector;
 
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::Color,
+    text::Line,
     widgets::{Block, StatefulWidget, Widget},
 };
 
@@ -16,17 +16,18 @@ use crate::{
     offline::OfflinePokemon,
     widgets::dex::{
         ability::AbilitiesWidget, name::NameWidget, sprite::SpriteWidget, stats::StatsWidget,
-        status_bar::StatusBarWidget, variant_selector::VariantSelectorWidget,
+        variant_selector::VariantSelectorWidget,
     },
 };
 
 pub struct RotomDexWidget<'a> {
     pub pkmn: &'a OfflinePokemon,
+    pub bottom_text: &'a str,
 }
 
 impl<'a> RotomDexWidget<'a> {
-    pub fn new(pkmn: &'a OfflinePokemon) -> Self {
-        Self { pkmn }
+    pub fn new(pkmn: &'a OfflinePokemon, bottom_text: &'a str) -> Self {
+        Self { pkmn, bottom_text }
     }
 }
 
@@ -63,18 +64,22 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
         };
         let sprite = variant.map(|v| v.sprite().as_loaded()).flatten();
 
-        let block = Block::bordered().border_style(if let Some(species) = species {
-            species.get_ratatui_color()
-        } else {
-            Color::DarkGray
-        });
-        let inner_area = block.inner(area);
-        block.render(area, buf);
-
-        // Status bar
-        let [area, _padding, status_area] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Length(1), Constraint::Length(1)]).areas(inner_area);
-        StatusBarWidget.render(status_area, buf);
+        let block = Block::bordered()
+            .border_style(if let Some(species) = species {
+                species.get_ratatui_color()
+            } else {
+                Color::DarkGray
+            })
+            .title_bottom(
+                Line::raw(format!(" {} ", self.bottom_text))
+                    .style(Color::DarkGray)
+                    .centered(),
+            );
+        let area = {
+            let new_area = block.inner(area);
+            block.render(area, buf);
+            new_area
+        };
 
         let [left_area, _padding, right_area] =
             Layout::horizontal([Constraint::Percentage(35), Constraint::Length(1), Constraint::Fill(1)]).areas(area);

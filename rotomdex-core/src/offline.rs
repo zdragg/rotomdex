@@ -2,12 +2,16 @@ mod species;
 use std::{
     sync::Arc,
     task::{Context, Poll},
-    time::Instant,
 };
 
+use futures::{StreamExt, future::LocalBoxFuture, stream::FuturesUnordered};
+use reqwest_middleware::ClientWithMiddleware;
 use rustemon::client::RustemonClient;
+use web_time::Instant;
+
 pub use species::*;
-use tokio::task::JoinSet;
+
+type TaskSet<T> = FuturesUnordered<LocalBoxFuture<'static, T>>;
 
 #[derive(Debug, Default)]
 pub enum LoadState<T> {
@@ -43,9 +47,9 @@ enum FetchEvent {
 pub struct OfflinePokemon {
     name: String,
 
-    joinset: JoinSet<FetchEvent>,
+    futures: TaskSet<FetchEvent>,
     pkmn_client: Arc<RustemonClient>,
-    req_client: reqwest::Client,
+    req_client: ClientWithMiddleware,
 
     benchmark: Instant,
 
@@ -55,11 +59,11 @@ pub struct OfflinePokemon {
 }
 
 impl OfflinePokemon {
-    pub fn new(name: String, pkmn_client: Arc<RustemonClient>, req_client: reqwest::Client) -> Self {
+    pub fn new(name: String, pkmn_client: Arc<RustemonClient>, req_client: ClientWithMiddleware) -> Self {
         let mut result = Self {
             name,
 
-            joinset: JoinSet::new(),
+            futures: FuturesUnordered::new(),
             pkmn_client,
             req_client,
 
@@ -86,8 +90,8 @@ impl OfflinePokemon {
     }
 
     fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Poll::Ready(Some(event)) = self.joinset.poll_join_next(cx) {
-            self.handle_event(event.unwrap());
+        if let Poll::Ready(Some(event)) = self.futures.poll_next_unpin(cx) {
+            self.handle_event(event);
             return Poll::Ready(());
         }
 
@@ -118,7 +122,7 @@ impl OfflinePokemon {
         let pkmn_client = self.pkmn_client.clone();
         let req_client = self.req_client.clone();
 
-        self.joinset.spawn(async move {
+        self.futures.push(Box::pin(async move {
             let species = match rustemon::pokemon::pokemon_species::get_by_name(&name, &pkmn_client).await {
                 Ok(species) => {
                     let species = OfflineSpecies::new(species, pkmn_client, req_client);
@@ -127,7 +131,7 @@ impl OfflinePokemon {
                 Err(e) => LoadState::log_error(e.into()),
             };
             FetchEvent::Species { species }
-        });
+        }));
     }
 
     pub fn is_fully_loaded(&self) -> bool {

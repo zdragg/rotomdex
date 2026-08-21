@@ -4,6 +4,7 @@ use std::{
 };
 
 use color_eyre::eyre::{OptionExt, Result, eyre};
+use futures::{StreamExt, stream::FuturesUnordered};
 use rustemon::{
     Follow,
     client::RustemonClient,
@@ -12,13 +13,12 @@ use rustemon::{
         resource::NamedApiResource,
     },
 };
-use tokio::task::JoinSet;
 
-use crate::offline::LoadState;
+use crate::offline::{LoadState, TaskSet};
 
 #[derive(Debug)]
 pub struct OfflineAbilities {
-    joinset: JoinSet<(usize, LoadState<OfflineAbility>)>,
+    futures: TaskSet<(usize, LoadState<OfflineAbility>)>,
     pkmn_client: Arc<RustemonClient>,
 
     layout: AbilitiesLayout,
@@ -39,7 +39,7 @@ impl OfflineAbilities {
             .collect::<Result<Vec<_>>>()?;
 
         let mut result = Self {
-            joinset: JoinSet::new(),
+            futures: FuturesUnordered::new(),
             pkmn_client,
 
             layout: AbilitiesLayout::new(mask)?,
@@ -49,8 +49,8 @@ impl OfflineAbilities {
     }
 
     pub(super) fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Poll::Ready(Some(event)) = self.joinset.poll_join_next(cx) {
-            self.handle_event(event.unwrap());
+        if let Poll::Ready(Some(event)) = self.futures.poll_next_unpin(cx) {
+            self.handle_event(event);
             return Poll::Ready(());
         }
         Poll::Pending
@@ -70,12 +70,12 @@ impl OfflineAbilities {
     fn spawn_abilities_fetch(&mut self, apis: Vec<(usize, NamedApiResource<Ability>)>) {
         for (idx, api) in apis {
             let pkmn_client = self.pkmn_client.clone();
-            self.joinset.spawn(async move {
+            self.futures.push(Box::pin(async move {
                 match api.follow(&pkmn_client).await {
                     Ok(ability) => (idx, LoadState::Loaded(OfflineAbility::new(ability))),
                     Err(e) => (idx, LoadState::log_error(e.into())),
                 }
-            });
+            }));
         }
     }
 

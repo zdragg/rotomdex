@@ -1,4 +1,0 @@
-- cache for png. some kind of centralized cache manager? cache addon for reqwest? save something like a hashmap for link <-> png
-- load stats before png. DONE
-- download all png of each variety at the same time DONE
-- report fetchstate error to an actual logging library

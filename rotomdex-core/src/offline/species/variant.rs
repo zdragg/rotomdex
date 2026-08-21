@@ -1,7 +1,9 @@
 mod abilities;
 pub use abilities::*;
 mod sprite;
+use futures::{StreamExt, stream::FuturesUnordered};
 use image::{DynamicImage, GenericImageView, Pixel};
+use reqwest_middleware::ClientWithMiddleware;
 pub use sprite::*;
 mod stats;
 pub use stats::*;
@@ -16,18 +18,12 @@ use std::{
 use color_eyre::eyre::Result;
 use rustemon::{client::RustemonClient, model::pokemon::Pokemon};
 
-use tokio::task::JoinSet;
-
-use crate::offline::LoadState;
-
-enum VariantFetchEvent {
-    Sprite { sprite: LoadState<OfflineSprite> },
-}
+use crate::offline::{LoadState, TaskSet};
 
 #[derive(Debug)]
 pub struct OfflineVariant {
-    joinset: JoinSet<VariantFetchEvent>,
-    req_client: reqwest::Client,
+    futures: TaskSet<LoadState<OfflineSprite>>,
+    req_client: ClientWithMiddleware,
 
     types: OfflineTypes,
     stats: OfflineStats,
@@ -38,9 +34,9 @@ pub struct OfflineVariant {
 }
 
 impl OfflineVariant {
-    pub fn new(variant: Pokemon, pkmn_client: Arc<RustemonClient>, req_client: reqwest::Client) -> Result<Self> {
+    pub fn new(variant: Pokemon, pkmn_client: Arc<RustemonClient>, req_client: ClientWithMiddleware) -> Result<Self> {
         let mut result = Self {
-            joinset: JoinSet::new(),
+            futures: FuturesUnordered::new(),
             req_client,
 
             types: OfflineTypes::new(&variant.types)?,
@@ -55,8 +51,8 @@ impl OfflineVariant {
     }
 
     pub(super) fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Poll::Ready(Some(event)) = self.joinset.poll_join_next(cx) {
-            self.handle_event(event.unwrap());
+        if let Poll::Ready(Some(event)) = self.futures.poll_next_unpin(cx) {
+            self.handle_event(event);
             return Poll::Ready(());
         }
         if self.abilities.poll_load(cx).is_ready() {
@@ -65,12 +61,8 @@ impl OfflineVariant {
         Poll::Pending
     }
 
-    fn handle_event(&mut self, event: VariantFetchEvent) {
-        match event {
-            VariantFetchEvent::Sprite { sprite } => {
-                self.sprite = sprite;
-            }
-        }
+    fn handle_event(&mut self, sprite: LoadState<OfflineSprite>) {
+        self.sprite = sprite;
     }
 
     pub fn inner(&self) -> &Pokemon {
@@ -114,11 +106,9 @@ impl OfflineVariant {
         let client = self.req_client.clone();
         let Some(link) = sprite_link else {
             log::warn!("sprite not found: {}", self.inner().name);
-            self.joinset.spawn(async move {
-                VariantFetchEvent::Sprite {
-                    sprite: LoadState::Loaded(OfflineSprite { sprite: None }),
-                }
-            });
+            self.futures.push(Box::pin(
+                async move { LoadState::Loaded(OfflineSprite { sprite: None }) },
+            ));
             return;
         };
 
@@ -138,7 +128,7 @@ impl OfflineVariant {
             let (corner_x, corner_y) = (mid_x.saturating_sub(side_len / 2), mid_y.saturating_sub(side_len / 2));
             image.crop_imm(corner_x, corner_y, side_len, side_len)
         };
-        self.joinset.spawn(async move {
+        self.futures.push(Box::pin(async move {
             let result: Result<DynamicImage> = async {
                 let image_bytes = client.get(link).send().await?.bytes().await?;
                 let image = image::load_from_memory(&image_bytes)?;
@@ -147,14 +137,10 @@ impl OfflineVariant {
             .await;
 
             match result {
-                Ok(image) => VariantFetchEvent::Sprite {
-                    sprite: LoadState::Loaded(OfflineSprite { sprite: Some(image) }),
-                },
-                Err(e) => VariantFetchEvent::Sprite {
-                    sprite: LoadState::log_error(e),
-                },
+                Ok(image) => LoadState::Loaded(OfflineSprite { sprite: Some(image) }),
+                Err(e) => LoadState::log_error(e),
             }
-        });
+        }));
     }
 
     pub fn is_fully_loaded(&self) -> bool {

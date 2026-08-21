@@ -1,0 +1,44 @@
+name: deploy to pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v7
+
+      - name: install cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.21.1
+
+      - name: install trunk
+        run: cargo binstall --no-confirm trunk
+
+      - name: build with trunk
+        working-directory: rotomdex-web
+        run: trunk build --release
+
+      - name: upload artifacts
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: rotomdex-web/dist/
+
+  deploy:
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: deploy to pages
+        uses: actions/deploy-pages@v5

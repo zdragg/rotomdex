@@ -1,2 +1,5 @@
-/target
-/rustemon-cache
+target/
+dist/
+rustemon-cache/
+
+.DS_Store
