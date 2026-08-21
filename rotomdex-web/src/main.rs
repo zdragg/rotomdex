@@ -60,9 +60,9 @@ async fn load_font() -> Result<()> {
         .and_then(|window| window.document())
         .ok_or_else(|| eyre!("unable to access the browser document"))?;
 
-    JsFuture::from(document.fonts().load_with_text("16px 'Cascadia Code NF'", "█"))
+    JsFuture::from(document.fonts().load_with_text("16px 'Fira Code'", "█"))
         .await
-        .map_err(|error| eyre!("unable to load Cascadia Code NF: {error:?}"))?;
+        .map_err(|error| eyre!("unable to load Fira Code: {error:?}"))?;
 
     Ok(())
 }

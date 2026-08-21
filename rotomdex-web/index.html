@@ -8,25 +8,13 @@
         />
         <meta name="color-scheme" content="dark" />
         <meta name="theme-color" content="#121212" />
-        <link data-trunk rel="copy-dir" href="assets" />
         <link
-            rel="preload"
-            href="./assets/fonts/CascadiaCodeNF.woff2"
-            as="font"
-            type="font/woff2"
-            crossorigin
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/fira_code.min.css"
         />
         <link data-trunk rel="rust" data-wasm-opt="z" data-wasm-opt-params="--enable-bulk-memory --enable-nontrapping-float-to-int"/>
         <title>Ratzilla</title>
         <style>
-            @font-face {
-                font-family: "Cascadia Code NF";
-                src: url("./assets/fonts/CascadiaCodeNF.woff2") format("woff2");
-                font-style: normal;
-                font-weight: 200 700;
-                font-display: block;
-            }
-
             :root {
                 color-scheme: dark;
             }
@@ -43,7 +31,7 @@
                 background-color: #121212;
             }
             pre {
-                font-family: "Cascadia Code NF", monospace;
+                font-family: "Fira Code", monospace;
                 font-size: 16px;
                 margin: 0px;
             }
