@@ -66,9 +66,10 @@ impl RotomDexCore {
             pkmn_client,
             req_client,
         };
+
         Self {
-            fetch_ctx: fetch_ctx.clone(),
-            pkmn: OfflinePokemon::new(pkmn_name, fetch_ctx),
+            pkmn: OfflinePokemon::new(pkmn_name, fetch_ctx.clone()),
+            fetch_ctx: fetch_ctx,
             input_state: InputState::default(),
             dex_state: VariantState::default(),
             bottom_text: bottom_text.into(),
@@ -77,11 +78,20 @@ impl RotomDexCore {
 
     #[cfg(not(feature = "cache"))]
     pub fn new(bottom_text: impl Into<String>) -> Self {
+        use rustemon::client::RustemonClient;
+
         let pkmn_name = "rotom".to_string();
         let req_client = reqwest::Client::new();
         let pkmn_client = Arc::new(RustemonClient::default());
+
+        let fetch_ctx = FetchContext {
+            pkmn_client,
+            req_client,
+        };
+
         Self {
-            pkmn: OfflinePokemon::new(pkmn_name, pkmn_client.clone(), req_client.clone()),
+            pkmn: OfflinePokemon::new(pkmn_name, fetch_ctx.clone()),
+            fetch_ctx,
             req_client,
             pkmn_client,
             input_state: InputState::default(),
