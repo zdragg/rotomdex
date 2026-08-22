@@ -3296,6 +3296,7 @@ dependencies = [
  "color-eyre",
  "colorgrad",
  "futures",
+ "gif",
  "http-cache-reqwest 1.0.0-alpha.8",
  "image",
  "itertools 0.15.0",

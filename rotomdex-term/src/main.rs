@@ -54,7 +54,7 @@ async fn run(cache_dir: PathBuf) -> Result<()> {
                     AppEvent::Action(action) => core.handle_action(action),
                 }
             }
-            () = core.ping() => {}
+            () = core.poll_pkmn() => {}
         }
 
         terminal.draw(|frame| core.render(frame))?;

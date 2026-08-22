@@ -1,151 +1,99 @@
-use std::{
-    sync::Arc,
-    task::{Context, Poll},
-};
+use std::task::{Context, Poll};
 
 use color_eyre::eyre::{OptionExt, Result, eyre};
-use futures::{StreamExt, stream::FuturesUnordered};
 use rustemon::{
     Follow,
-    client::RustemonClient,
     model::{
         pokemon::{Ability, PokemonAbility},
         resource::NamedApiResource,
     },
 };
 
-use crate::offline::{LoadState, TaskSet};
+use crate::offline::{FetchContext, Fetchable, Resource};
 
 #[derive(Debug)]
-pub struct OfflineAbilities {
-    futures: TaskSet<(usize, LoadState<OfflineAbility>)>,
-    pkmn_client: Arc<RustemonClient>,
-
-    layout: AbilitiesLayout,
+pub enum OfflineAbilities {
+    None, // Pokemon like Zygarde-Mega has no abilities in Z-A. Maybe it will have one later after introduced in Champions
+    P {
+        primary: Resource<OfflineAbility>,
+    },
+    PS {
+        primary: Resource<OfflineAbility>,
+        secondary: Resource<OfflineAbility>,
+    },
+    PH {
+        primary: Resource<OfflineAbility>,
+        hidden: Resource<OfflineAbility>,
+    },
+    PSH {
+        primary: Resource<OfflineAbility>,
+        secondary: Resource<OfflineAbility>,
+        hidden: Resource<OfflineAbility>,
+    },
 }
 
 impl OfflineAbilities {
-    pub fn new(abilities: &[PokemonAbility], pkmn_client: Arc<RustemonClient>) -> Result<Self> {
-        let mut mask = 0b000;
-        let apis = abilities
-            .iter()
-            .map(|a| {
-                mask = mask | (0b1 << a.slot - 1);
-                a.ability
-                    .clone()
-                    .ok_or_eyre("ability not found")
-                    .map(|api| (a.slot as usize - 1, api))
-            })
-            .collect::<Result<Vec<_>>>()?;
+    pub fn new(abilities: Vec<PokemonAbility>, ctx: FetchContext) -> Result<Self> {
+        let mut slots: [Option<Resource<OfflineAbility>>; 3] = [const { None }; 3];
+        for ability in abilities {
+            let idx = if let 1..=3 = ability.slot {
+                (ability.slot - 1) as usize
+            } else {
+                return Err(eyre!("invalid ability slot"));
+            };
 
-        let mut result = Self {
-            futures: FuturesUnordered::new(),
-            pkmn_client,
+            let api = ability.ability.ok_or_eyre("ability not found")?;
 
-            layout: AbilitiesLayout::new(mask)?,
+            let resource = Resource::<OfflineAbility>::fetch(api, ctx.clone());
+
+            if slots[idx].replace(resource).is_some() {
+                return Err(eyre!("duplicate ability slot"));
+            }
+        }
+
+        let res = match slots {
+            [None, None, None] => Self::None,
+            [Some(primary), None, None] => Self::P { primary },
+            [Some(primary), Some(secondary), None] => Self::PS { primary, secondary },
+            [Some(primary), None, Some(hidden)] => Self::PH { primary, hidden },
+            [Some(primary), Some(secondary), Some(hidden)] => Self::PSH {
+                primary,
+                secondary,
+                hidden,
+            },
+            _ => return Err(eyre!("invalid ability set found")),
         };
-        result.spawn_abilities_fetch(apis);
-        Ok(result)
+        Ok(res)
     }
 
-    pub(super) fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Poll::Ready(Some(event)) = self.futures.poll_next_unpin(cx) {
-            self.handle_event(event);
+    pub(super) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        if self.iter_mut().any(|a| a.poll(cx).is_ready()) {
             return Poll::Ready(());
         }
         Poll::Pending
     }
 
-    fn handle_event(&mut self, (idx, ability): (usize, LoadState<OfflineAbility>)) {
-        *self
-            .layout
-            .get_mut(idx)
-            .expect("fetched an ability for a variant without a slot for it") = ability;
-    }
+    fn iter_mut(&mut self) -> impl Iterator<Item = &mut Resource<OfflineAbility>> {
+        match self {
+            Self::None => [None, None, None],
 
-    pub fn layout(&self) -> &AbilitiesLayout {
-        &self.layout
-    }
+            Self::P { primary } => [Some(primary), None, None],
 
-    fn spawn_abilities_fetch(&mut self, apis: Vec<(usize, NamedApiResource<Ability>)>) {
-        for (idx, api) in apis {
-            let pkmn_client = self.pkmn_client.clone();
-            self.futures.push(Box::pin(async move {
-                match api.follow(&pkmn_client).await {
-                    Ok(ability) => (idx, LoadState::Loaded(OfflineAbility::new(ability))),
-                    Err(e) => (idx, LoadState::log_error(e.into())),
-                }
-            }));
+            Self::PS { primary, secondary } => [Some(primary), Some(secondary), None],
+
+            Self::PH { primary, hidden } => [Some(primary), None, Some(hidden)],
+
+            Self::PSH {
+                primary,
+                secondary,
+                hidden,
+            } => [Some(primary), Some(secondary), Some(hidden)],
         }
+        .into_iter()
+        .flatten()
     }
 
-    pub fn is_fully_loaded(&self) -> bool {
-        self.layout.is_fully_loaded()
-    }
-}
-
-#[derive(Debug)]
-pub enum AbilitiesLayout {
-    None, // Pokemon like Zygarde-Mega has no abilities in Z-A. Maybe it will have one later after introduced in Champions
-    P {
-        primary: LoadState<OfflineAbility>,
-    },
-    PS {
-        primary: LoadState<OfflineAbility>,
-        secondary: LoadState<OfflineAbility>,
-    },
-    PH {
-        primary: LoadState<OfflineAbility>,
-        hidden: LoadState<OfflineAbility>,
-    },
-    PSH {
-        primary: LoadState<OfflineAbility>,
-        secondary: LoadState<OfflineAbility>,
-        hidden: LoadState<OfflineAbility>,
-    },
-}
-
-impl AbilitiesLayout {
-    // 0b1 for primary, 0b10 for secondary, 0b100 for hidden
-    fn new(mask: u8) -> Result<Self> {
-        Ok(match mask {
-            0b000 => Self::None,
-            0b001 => Self::P {
-                primary: LoadState::Loading,
-            },
-            0b011 => Self::PS {
-                primary: LoadState::Loading,
-                secondary: LoadState::Loading,
-            },
-            0b101 => Self::PH {
-                primary: LoadState::Loading,
-                hidden: LoadState::Loading,
-            },
-            0b111 => Self::PSH {
-                primary: LoadState::Loading,
-                secondary: LoadState::Loading,
-                hidden: LoadState::Loading,
-            },
-            _ => return Err(eyre!("invalid ability set found")),
-        })
-    }
-
-    fn get_mut(&mut self, idx: usize) -> Option<&mut LoadState<OfflineAbility>> {
-        match (self, idx) {
-            (Self::P { primary }, 0)
-            | (Self::PS { primary, .. }, 0)
-            | (Self::PH { primary, .. }, 0)
-            | (Self::PSH { primary, .. }, 0) => Some(primary),
-
-            (Self::PS { secondary, .. }, 1) | (Self::PSH { secondary, .. }, 1) => Some(secondary),
-
-            (Self::PH { hidden, .. }, 2) | (Self::PSH { hidden, .. }, 2) => Some(hidden),
-
-            _ => None,
-        }
-    }
-
-    fn is_fully_loaded(&self) -> bool {
+    pub fn is_loaded(&self) -> bool {
         match self {
             Self::None => true,
             Self::P { primary } => primary.is_loaded(),
@@ -167,8 +115,21 @@ pub struct OfflineAbility {
 }
 
 impl OfflineAbility {
-    pub fn new(ability: Ability) -> Self {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn desc(&self) -> &str {
+        &self.desc
+    }
+}
+
+impl Fetchable for OfflineAbility {
+    type Request = NamedApiResource<Ability>;
+    async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
+        let ability = request.follow(&ctx.pkmn_client).await?;
         let name = ability.name;
+
         let (_rank, desc) = ability
             .flavor_text_entries
             .into_iter()
@@ -190,14 +151,15 @@ impl OfflineAbility {
             })
             .max_by_key(|(rank, _)| *rank)
             .unwrap();
-        Self { name, desc }
+
+        Ok(Self { name, desc })
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<()> {
+        Poll::Pending
     }
 
-    pub fn desc(&self) -> &str {
-        &self.desc
+    fn is_loaded(&self) -> bool {
+        true
     }
 }

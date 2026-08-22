@@ -47,7 +47,7 @@ async fn run() -> Result<()> {
         let core = core.clone();
         move |f| {
             let mut core = core.borrow_mut();
-            let _ = core.ping().now_or_never();
+            let _ = core.poll_pkmn().now_or_never();
             core.render(f);
         }
     });

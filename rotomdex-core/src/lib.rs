@@ -8,10 +8,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use ratatui::prelude::*;
-use rustemon::client::RustemonClient;
 
 use crate::{
-    offline::OfflinePokemon,
+    offline::{FetchContext, OfflinePokemon},
     widgets::{InputState, InputWidget, RotomDexWidget, VariantState},
 };
 
@@ -29,8 +28,7 @@ type HttpClient = reqwest_middleware::ClientWithMiddleware;
 type HttpClient = reqwest::Client;
 
 pub struct RotomDexCore {
-    req_client: HttpClient,
-    pkmn_client: Arc<RustemonClient>,
+    fetch_ctx: FetchContext,
 
     pkmn: OfflinePokemon,
 
@@ -63,10 +61,14 @@ impl RotomDexCore {
                 .try_build()
                 .unwrap(),
         );
-        Self {
-            pkmn: OfflinePokemon::new(pkmn_name, pkmn_client.clone(), req_client.clone()),
-            req_client,
+
+        let fetch_ctx = FetchContext {
             pkmn_client,
+            req_client,
+        };
+        Self {
+            fetch_ctx: fetch_ctx.clone(),
+            pkmn: OfflinePokemon::new(pkmn_name, fetch_ctx),
             input_state: InputState::default(),
             dex_state: VariantState::default(),
             bottom_text: bottom_text.into(),
@@ -101,11 +103,7 @@ impl RotomDexCore {
 
     fn new_pokemon(&mut self) {
         self.dex_state.reset();
-        self.pkmn = OfflinePokemon::new(
-            self.input_state.take(),
-            self.pkmn_client.clone(),
-            self.req_client.clone(),
-        );
+        self.pkmn = OfflinePokemon::new(self.input_state.take(), self.fetch_ctx.clone());
     }
 
     pub fn render(&mut self, frame: &mut Frame) {
@@ -115,7 +113,7 @@ impl RotomDexCore {
         InputWidget.render(area, buf, &mut self.input_state);
     }
 
-    pub async fn ping(&mut self) {
-        self.pkmn.ping().await
+    pub async fn poll_pkmn(&mut self) {
+        self.pkmn.poll().await
     }
 }

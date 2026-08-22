@@ -1,72 +1,49 @@
 mod variant;
 
-use std::{
-    sync::Arc,
-    task::{Context, Poll},
-};
+use std::task::{Context, Poll};
 
 use color_eyre::eyre::Result;
-use futures::{StreamExt, stream::FuturesUnordered};
 use ratatui::style::Color;
-use rustemon::{Follow, client::RustemonClient, model::pokemon::PokemonSpecies};
+use rustemon::model::pokemon::PokemonSpecies;
 
 pub use variant::*;
 
-use crate::{
-    HttpClient,
-    offline::{LoadState, TaskSet},
-};
+use crate::offline::{FetchContext, Fetchable, Resource};
 
 #[derive(Debug)]
 pub struct OfflineSpecies {
-    futures: TaskSet<(usize, LoadState<OfflineVariant>)>,
-    pkmn_client: Arc<RustemonClient>,
-    req_client: HttpClient,
-
-    variants: Vec<LoadState<OfflineVariant>>,
-
+    variants: Vec<Resource<OfflineVariant>>,
     inner: PokemonSpecies,
 }
 
-impl OfflineSpecies {
-    pub fn new(species: PokemonSpecies, pkmn_client: Arc<RustemonClient>, req_client: HttpClient) -> Self {
-        let mut pkmn = Self {
-            pkmn_client,
-            req_client,
-
-            futures: FuturesUnordered::new(),
-
-            variants: std::iter::repeat_with(|| LoadState::Loading)
-                .take(species.varieties.len())
-                .collect(),
-
+impl Fetchable for OfflineSpecies {
+    type Request = String;
+    async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
+        let species = rustemon::pokemon::pokemon_species::get_by_name(&request, &ctx.pkmn_client).await?;
+        let variants: Vec<_> = species
+            .varieties
+            .iter()
+            .map(|v| Resource::<OfflineVariant>::fetch(v.pokemon.clone(), ctx.clone()))
+            .collect();
+        Ok(Self {
+            variants,
             inner: species,
-        };
-        pkmn.spawn_variants_fetch();
-        pkmn
+        })
     }
 
-    pub(super) fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Poll::Ready(Some(event)) = self.futures.poll_next_unpin(cx) {
-            self.handle_event(event);
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        if self.variants.iter_mut().any(|variant| variant.poll(cx).is_ready()) {
             return Poll::Ready(());
         }
-
-        for maybe_variant in &mut self.variants {
-            if let LoadState::Loaded(variant) = maybe_variant
-                && variant.poll_load(cx).is_ready()
-            {
-                return Poll::Ready(());
-            }
-        }
-
         Poll::Pending
     }
 
-    fn handle_event(&mut self, (idx, variant): (usize, LoadState<OfflineVariant>)) {
-        self.variants[idx] = variant;
+    fn is_loaded(&self) -> bool {
+        self.variants.iter().all(|variant| variant.is_loaded())
     }
+}
 
+impl OfflineSpecies {
     pub fn inner(&self) -> &PokemonSpecies {
         &self.inner
     }
@@ -75,7 +52,7 @@ impl OfflineSpecies {
         self.variants.len()
     }
 
-    pub fn variants(&self) -> &[LoadState<OfflineVariant>] {
+    pub fn variants(&self) -> &[Resource<OfflineVariant>] {
         &self.variants
     }
 
@@ -93,31 +70,5 @@ impl OfflineSpecies {
             "yellow" => Color::Yellow,
             _ => unreachable!(),
         }
-    }
-
-    fn spawn_variants_fetch(&mut self) {
-        let variants = self.inner.varieties.iter().map(|v| &v.pokemon).cloned().enumerate();
-        for (idx, api) in variants {
-            let pkmn_client = self.pkmn_client.clone();
-            let req_client = self.req_client.clone();
-            self.futures.push(Box::pin(async move {
-                let variant: Result<OfflineVariant> = async {
-                    let variant = api.follow(&pkmn_client).await?;
-                    OfflineVariant::new(variant, pkmn_client, req_client)
-                }
-                .await;
-                let variant = match variant {
-                    Ok(variant) => LoadState::Loaded(variant),
-                    Err(e) => LoadState::log_error(e.into()),
-                };
-                (idx, variant)
-            }));
-        }
-    }
-
-    pub fn is_fully_loaded(&self) -> bool {
-        self.variants
-            .iter()
-            .all(|v| matches!(&v, &LoadState::Loaded(variant) if variant.is_fully_loaded()))
     }
 }

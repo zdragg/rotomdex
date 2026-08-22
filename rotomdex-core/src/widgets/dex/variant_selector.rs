@@ -5,10 +5,10 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
-use crate::offline::{LoadState, OfflineSpecies, OfflineVariant};
+use crate::offline::{OfflineSpecies, OfflineVariant, Resource};
 
 pub struct VariantSelectorWidget<'a> {
-    variants: &'a [LoadState<OfflineVariant>],
+    variants: &'a [Resource<OfflineVariant>],
     selected_idx: usize,
 }
 
@@ -29,7 +29,7 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
             .iter()
             .enumerate()
             .map(|(i, v)| match v {
-                LoadState::Loaded(v) => {
+                Resource::Loaded(v) => {
                     if i == self.selected_idx {
                         let mut spans = v.types().spans_iter(&v.get_variant_name().to_ascii_uppercase());
                         for span in &mut spans {
@@ -40,8 +40,8 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
                         v.types().spans_iter(&v.get_variant_name())
                     }
                 }
-                LoadState::Failed(_) => vec![Span::raw(format!("failed: check log")).style(Color::Red)],
-                LoadState::Loading => vec![Span::raw("loading").style(Color::DarkGray)],
+                Resource::Loading(_) => vec![Span::raw("loading").style(Color::DarkGray)],
+                Resource::Failed(_) => vec![Span::raw(format!("failed: check log")).style(Color::Red)],
             })
             .collect();
         let variant_widths: Vec<_> = variants

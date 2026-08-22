@@ -5,7 +5,7 @@ use ratatui::{
     widgets::{Paragraph, Widget, Wrap},
 };
 
-use crate::offline::{AbilitiesLayout, LoadState, OfflineAbilities, OfflineAbility, OfflineVariant};
+use crate::offline::{OfflineAbilities, OfflineAbility, OfflineVariant, Resource};
 
 pub struct AbilitiesWidget<'a> {
     abilities: &'a OfflineAbilities,
@@ -21,20 +21,20 @@ impl<'a> AbilitiesWidget<'a> {
 
 impl<'a> Widget for AbilitiesWidget<'a> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        let lines = match self.abilities.layout() {
-            AbilitiesLayout::None => {
+        let lines = match self.abilities {
+            OfflineAbilities::None => {
                 vec![]
             }
-            AbilitiesLayout::P { primary } => {
+            OfflineAbilities::P { primary } => {
                 vec![get_paragraph(1, primary)]
             }
-            AbilitiesLayout::PS { primary, secondary } => {
+            OfflineAbilities::PS { primary, secondary } => {
                 vec![get_paragraph(1, primary), get_paragraph(2, secondary)]
             }
-            AbilitiesLayout::PH { primary, hidden } => {
+            OfflineAbilities::PH { primary, hidden } => {
                 vec![get_paragraph(1, primary), get_paragraph(3, hidden)]
             }
-            AbilitiesLayout::PSH {
+            OfflineAbilities::PSH {
                 primary,
                 secondary,
                 hidden,
@@ -54,7 +54,7 @@ impl<'a> Widget for AbilitiesWidget<'a> {
     }
 }
 
-fn get_paragraph(slot: usize, ability: &LoadState<OfflineAbility>) -> Option<Paragraph<'_>> {
+fn get_paragraph(slot: usize, ability: &Resource<OfflineAbility>) -> Option<Paragraph<'_>> {
     let number = Span::raw(match slot {
         1 => "  1.",
         2 => "  2.",

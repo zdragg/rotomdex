@@ -1,10 +1,12 @@
 mod species;
 use std::{
+    fmt,
     sync::Arc,
     task::{Context, Poll},
 };
 
-use futures::{StreamExt, future::LocalBoxFuture, stream::FuturesUnordered};
+use color_eyre::eyre::{Report, Result};
+use futures::future::LocalBoxFuture;
 use rustemon::client::RustemonClient;
 use web_time::Instant;
 
@@ -12,76 +14,31 @@ pub use species::*;
 
 use crate::HttpClient;
 
-type TaskSet<T> = FuturesUnordered<LocalBoxFuture<'static, T>>;
-
-#[derive(Debug, Default)]
-pub enum LoadState<T> {
-    #[default]
-    Loading,
-    Loaded(T),
-    Failed(color_eyre::eyre::Report),
-}
-
-impl<T> LoadState<T> {
-    pub fn as_loaded(&self) -> Option<&T> {
-        if let Self::Loaded(inner) = self {
-            Some(inner)
-        } else {
-            None
-        }
-    }
-
-    pub fn log_error(err: color_eyre::eyre::Report) -> Self {
-        log::error!("{err}");
-        Self::Failed(err)
-    }
-
-    pub fn is_loaded(&self) -> bool {
-        matches!(self, LoadState::Loaded(_))
-    }
-}
-
-enum FetchEvent {
-    Species { species: LoadState<OfflineSpecies> },
-}
-
 pub struct OfflinePokemon {
     name: String,
-
-    futures: TaskSet<FetchEvent>,
-    pkmn_client: Arc<RustemonClient>,
-    req_client: HttpClient,
-
+    species: Resource<OfflineSpecies>,
     benchmark: Instant,
-
-    species: LoadState<OfflineSpecies>,
-
-    fully_loaded: bool,
+    loaded: bool,
 }
 
 impl OfflinePokemon {
-    pub fn new(name: String, pkmn_client: Arc<RustemonClient>, req_client: HttpClient) -> Self {
-        let mut result = Self {
-            name,
-
-            futures: FuturesUnordered::new(),
-            pkmn_client,
-            req_client,
+    pub fn new(name: String, ctx: FetchContext) -> Self {
+        let result = Self {
+            name: name.clone(),
 
             benchmark: Instant::now(),
 
-            species: LoadState::Loading,
+            species: Resource::<OfflineSpecies>::fetch(name, ctx),
 
-            fully_loaded: false,
+            loaded: false,
         };
-        result.spawn_species_fetch();
         result
     }
 
-    pub async fn ping(&mut self) {
-        std::future::poll_fn(|cx| self.poll_load(cx)).await;
-        if !self.fully_loaded && self.is_fully_loaded() {
-            self.fully_loaded = true;
+    pub async fn poll(&mut self) {
+        std::future::poll_fn(|cx| self.species.poll(cx)).await;
+        if !self.loaded && self.is_loaded() {
+            self.loaded = true;
             log::info!(
                 "{} fully loaded in {}ms",
                 self.name,
@@ -90,56 +47,84 @@ impl OfflinePokemon {
         }
     }
 
-    fn poll_load(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Poll::Ready(Some(event)) = self.futures.poll_next_unpin(cx) {
-            self.handle_event(event);
-            return Poll::Ready(());
-        }
-
-        if let LoadState::Loaded(species) = &mut self.species
-            && species.poll_load(cx).is_ready()
-        {
-            return Poll::Ready(());
-        }
-
-        Poll::Pending
-    }
-
-    fn handle_event(&mut self, event: FetchEvent) {
-        match event {
-            FetchEvent::Species { species } => {
-                self.species = species;
-            }
-        }
-    }
-
-    pub fn species(&self) -> &LoadState<OfflineSpecies> {
+    pub fn species(&self) -> &Resource<OfflineSpecies> {
         &self.species
     }
 
-    fn spawn_species_fetch(&mut self) {
-        let name = self.name.clone();
-        log::info!("fetching species: {name}");
-        let pkmn_client = self.pkmn_client.clone();
-        let req_client = self.req_client.clone();
+    pub fn is_loaded(&self) -> bool {
+        self.species.is_loaded()
+    }
+}
 
-        self.futures.push(Box::pin(async move {
-            let species = match rustemon::pokemon::pokemon_species::get_by_name(&name, &pkmn_client).await {
-                Ok(species) => {
-                    let species = OfflineSpecies::new(species, pkmn_client, req_client);
-                    LoadState::Loaded(species)
-                }
-                Err(e) => LoadState::log_error(e.into()),
-            };
-            FetchEvent::Species { species }
-        }));
+#[derive(Clone)]
+pub struct FetchContext {
+    pub pkmn_client: Arc<RustemonClient>,
+    pub req_client: HttpClient,
+}
+
+pub trait Fetchable: Sized + 'static {
+    type Request: 'static;
+    async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self>;
+
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()>;
+
+    fn is_loaded(&self) -> bool;
+}
+
+pub enum Resource<T: Fetchable> {
+    Loading(LocalBoxFuture<'static, Result<T>>),
+    Loaded(T),
+    Failed(Report),
+}
+
+impl<T: Fetchable> Resource<T> {
+    pub fn fetch(request: T::Request, ctx: FetchContext) -> Self {
+        Self::Loading(Box::pin(T::fetch(request, ctx)))
     }
 
-    pub fn is_fully_loaded(&self) -> bool {
-        if let LoadState::Loaded(species) = &self.species {
-            species.is_fully_loaded()
+    pub fn as_loaded(&self) -> Option<&T> {
+        if let Self::Loaded(inner) = self {
+            Some(inner)
         } else {
-            false
+            None
+        }
+    }
+
+    pub fn is_loaded(&self) -> bool {
+        if let Self::Loaded(value) = self {
+            return value.is_loaded();
+        }
+        false
+    }
+
+    pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        let result = match self {
+            Self::Loading(future) => match future.as_mut().poll(cx) {
+                Poll::Ready(result) => result,
+                Poll::Pending => return Poll::Pending,
+            },
+            Self::Loaded(value) => return value.poll(cx),
+            _ => return Poll::Pending,
+        };
+
+        *self = match result {
+            Ok(value) => Self::Loaded(value),
+            Err(error) => {
+                log::error!("{error}");
+                Self::Failed(error)
+            }
+        };
+
+        Poll::Ready(())
+    }
+}
+
+impl<T: fmt::Debug + Fetchable> fmt::Debug for Resource<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Loading(_) => f.write_str("Loading"),
+            Self::Loaded(value) => f.debug_tuple("Loaded").field(value).finish(),
+            Self::Failed(error) => f.debug_tuple("Failed").field(error).finish(),
         }
     }
 }
