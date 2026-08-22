@@ -92,8 +92,6 @@ impl RotomDexCore {
         Self {
             pkmn: OfflinePokemon::new(pkmn_name, fetch_ctx.clone()),
             fetch_ctx,
-            req_client,
-            pkmn_client,
             input_state: InputState::default(),
             dex_state: VariantState::default(),
             bottom_text: bottom_text.into(),
