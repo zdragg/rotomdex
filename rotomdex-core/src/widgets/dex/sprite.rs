@@ -9,14 +9,14 @@ use ratatui::{
     },
 };
 
-use crate::offline::OfflineSprite;
+use crate::model::ModelSprite;
 
-pub struct SpriteWidget<'a> {
-    pub sprite: &'a OfflineSprite,
+pub(crate) struct SpriteWidget<'a> {
+    sprite: &'a ModelSprite,
 }
 
 impl<'a> SpriteWidget<'a> {
-    pub fn new(sprite: &'a OfflineSprite) -> Self {
+    pub(crate) fn new(sprite: &'a ModelSprite) -> Self {
         Self { sprite }
     }
 }

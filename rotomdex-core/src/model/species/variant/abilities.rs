@@ -9,32 +9,33 @@ use rustemon::{
     },
 };
 
-use crate::offline::{FetchContext, Fetchable, Resource};
+use crate::FetchContext;
+use crate::model::{Fetchable, Resource};
 
 #[derive(Debug)]
-pub enum OfflineAbilities {
+pub(crate) enum ModelAbilities {
     None, // Pokemon like Zygarde-Mega has no abilities in Z-A. Maybe it will have one later after introduced in Champions
     P {
-        primary: Resource<OfflineAbility>,
+        primary: Resource<ModelAbility>,
     },
     PS {
-        primary: Resource<OfflineAbility>,
-        secondary: Resource<OfflineAbility>,
+        primary: Resource<ModelAbility>,
+        secondary: Resource<ModelAbility>,
     },
     PH {
-        primary: Resource<OfflineAbility>,
-        hidden: Resource<OfflineAbility>,
+        primary: Resource<ModelAbility>,
+        hidden: Resource<ModelAbility>,
     },
     PSH {
-        primary: Resource<OfflineAbility>,
-        secondary: Resource<OfflineAbility>,
-        hidden: Resource<OfflineAbility>,
+        primary: Resource<ModelAbility>,
+        secondary: Resource<ModelAbility>,
+        hidden: Resource<ModelAbility>,
     },
 }
 
-impl OfflineAbilities {
-    pub fn new(abilities: Vec<PokemonAbility>, ctx: FetchContext) -> Result<Self> {
-        let mut slots: [Option<Resource<OfflineAbility>>; 3] = [const { None }; 3];
+impl ModelAbilities {
+    pub(crate) fn new(abilities: Vec<PokemonAbility>, ctx: FetchContext) -> Result<Self> {
+        let mut slots: [Option<Resource<ModelAbility>>; 3] = [const { None }; 3];
         for ability in abilities {
             let idx = if let 1..=3 = ability.slot {
                 (ability.slot - 1) as usize
@@ -44,7 +45,7 @@ impl OfflineAbilities {
 
             let api = ability.ability.ok_or_eyre("ability not found")?;
 
-            let resource = Resource::<OfflineAbility>::fetch(api, ctx.clone());
+            let resource = Resource::<ModelAbility>::fetch(api, ctx.clone());
 
             if slots[idx].replace(resource).is_some() {
                 return Err(eyre!("duplicate ability slot"));
@@ -66,14 +67,18 @@ impl OfflineAbilities {
         Ok(res)
     }
 
-    pub(super) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if self.iter_mut().any(|a| a.poll(cx).is_ready()) {
+    pub(crate) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        // bitwise OR for no short circuit
+        if self
+            .iter_mut()
+            .fold(false, |is_ready, a| is_ready | a.poll(cx).is_ready())
+        {
             return Poll::Ready(());
         }
         Poll::Pending
     }
 
-    fn iter_mut(&mut self) -> impl Iterator<Item = &mut Resource<OfflineAbility>> {
+    fn iter_mut(&mut self) -> impl Iterator<Item = &mut Resource<ModelAbility>> {
         match self {
             Self::None => [None, None, None],
 
@@ -93,7 +98,7 @@ impl OfflineAbilities {
         .flatten()
     }
 
-    pub fn is_loaded(&self) -> bool {
+    pub(crate) fn is_loaded(&self) -> bool {
         match self {
             Self::None => true,
             Self::P { primary } => primary.is_loaded(),
@@ -109,22 +114,22 @@ impl OfflineAbilities {
 }
 
 #[derive(Debug)]
-pub struct OfflineAbility {
+pub(crate) struct ModelAbility {
     name: String,
     desc: String,
 }
 
-impl OfflineAbility {
-    pub fn name(&self) -> &str {
+impl ModelAbility {
+    pub(crate) fn name(&self) -> &str {
         &self.name
     }
 
-    pub fn desc(&self) -> &str {
+    pub(crate) fn desc(&self) -> &str {
         &self.desc
     }
 }
 
-impl Fetchable for OfflineAbility {
+impl Fetchable for ModelAbility {
     type Request = NamedApiResource<Ability>;
     async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
         let ability = request.follow(&ctx.pkmn_client).await?;

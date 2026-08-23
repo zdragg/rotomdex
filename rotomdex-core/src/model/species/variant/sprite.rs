@@ -3,14 +3,15 @@ use std::task::{Context, Poll};
 use image::{DynamicImage, GenericImageView, Pixel};
 use rustemon::model::pokemon::PokemonSprites;
 
-use crate::offline::{FetchContext, Fetchable};
+use crate::FetchContext;
+use crate::model::Fetchable;
 
 #[derive(Debug, Clone)]
-pub struct OfflineSprite {
-    pub sprite: Option<DynamicImage>,
+pub(crate) struct ModelSprite {
+    pub(crate) sprite: Option<DynamicImage>,
 }
 
-impl Fetchable for OfflineSprite {
+impl Fetchable for ModelSprite {
     type Request = PokemonSprites;
     async fn fetch(request: Self::Request, ctx: FetchContext) -> color_eyre::eyre::Result<Self> {
         let Some(link) = request.front_default else {
@@ -37,7 +38,7 @@ impl Fetchable for OfflineSprite {
         let image_bytes = ctx.req_client.get(link).send().await?.bytes().await?;
         let image = crop(image::load_from_memory(&image_bytes)?);
 
-        Ok(OfflineSprite { sprite: Some(image) })
+        Ok(ModelSprite { sprite: Some(image) })
     }
 
     fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<()> {

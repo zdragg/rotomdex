@@ -2,17 +2,17 @@ use color_eyre::eyre::{Result, eyre};
 use rustemon::model::pokemon::PokemonStat;
 
 #[derive(Debug, Clone)]
-pub struct OfflineStats {
-    pub hp: u32,
-    pub atk: u32,
-    pub def: u32,
-    pub spa: u32,
-    pub spd: u32,
-    pub spe: u32,
+pub(crate) struct ModelStats {
+    pub(crate) hp: u32,
+    pub(crate) atk: u32,
+    pub(crate) def: u32,
+    pub(crate) spa: u32,
+    pub(crate) spd: u32,
+    pub(crate) spe: u32,
 }
 
-impl OfflineStats {
-    pub fn new(value: &[PokemonStat]) -> Result<Self> {
+impl ModelStats {
+    pub(crate) fn new(value: &[PokemonStat]) -> Result<Self> {
         let mut stats: [Option<u32>; 6] = [None; 6];
         for stat in value {
             let stat_index = match stat.stat.name.as_str() {
@@ -39,7 +39,7 @@ impl OfflineStats {
             spe,
         })
     }
-    pub fn highest(&self) -> u32 {
+    pub(crate) fn highest(&self) -> u32 {
         self.hp
             .max(self.atk)
             .max(self.def)

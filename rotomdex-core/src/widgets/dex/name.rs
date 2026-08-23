@@ -5,15 +5,15 @@ use ratatui::{
 };
 use tui_big_text::{BigText, PixelSize};
 
-use crate::offline::{OfflineSpecies, OfflineTypes, OfflineVariant};
+use crate::model::{ModelSpecies, ModelTypes, ModelVariant};
 
-pub struct NameWidget<'a> {
-    pub name: &'a str,
-    pub types: Option<&'a OfflineTypes>,
+pub(crate) struct NameWidget<'a> {
+    name: &'a str,
+    types: Option<&'a ModelTypes>,
 }
 
 impl<'a> NameWidget<'a> {
-    pub fn new(species: &'a OfflineSpecies, variant: Option<&'a OfflineVariant>) -> Self {
+    pub(crate) fn new(species: &'a ModelSpecies, variant: Option<&'a ModelVariant>) -> Self {
         Self {
             name: &species.inner().name,
             types: variant.map(|v| v.types()),

@@ -1,4 +1,5 @@
 mod variant;
+pub(crate) use variant::*;
 
 use std::task::{Context, Poll};
 
@@ -6,24 +7,23 @@ use color_eyre::eyre::Result;
 use ratatui::style::Color;
 use rustemon::model::pokemon::PokemonSpecies;
 
-pub use variant::*;
-
-use crate::offline::{FetchContext, Fetchable, Resource};
+use crate::FetchContext;
+use crate::model::{Fetchable, Resource};
 
 #[derive(Debug)]
-pub struct OfflineSpecies {
-    variants: Vec<Resource<OfflineVariant>>,
+pub(crate) struct ModelSpecies {
+    variants: Vec<Resource<ModelVariant>>,
     inner: PokemonSpecies,
 }
 
-impl Fetchable for OfflineSpecies {
+impl Fetchable for ModelSpecies {
     type Request = String;
     async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
         let species = rustemon::pokemon::pokemon_species::get_by_name(&request, &ctx.pkmn_client).await?;
         let variants: Vec<_> = species
             .varieties
             .iter()
-            .map(|v| Resource::<OfflineVariant>::fetch(v.pokemon.clone(), ctx.clone()))
+            .map(|v| Resource::<ModelVariant>::fetch(v.pokemon.clone(), ctx.clone()))
             .collect();
         Ok(Self {
             variants,
@@ -32,7 +32,12 @@ impl Fetchable for OfflineSpecies {
     }
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if self.variants.iter_mut().any(|variant| variant.poll(cx).is_ready()) {
+        // bitwise OR for no short circuit
+        if self
+            .variants
+            .iter_mut()
+            .fold(false, |is_ready, variant| is_ready | variant.poll(cx).is_ready())
+        {
             return Poll::Ready(());
         }
         Poll::Pending
@@ -43,20 +48,20 @@ impl Fetchable for OfflineSpecies {
     }
 }
 
-impl OfflineSpecies {
-    pub fn inner(&self) -> &PokemonSpecies {
+impl ModelSpecies {
+    pub(crate) fn inner(&self) -> &PokemonSpecies {
         &self.inner
     }
 
-    pub fn variants_cnt(&self) -> usize {
+    pub(crate) fn variants_cnt(&self) -> usize {
         self.variants.len()
     }
 
-    pub fn variants(&self) -> &[Resource<OfflineVariant>] {
+    pub(crate) fn variants(&self) -> &[Resource<ModelVariant>] {
         &self.variants
     }
 
-    pub fn get_ratatui_color(&self) -> Color {
+    pub(crate) fn get_ratatui_color(&self) -> Color {
         match self.inner.color.name.as_str() {
             "black" => Color::Black,
             "blue" => Color::Blue,

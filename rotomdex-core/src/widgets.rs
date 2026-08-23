@@ -1,4 +1,4 @@
 mod dex;
-pub use dex::*;
+pub(crate) use dex::*;
 mod input;
-pub use input::*;
+pub(crate) use input::*;

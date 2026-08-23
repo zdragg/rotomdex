@@ -4,15 +4,15 @@ use ratatui::{
     widgets::{Bar, BarChart, Widget},
 };
 
-use crate::offline::{OfflineSpecies, OfflineStats, OfflineVariant};
+use crate::model::{ModelSpecies, ModelStats, ModelVariant};
 
-pub struct StatsWidget<'a> {
-    stats: &'a OfflineStats,
+pub(crate) struct StatsWidget<'a> {
+    stats: &'a ModelStats,
     highest: u32,
 }
 
 impl<'a> StatsWidget<'a> {
-    pub fn new(variant: &'a OfflineVariant, species: &'a OfflineSpecies) -> Self {
+    pub(crate) fn new(variant: &'a ModelVariant, species: &'a ModelSpecies) -> Self {
         let highest = species.variants().iter().fold(0, |acc, v| {
             if let Some(v) = v.as_loaded() {
                 acc.max(v.stats().highest())

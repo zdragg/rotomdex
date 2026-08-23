@@ -5,15 +5,15 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
-use crate::offline::{OfflineSpecies, OfflineVariant, Resource};
+use crate::model::{ModelSpecies, ModelVariant, Resource};
 
-pub struct VariantSelectorWidget<'a> {
-    variants: &'a [Resource<OfflineVariant>],
+pub(crate) struct VariantSelectorWidget<'a> {
+    variants: &'a [Resource<ModelVariant>],
     selected_idx: usize,
 }
 
 impl<'a> VariantSelectorWidget<'a> {
-    pub fn new(pkmn: &'a OfflineSpecies, selected_idx: usize) -> Self {
+    pub(crate) fn new(pkmn: &'a ModelSpecies, selected_idx: usize) -> Self {
         Self {
             variants: pkmn.variants(),
             selected_idx,

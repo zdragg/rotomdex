@@ -4,30 +4,30 @@ use ratatui::{
     widgets::{Block, Clear, Paragraph, StatefulWidget, Widget},
 };
 
-pub struct InputWidget;
+pub(crate) struct InputWidget;
 
 #[derive(Default)]
-pub struct InputState {
+pub(crate) struct InputState {
     input: String,
 }
 
 impl InputState {
     /// Extracts the stored String and resets.
-    pub fn take(&mut self) -> String {
+    pub(crate) fn take(&mut self) -> String {
         std::mem::take(&mut self.input)
     }
 
     /// Remove one character.
-    pub fn backspace(&mut self) {
+    pub(crate) fn backspace(&mut self) {
         self.input.pop();
     }
 
     /// Input one character.
-    pub fn handle_input(&mut self, ch: char) {
+    pub(crate) fn handle_input(&mut self, ch: char) {
         self.input.push(ch);
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.input.is_empty()
     }
 }

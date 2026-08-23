@@ -13,37 +13,37 @@ use ratatui::{
 };
 
 use crate::{
-    offline::OfflinePokemon,
+    model::ModelPokemon,
     widgets::dex::{
         ability::AbilitiesWidget, name::NameWidget, sprite::SpriteWidget, stats::StatsWidget,
         variant_selector::VariantSelectorWidget,
     },
 };
 
-pub struct RotomDexWidget<'a> {
-    pub pkmn: &'a OfflinePokemon,
-    pub bottom_text: &'a str,
+pub(crate) struct RotomDexWidget<'a> {
+    pkmn: &'a ModelPokemon,
+    bottom_text: &'a str,
 }
 
 impl<'a> RotomDexWidget<'a> {
-    pub fn new(pkmn: &'a OfflinePokemon, bottom_text: &'a str) -> Self {
+    pub(crate) fn new(pkmn: &'a ModelPokemon, bottom_text: &'a str) -> Self {
         Self { pkmn, bottom_text }
     }
 }
 
 #[derive(Default)]
-pub struct VariantState {
-    pub variant_cursor: isize,
+pub(crate) struct VariantState {
+    variant_cursor: isize,
 }
 
 impl VariantState {
-    pub fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.variant_cursor = 0;
     }
-    pub fn next(&mut self) {
+    pub(crate) fn next(&mut self) {
         self.variant_cursor = self.variant_cursor.wrapping_add(1);
     }
-    pub fn prev(&mut self) {
+    pub(crate) fn prev(&mut self) {
         self.variant_cursor = self.variant_cursor.wrapping_sub(1);
     }
 }

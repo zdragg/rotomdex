@@ -40,7 +40,7 @@ fn setup_logs(mut log_dir: PathBuf) -> Result<()> {
 }
 
 async fn run(cache_dir: PathBuf) -> Result<()> {
-    let mut core = RotomDexCore::new(
+    let mut core = RotomDexCore::new_with_cache(
         cache_dir,
         "← / → to select variant ・ Type anything to search ・ Esc / Ctrl-C to quit",
     );

@@ -4,13 +4,29 @@ use ratatui::text::Span;
 use rustemon::model::pokemon::PokemonType;
 
 #[derive(Clone, Debug)]
-pub struct OfflineTypes {
-    pub primary: OfflineType,
-    pub secondary: Option<OfflineType>,
+pub(crate) struct ModelTypes {
+    pub(crate) primary: ModelType,
+    pub(crate) secondary: Option<ModelType>,
 }
 
-impl OfflineTypes {
-    pub fn spans_iter(&self, name: &str) -> Vec<Span<'_>> {
+impl ModelTypes {
+    pub(crate) fn new(value: &[PokemonType]) -> Result<Self> {
+        let primary = value
+            .iter()
+            .find(|model| model.slot == 1)
+            .map(ModelType::new)
+            .transpose()?
+            .ok_or_else(|| eyre!("no primary type found"))?;
+        let secondary = value
+            .iter()
+            .find(|model| model.slot == 2)
+            .map(ModelType::new)
+            .transpose()?;
+
+        Ok(Self { primary, secondary })
+    }
+
+    pub(crate) fn spans_iter(&self, name: &str) -> Vec<Span<'_>> {
         let mut builder = GradientBuilder::new();
         let grad = if let Some(secondary) = &self.secondary {
             builder.html_colors(&[self.primary.color(), secondary.color()])
@@ -37,26 +53,8 @@ impl OfflineTypes {
     }
 }
 
-impl OfflineTypes {
-    pub fn new(value: &[PokemonType]) -> Result<Self> {
-        let primary = value
-            .iter()
-            .find(|model| model.slot == 1)
-            .map(OfflineType::new)
-            .transpose()?
-            .ok_or_else(|| eyre!("no primary type found"))?;
-        let secondary = value
-            .iter()
-            .find(|model| model.slot == 2)
-            .map(OfflineType::new)
-            .transpose()?;
-
-        Ok(Self { primary, secondary })
-    }
-}
-
 #[derive(Clone, Debug)]
-pub enum OfflineType {
+pub(crate) enum ModelType {
     Normal,
     Fire,
     Water,
@@ -77,8 +75,8 @@ pub enum OfflineType {
     Fairy,
 }
 
-impl OfflineType {
-    fn new(value: &PokemonType) -> Result<Self> {
+impl ModelType {
+    pub(crate) fn new(value: &PokemonType) -> Result<Self> {
         let type_ = match value.type_.name.as_str() {
             "normal" => Self::Normal,
             "fire" => Self::Fire,
@@ -104,8 +102,8 @@ impl OfflineType {
     }
 }
 
-impl OfflineType {
-    pub const fn color(&self) -> &'static str {
+impl ModelType {
+    pub(crate) const fn color(&self) -> &'static str {
         // Source: https://bulbapedia.bulbagarden.net/wiki/Help%3AColor_templates#Video_game_types
         match self {
             Self::Normal => "#9FA19F",

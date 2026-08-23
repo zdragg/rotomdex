@@ -1,41 +1,40 @@
 mod species;
+pub(crate) use species::*;
+
 use std::{
     fmt,
-    sync::Arc,
     task::{Context, Poll},
 };
 
 use color_eyre::eyre::{Report, Result};
 use futures::future::LocalBoxFuture;
-use rustemon::client::RustemonClient;
 use web_time::Instant;
 
-pub use species::*;
+use crate::FetchContext;
 
-use crate::HttpClient;
-
-pub struct OfflinePokemon {
+pub(crate) struct ModelPokemon {
     name: String,
-    species: Resource<OfflineSpecies>,
+    species: Resource<ModelSpecies>,
     benchmark: Instant,
     loaded: bool,
 }
 
-impl OfflinePokemon {
-    pub fn new(name: String, ctx: FetchContext) -> Self {
+impl ModelPokemon {
+    pub(crate) fn new(name: impl Into<String>, ctx: FetchContext) -> Self {
+        let name = name.into();
         let result = Self {
             name: name.clone(),
 
             benchmark: Instant::now(),
 
-            species: Resource::<OfflineSpecies>::fetch(name, ctx),
+            species: Resource::<ModelSpecies>::fetch(name, ctx),
 
             loaded: false,
         };
         result
     }
 
-    pub async fn poll(&mut self) {
+    pub(crate) async fn poll(&mut self) {
         std::future::poll_fn(|cx| self.species.poll(cx)).await;
         if !self.loaded && self.is_loaded() {
             self.loaded = true;
@@ -47,22 +46,16 @@ impl OfflinePokemon {
         }
     }
 
-    pub fn species(&self) -> &Resource<OfflineSpecies> {
+    pub(crate) fn species(&self) -> &Resource<ModelSpecies> {
         &self.species
     }
 
-    pub fn is_loaded(&self) -> bool {
+    pub(crate) fn is_loaded(&self) -> bool {
         self.species.is_loaded()
     }
 }
 
-#[derive(Clone)]
-pub struct FetchContext {
-    pub pkmn_client: Arc<RustemonClient>,
-    pub req_client: HttpClient,
-}
-
-pub trait Fetchable: Sized + 'static {
+pub(crate) trait Fetchable: Sized + 'static {
     type Request: 'static;
     async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self>;
 
@@ -71,18 +64,18 @@ pub trait Fetchable: Sized + 'static {
     fn is_loaded(&self) -> bool;
 }
 
-pub enum Resource<T: Fetchable> {
+pub(crate) enum Resource<T: Fetchable> {
     Loading(LocalBoxFuture<'static, Result<T>>),
     Loaded(T),
     Failed(Report),
 }
 
 impl<T: Fetchable> Resource<T> {
-    pub fn fetch(request: T::Request, ctx: FetchContext) -> Self {
+    pub(crate) fn fetch(request: T::Request, ctx: FetchContext) -> Self {
         Self::Loading(Box::pin(T::fetch(request, ctx)))
     }
 
-    pub fn as_loaded(&self) -> Option<&T> {
+    pub(crate) fn as_loaded(&self) -> Option<&T> {
         if let Self::Loaded(inner) = self {
             Some(inner)
         } else {
@@ -90,14 +83,14 @@ impl<T: Fetchable> Resource<T> {
         }
     }
 
-    pub fn is_loaded(&self) -> bool {
+    pub(crate) fn is_loaded(&self) -> bool {
         if let Self::Loaded(value) = self {
             return value.is_loaded();
         }
         false
     }
 
-    pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+    pub(crate) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         let result = match self {
             Self::Loading(future) => match future.as_mut().poll(cx) {
                 Poll::Ready(result) => result,
