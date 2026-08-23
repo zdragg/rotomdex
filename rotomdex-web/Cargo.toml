@@ -9,6 +9,6 @@ console_log = { version = "1.1.0", features = ["color"] }
 futures = "0.3.34"
 log = { version = "0.4.33", features = ["std"] }
 ratzilla = "0.3.1"
-rotomdex-core = { path = "../rotomdex-core", default-features = false }
+rotomdex-core = { path = "../rotomdex-core" }
 wasm-bindgen-futures = "0.4.77"
 web-sys = { version = "0.3.104", features = ["FontFaceSet"] }

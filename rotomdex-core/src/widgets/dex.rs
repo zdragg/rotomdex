@@ -4,6 +4,8 @@ mod sprite;
 mod stats;
 mod variant_selector;
 
+use std::time::{Duration, Instant};
+
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -31,12 +33,18 @@ impl<'a> RotomDexWidget<'a> {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct VariantState {
+pub(crate) struct RotomDexState {
+    timer: Instant,
     variant_cursor: isize,
 }
 
-impl VariantState {
+impl RotomDexState {
+    pub(crate) fn new() -> Self {
+        Self {
+            timer: Instant::now(),
+            variant_cursor: 0,
+        }
+    }
     pub(crate) fn reset(&mut self) {
         self.variant_cursor = 0;
     }
@@ -46,10 +54,13 @@ impl VariantState {
     pub(crate) fn prev(&mut self) {
         self.variant_cursor = self.variant_cursor.wrapping_sub(1);
     }
+    pub(crate) fn elapsed(&self) -> Duration {
+        self.timer.elapsed()
+    }
 }
 
 impl<'a> StatefulWidget for RotomDexWidget<'a> {
-    type State = VariantState;
+    type State = RotomDexState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         // Load all the shit
         let species = self.pkmn.species().as_loaded();
@@ -87,7 +98,9 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
         // Sprite
         let [sprite_area, _padding, stats_area] =
             Layout::vertical([Constraint::Percentage(70), Constraint::Length(1), Constraint::Fill(1)]).areas(left_area);
-        sprite.map(SpriteWidget::new).render(sprite_area, buf);
+        sprite
+            .map(|sprite| SpriteWidget::new(sprite, state.elapsed()))
+            .render(sprite_area, buf);
         variant
             .map(|variant| StatsWidget::new(variant, species.unwrap())) // Species has to exist if variant exists
             .render(stats_area, buf);

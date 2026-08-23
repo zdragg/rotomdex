@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, time::Duration};
 
 use color_eyre::eyre::Result;
 use crossterm::event::{Event, EventStream, KeyCode, KeyModifiers};
@@ -39,11 +39,13 @@ fn setup_logs(mut log_dir: PathBuf) -> Result<()> {
     Ok(())
 }
 
+const FRAMES_PER_SECOND: f32 = 15.0;
 async fn run(cache_dir: PathBuf) -> Result<()> {
     let mut core = RotomDexCore::new_with_cache(
         cache_dir,
         "← / → to select variant ・ Type anything to search ・ Esc / Ctrl-C to quit",
     );
+    let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
     let mut terminal = ratatui::init();
     let mut events = EventStream::new();
     loop {
@@ -54,7 +56,8 @@ async fn run(cache_dir: PathBuf) -> Result<()> {
                     AppEvent::Action(action) => core.handle_action(action),
                 }
             }
-            () = core.poll_pkmn() => {}
+            _ = core.poll_pkmn() => {}
+            _ = interval.tick() => {}
         }
 
         terminal.draw(|frame| core.render(frame))?;

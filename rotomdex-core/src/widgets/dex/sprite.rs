@@ -1,4 +1,9 @@
-use image::{DynamicImage, GenericImageView, Pixel, imageops::FilterType};
+use std::time::Duration;
+
+use image::{
+    Pixel, RgbaImage,
+    imageops::{self, FilterType},
+};
 use ratatui::{
     prelude::*,
     style::Color,
@@ -13,17 +18,23 @@ use crate::model::ModelSprite;
 
 pub(crate) struct SpriteWidget<'a> {
     sprite: &'a ModelSprite,
+    elapsed: Duration,
 }
 
 impl<'a> SpriteWidget<'a> {
-    pub(crate) fn new(sprite: &'a ModelSprite) -> Self {
-        Self { sprite }
+    pub(crate) fn new(sprite: &'a ModelSprite, elapsed: Duration) -> Self {
+        Self { sprite, elapsed }
     }
 }
 
 impl<'a> Widget for SpriteWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let Some(sprite) = &self.sprite.sprite else {
+        let Some(sprite) = self
+            .sprite
+            .animated()
+            .and_then(|anim| Some(anim.frame_at(self.elapsed)))
+            .or(self.sprite.image())
+        else {
             return; // TODO: handle missing sprite case. maybe render some kind of image that shows that there is no sprite
         };
         let side_len = area.width.min(area.height.saturating_mul(2));
@@ -33,8 +44,8 @@ impl<'a> Widget for SpriteWidget<'a> {
         }
 
         let area = area.centered(Constraint::Length(side_len), Constraint::Length(side_len / 2));
-        let sprite = sprite.resize_exact(side_len.into(), side_len.into(), FilterType::Nearest);
-        let max = f64::from(side_len - 1);
+        let sprite: RgbaImage = imageops::resize(sprite, side_len.into(), side_len.into(), FilterType::Nearest);
+        let max = (side_len - 1) as f64;
 
         Canvas::default()
             .x_bounds([0.0, max])
@@ -47,13 +58,13 @@ impl<'a> Widget for SpriteWidget<'a> {
     }
 }
 
-struct RotomDexSprite<'a>(&'a DynamicImage);
+struct RotomDexSprite<'a>(&'a RgbaImage);
 
 impl<'a> Shape for RotomDexSprite<'a> {
     fn draw(&self, painter: &mut Painter) {
         let height = self.0.height();
 
-        for (x, y, color) in self.0.pixels() {
+        for (x, y, color) in self.0.enumerate_pixels() {
             if color.alpha() < 128 {
                 continue;
             }

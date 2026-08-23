@@ -12,7 +12,7 @@ use rustemon::client::RustemonClient;
 
 use crate::{
     model::ModelPokemon,
-    widgets::{InputState, InputWidget, RotomDexWidget, VariantState},
+    widgets::{InputState, InputWidget, RotomDexState, RotomDexWidget},
 };
 
 pub enum Action {
@@ -29,7 +29,7 @@ pub struct RotomDexCore {
 
     pkmn: ModelPokemon,
 
-    dex_state: VariantState,
+    dex_state: RotomDexState,
     input_state: InputState,
     bottom_text: String,
 }
@@ -41,7 +41,7 @@ impl RotomDexCore {
             pkmn: ModelPokemon::new("rotom", fetch_ctx.clone()),
             fetch_ctx,
             input_state: InputState::default(),
-            dex_state: VariantState::default(),
+            dex_state: RotomDexState::new(),
             bottom_text: bottom_text.into(),
         }
     }
@@ -53,7 +53,7 @@ impl RotomDexCore {
             pkmn: ModelPokemon::new("rotom", fetch_ctx.clone()),
             fetch_ctx,
             input_state: InputState::default(),
-            dex_state: VariantState::default(),
+            dex_state: RotomDexState::new(),
             bottom_text: bottom_text.into(),
         }
     }
