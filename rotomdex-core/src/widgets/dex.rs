@@ -4,7 +4,7 @@ mod sprite;
 mod stats;
 mod variant_selector;
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use ratatui::{
     buffer::Buffer,
@@ -13,6 +13,7 @@ use ratatui::{
     text::Line,
     widgets::{Block, StatefulWidget, Widget},
 };
+use web_time::Instant;
 
 use crate::{
     model::ModelPokemon,
