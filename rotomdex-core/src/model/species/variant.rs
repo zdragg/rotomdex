@@ -9,14 +9,14 @@ pub(crate) use types::*;
 
 use std::task::{Context, Poll};
 
+use crate::FetchContext;
+use crate::model::{Fetchable, Resource};
 use color_eyre::eyre::Result;
 use rustemon::{
     Follow,
     model::{pokemon::Pokemon, resource::NamedApiResource},
 };
-
-use crate::FetchContext;
-use crate::model::{Fetchable, Resource};
+use tracing::Span;
 
 #[derive(Debug)]
 pub(crate) struct ModelVariant {
@@ -43,6 +43,10 @@ impl Fetchable for ModelVariant {
         Ok(result)
     }
 
+    fn is_loaded(&self) -> bool {
+        self.sprite.is_loaded() && self.abilities.is_loaded()
+    }
+
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         // bitwise OR for no short circuit
         if self.sprite.poll(cx).is_ready() | self.abilities.poll(cx).is_ready() {
@@ -51,8 +55,8 @@ impl Fetchable for ModelVariant {
         Poll::Pending
     }
 
-    fn is_loaded(&self) -> bool {
-        self.sprite.is_loaded() && self.abilities.is_loaded()
+    fn fetch_span(request: &Self::Request) -> Span {
+        tracing::info_span!("fetch_variant", variant = %request.name)
     }
 }
 
@@ -62,8 +66,7 @@ impl ModelVariant {
     }
 
     pub(crate) fn get_variant_name(&self) -> &str {
-        &self
-            .inner
+        self.inner
             .name
             .strip_prefix(&format!("{}-", self.inner.species.name))
             .unwrap_or("base")

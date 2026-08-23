@@ -37,11 +37,11 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
                         }
                         spans
                     } else {
-                        v.types().spans_iter(&v.get_variant_name())
+                        v.types().spans_iter(v.get_variant_name())
                     }
                 }
                 Resource::Loading(_) => vec![Span::raw("loading").style(Color::DarkGray)],
-                Resource::Failed(_) => vec![Span::raw(format!("failed: check log")).style(Color::Red)],
+                Resource::Failed(_) => vec![Span::raw("failed: check log").style(Color::Red)],
             })
             .collect();
         let variant_widths: Vec<_> = variants
@@ -68,11 +68,9 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
         let last_center = 2 * line_width - variant_widths[variant_widths.len() - 1];
         let center_range = last_center - first_center;
         let scroll_range = line_width - usize::from(area.width);
-        let scroll = if center_range == 0 {
-            0
-        } else {
-            (scroll_range * (selected_center - first_center) + center_range / 2) / center_range
-        };
+        let scroll = (scroll_range * (selected_center - first_center) + center_range / 2)
+            .checked_div(center_range)
+            .unwrap_or(0);
 
         Paragraph::new(line)
             .scroll((0, scroll.min(usize::from(u16::MAX)) as u16))

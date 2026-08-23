@@ -2,13 +2,13 @@ use std::io::Cursor;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
+use crate::FetchContext;
+use crate::model::Fetchable;
 use color_eyre::eyre::Result;
 use image::codecs::gif;
 use image::{AnimationDecoder, Frame, RgbaImage, imageops};
 use rustemon::model::pokemon::PokemonSprites;
-
-use crate::FetchContext;
-use crate::model::Fetchable;
+use tracing::{Instrument, Span};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ModelSprite {
@@ -19,40 +19,55 @@ pub(crate) struct ModelSprite {
 impl Fetchable for ModelSprite {
     type Request = PokemonSprites;
     async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
-        let image = {
+        let image: Result<Option<RgbaImage>> = async {
             if let Some(image_link) = request.front_default {
                 let image_bytes = ctx.req_client.get(image_link).send().await?.bytes().await?;
                 let image = image::load_from_memory(&image_bytes)?.into_rgba8();
-                Some(if let Some(bounds) = bbox(&image) {
+                Ok(Some(if let Some(bounds) = bbox(&image) {
                     crop(&image, bounds)
                 } else {
                     image
-                })
+                }))
             } else {
-                // log::warn!("sprite not found: {}", request.); TODO: somehow get name here
-                None
+                tracing::warn!("no sprite found");
+                Ok(None)
             }
-        };
-        let animated = if let Some(animated_link) = request.other.showdown.front_default {
-            let bytes = ctx.req_client.get(animated_link).send().await?.bytes().await?;
+        }
+        .instrument(tracing::info_span!("fetch_static"))
+        .await;
 
-            let frames = gif::GifDecoder::new(Cursor::new(bytes))?
-                .into_frames()
-                .collect_frames()?;
-            Some(frames.into())
-        } else {
-            None
-        };
+        let animated: Result<Option<ModelGif>> = async {
+            if let Some(animated_link) = request.other.showdown.front_default {
+                let bytes = ctx.req_client.get(animated_link).send().await?.bytes().await?;
 
-        Ok(ModelSprite { image, animated })
+                let frames = gif::GifDecoder::new(Cursor::new(bytes))?
+                    .into_frames()
+                    .collect_frames()?;
+                Ok(Some(frames.into()))
+            } else {
+                tracing::warn!("no sprite found");
+                Ok(None)
+            }
+        }
+        .instrument(tracing::info_span!("fetch_animated"))
+        .await;
+
+        Ok(ModelSprite {
+            image: image?,
+            animated: animated?,
+        })
+    }
+
+    fn is_loaded(&self) -> bool {
+        true
     }
 
     fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<()> {
         Poll::Pending
     }
 
-    fn is_loaded(&self) -> bool {
-        true
+    fn fetch_span(_request: &Self::Request) -> Span {
+        tracing::info_span!("fetch_sprite")
     }
 }
 impl ModelSprite {

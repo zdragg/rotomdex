@@ -32,7 +32,7 @@ impl<'a> Widget for SpriteWidget<'a> {
         let Some(sprite) = self
             .sprite
             .animated()
-            .and_then(|anim| Some(anim.frame_at(self.elapsed)))
+            .map(|anim| anim.frame_at(self.elapsed))
             .or(self.sprite.image())
         else {
             return; // TODO: handle missing sprite case. maybe render some kind of image that shows that there is no sprite

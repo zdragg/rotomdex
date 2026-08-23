@@ -8,6 +8,7 @@ use std::{
 
 use color_eyre::eyre::{Report, Result};
 use futures::future::LocalBoxFuture;
+use tracing::{Instrument, Span};
 use web_time::Instant;
 
 use crate::FetchContext;
@@ -22,7 +23,7 @@ pub(crate) struct ModelPokemon {
 impl ModelPokemon {
     pub(crate) fn new(name: impl Into<String>, ctx: FetchContext) -> Self {
         let name = name.into();
-        let result = Self {
+        Self {
             name: name.clone(),
 
             benchmark: Instant::now(),
@@ -30,15 +31,14 @@ impl ModelPokemon {
             species: Resource::<ModelSpecies>::fetch(name, ctx),
 
             loaded: false,
-        };
-        result
+        }
     }
 
     pub(crate) async fn poll(&mut self) {
         std::future::poll_fn(|cx| self.species.poll(cx)).await;
         if !self.loaded && self.is_loaded() {
             self.loaded = true;
-            log::info!(
+            tracing::info!(
                 "{} fully loaded in {}ms",
                 self.name,
                 self.benchmark.elapsed().as_millis()
@@ -59,9 +59,11 @@ pub(crate) trait Fetchable: Sized + 'static {
     type Request: 'static;
     async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self>;
 
+    fn is_loaded(&self) -> bool;
+
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()>;
 
-    fn is_loaded(&self) -> bool;
+    fn fetch_span(request: &Self::Request) -> Span;
 }
 
 pub(crate) enum Resource<T: Fetchable> {
@@ -72,15 +74,18 @@ pub(crate) enum Resource<T: Fetchable> {
 
 impl<T: Fetchable> Resource<T> {
     pub(crate) fn fetch(request: T::Request, ctx: FetchContext) -> Self {
-        Self::Loading(Box::pin(T::fetch(request, ctx)))
-    }
+        let span = T::fetch_span(&request);
 
-    pub(crate) fn as_loaded(&self) -> Option<&T> {
-        if let Self::Loaded(inner) = self {
-            Some(inner)
-        } else {
-            None
+        let future = async move {
+            let result = T::fetch(request, ctx).await;
+            if let Err(error) = &result {
+                tracing::error!(error = %error, "resource fetch failed");
+            }
+            result
         }
+        .instrument(span);
+
+        Self::Loading(Box::pin(future))
     }
 
     pub(crate) fn is_loaded(&self) -> bool {
@@ -102,13 +107,18 @@ impl<T: Fetchable> Resource<T> {
 
         *self = match result {
             Ok(value) => Self::Loaded(value),
-            Err(error) => {
-                log::error!("{error}");
-                Self::Failed(error)
-            }
+            Err(error) => Self::Failed(error),
         };
 
         Poll::Ready(())
+    }
+
+    pub(crate) fn as_loaded(&self) -> Option<&T> {
+        if let Self::Loaded(inner) = self {
+            Some(inner)
+        } else {
+            None
+        }
     }
 }
 

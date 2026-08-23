@@ -6,6 +6,7 @@ use std::task::{Context, Poll};
 use color_eyre::eyre::Result;
 use ratatui::style::Color;
 use rustemon::model::pokemon::PokemonSpecies;
+use tracing::Span;
 
 use crate::FetchContext;
 use crate::model::{Fetchable, Resource};
@@ -31,6 +32,10 @@ impl Fetchable for ModelSpecies {
         })
     }
 
+    fn is_loaded(&self) -> bool {
+        self.variants.iter().all(|variant| variant.is_loaded())
+    }
+
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         // bitwise OR for no short circuit
         if self
@@ -43,8 +48,8 @@ impl Fetchable for ModelSpecies {
         Poll::Pending
     }
 
-    fn is_loaded(&self) -> bool {
-        self.variants.iter().all(|variant| variant.is_loaded())
+    fn fetch_span(request: &Self::Request) -> Span {
+        tracing::info_span!("fetch_species", species = %request)
     }
 }
 

@@ -22,7 +22,7 @@ impl<'a> StatsWidget<'a> {
         });
         Self {
             stats: variant.stats(),
-            highest: highest,
+            highest,
         }
     }
 }

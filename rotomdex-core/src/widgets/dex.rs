@@ -74,7 +74,7 @@ impl<'a> StatefulWidget for RotomDexWidget<'a> {
             }
             None => None,
         };
-        let sprite = variant.map(|v| v.sprite().as_loaded()).flatten();
+        let sprite = variant.and_then(|v| v.sprite().as_loaded());
 
         let block = Block::bordered()
             .border_style(if let Some(species) = species {

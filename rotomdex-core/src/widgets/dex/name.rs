@@ -21,7 +21,7 @@ impl<'a> NameWidget<'a> {
     }
 }
 
-impl<'a> Widget for NameWidget<'_> {
+impl Widget for NameWidget<'_> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
         let line = if let Some(types) = self.types {
             Line::from(types.spans_iter(&self.name.to_uppercase()))

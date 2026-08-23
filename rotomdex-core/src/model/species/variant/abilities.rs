@@ -1,5 +1,7 @@
 use std::task::{Context, Poll};
 
+use crate::FetchContext;
+use crate::model::{Fetchable, Resource};
 use color_eyre::eyre::{OptionExt, Result, eyre};
 use rustemon::{
     Follow,
@@ -8,10 +10,9 @@ use rustemon::{
         resource::NamedApiResource,
     },
 };
+use tracing::Span;
 
-use crate::FetchContext;
-use crate::model::{Fetchable, Resource};
-
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug)]
 pub(crate) enum ModelAbilities {
     None, // Pokemon like Zygarde-Mega has no abilities in Z-A. Maybe it will have one later after introduced in Champions
@@ -53,7 +54,10 @@ impl ModelAbilities {
         }
 
         let res = match slots {
-            [None, None, None] => Self::None,
+            [None, None, None] => {
+                tracing::warn!("no ability found");
+                Self::None
+            }
             [Some(primary), None, None] => Self::P { primary },
             [Some(primary), Some(secondary), None] => Self::PS { primary, secondary },
             [Some(primary), None, Some(hidden)] => Self::PH { primary, hidden },
@@ -160,11 +164,15 @@ impl Fetchable for ModelAbility {
         Ok(Self { name, desc })
     }
 
+    fn is_loaded(&self) -> bool {
+        true
+    }
+
     fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<()> {
         Poll::Pending
     }
 
-    fn is_loaded(&self) -> bool {
-        true
+    fn fetch_span(request: &Self::Request) -> Span {
+        tracing::info_span!("fetch_ability", ability = %request.name)
     }
 }

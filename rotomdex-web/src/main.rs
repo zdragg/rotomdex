@@ -1,8 +1,5 @@
-use std::{cell::RefCell, rc::Rc};
-
 use color_eyre::eyre::{Result, eyre};
 use futures::FutureExt;
-use log::Level;
 use ratzilla::{
     WebRenderer,
     event::KeyCode,
@@ -14,6 +11,8 @@ use ratzilla::{
     },
 };
 use rotomdex_core::{Action, RotomDexCore};
+use std::{cell::RefCell, rc::Rc};
+use tracing_web::MakeWebConsoleWriter;
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 
 use crate::backend::MeasuredDomBackend;
@@ -21,13 +20,27 @@ use crate::backend::MeasuredDomBackend;
 mod backend;
 
 fn main() -> Result<()> {
-    console_log::init_with_level(Level::Info)?;
+    setup_logs()?;
 
     spawn_local(async {
         if let Err(error) = run().await {
-            log::error!("failed to initialize RotomDex: {error:?}");
+            tracing::error!(error = %error, "failed to initialize");
         }
     });
+
+    Ok(())
+}
+
+fn setup_logs() -> Result<()> {
+    tracing_subscriber::fmt()
+        .fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
+        .with_max_level(tracing::Level::INFO)
+        .with_target(false)
+        .with_ansi(false)
+        .without_time()
+        .with_writer(MakeWebConsoleWriter::new())
+        .try_init()
+        .map_err(|err| eyre!(err))?;
 
     Ok(())
 }
