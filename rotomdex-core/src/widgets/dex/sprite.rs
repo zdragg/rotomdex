@@ -65,7 +65,7 @@ impl<'a> Shape for RotomDexSprite<'a> {
         let height = self.0.height();
 
         for (x, y, color) in self.0.enumerate_pixels() {
-            if color.alpha() < 128 {
+            if color.alpha() == 0 {
                 continue;
             }
             if let Some((x, y)) = painter.get_point(x.into(), (height - y - 1).into()) {

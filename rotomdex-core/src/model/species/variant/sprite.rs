@@ -79,6 +79,9 @@ pub(crate) struct ModelGifFrame {
 
 impl ModelGif {
     pub(crate) fn frame_at(&self, duration: Duration) -> &RgbaImage {
+        if self.duration.is_zero() {
+            return &self.frames.first().unwrap().image;
+        }
         let duration = duration.as_nanos() % self.duration.as_nanos();
         &self
             .frames

@@ -39,7 +39,7 @@ fn setup_logs(mut log_dir: PathBuf) -> Result<()> {
     Ok(())
 }
 
-const FRAMES_PER_SECOND: f32 = 15.0;
+const FRAMES_PER_SECOND: f32 = 30.0;
 async fn run(cache_dir: PathBuf) -> Result<()> {
     let mut core = RotomDexCore::new_with_cache(
         cache_dir,
