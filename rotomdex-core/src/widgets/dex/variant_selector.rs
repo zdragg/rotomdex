@@ -33,7 +33,7 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
                     if i == self.selected_idx {
                         let mut spans = v.types().spans_iter(&v.get_variant_name().to_ascii_uppercase());
                         for span in &mut spans {
-                            span.style = span.style.underlined().bold().italic();
+                            span.style = span.style.underlined().bold();
                         }
                         spans
                     } else {

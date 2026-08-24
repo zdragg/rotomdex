@@ -3331,8 +3331,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-web",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
