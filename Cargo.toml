@@ -3,6 +3,9 @@ resolver = "3"
 members = ["rotomdex-core", "rotomdex-term", "rotomdex-web"]
 default-members = ["rotomdex-term"]
 
+[profile.dev.package."*"]
+opt-level = 3
+
 [profile.release]
 opt-level = 3
 lto = "fat"

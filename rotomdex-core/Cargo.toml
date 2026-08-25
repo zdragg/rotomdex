@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+chafa-syms-rs = "0.1.1"
 color-eyre = "0.6.5"
 colorgrad = "0.8.0"
 futures = "0.3.34"
