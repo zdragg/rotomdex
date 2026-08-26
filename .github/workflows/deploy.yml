@@ -1,6 +1,7 @@
 name: deploy to pages
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
