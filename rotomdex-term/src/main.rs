@@ -3,7 +3,8 @@ use std::{fs, path::PathBuf, time::Duration};
 use color_eyre::eyre::{Result, eyre};
 use crossterm::event::{Event, EventStream, KeyCode, KeyModifiers};
 use etcetera::{AppStrategy, AppStrategyArgs};
-use rotomdex_core::{Action, RotomDexCore};
+use ratatui::prelude::Widget;
+use rotomdex_core::{Action, ActionHandler, RotomDexCore};
 use tokio_stream::StreamExt;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
@@ -71,7 +72,7 @@ async fn run(cache_dir: PathBuf) -> Result<()> {
             _ = interval.tick() => {}
         }
 
-        terminal.draw(|frame| core.render(frame))?;
+        terminal.draw(|frame| core.render(frame.area(), frame.buffer_mut()))?;
     }
     Ok(())
 }
@@ -86,8 +87,10 @@ fn map_event(event: Event) -> AppEvent {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc) | (KeyModifiers::CONTROL, KeyCode::Char('c')) => AppEvent::Quit,
             (_, KeyCode::Enter) => AppEvent::Action(Action::Enter),
-            (_, KeyCode::Right) => AppEvent::Action(Action::RightArrow),
-            (_, KeyCode::Left) => AppEvent::Action(Action::LeftArrow),
+            (_, KeyCode::Down) => AppEvent::Action(Action::Down),
+            (_, KeyCode::Up) => AppEvent::Action(Action::Up),
+            (_, KeyCode::Right) => AppEvent::Action(Action::Right),
+            (_, KeyCode::Left) => AppEvent::Action(Action::Left),
             (_, KeyCode::Backspace) => AppEvent::Action(Action::Backspace),
             (_, KeyCode::Char(ch)) => AppEvent::Action(Action::Input(ch)),
             _ => AppEvent::Action(Action::Ignore),

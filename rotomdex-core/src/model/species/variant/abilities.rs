@@ -85,18 +85,30 @@ impl ModelAbilities {
     fn iter_mut(&mut self) -> impl Iterator<Item = &mut Resource<ModelAbility>> {
         match self {
             Self::None => [None, None, None],
-
             Self::P { primary } => [Some(primary), None, None],
-
             Self::PS { primary, secondary } => [Some(primary), Some(secondary), None],
-
             Self::PH { primary, hidden } => [Some(primary), None, Some(hidden)],
-
             Self::PSH {
                 primary,
                 secondary,
                 hidden,
             } => [Some(primary), Some(secondary), Some(hidden)],
+        }
+        .into_iter()
+        .flatten()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (usize, &Resource<ModelAbility>)> {
+        match self {
+            Self::None => [None, None, None],
+            Self::P { primary } => [Some((0, primary)), None, None],
+            Self::PS { primary, secondary } => [Some((0, primary)), Some((1, secondary)), None],
+            Self::PH { primary, hidden } => [Some((0, primary)), None, Some((2, hidden))],
+            Self::PSH {
+                primary,
+                secondary,
+                hidden,
+            } => [Some((0, primary)), Some((1, secondary)), Some((2, hidden))],
         }
         .into_iter()
         .flatten()
@@ -113,6 +125,15 @@ impl ModelAbilities {
                 secondary,
                 hidden,
             } => primary.is_loaded() && secondary.is_loaded() && hidden.is_loaded(),
+        }
+    }
+
+    pub(crate) fn ability_cnt(&self) -> usize {
+        match self {
+            Self::None => 0,
+            Self::P { .. } => 1,
+            Self::PH { .. } | Self::PS { .. } => 2,
+            Self::PSH { .. } => 3,
         }
     }
 }

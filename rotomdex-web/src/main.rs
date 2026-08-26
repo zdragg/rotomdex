@@ -4,14 +4,14 @@ use ratzilla::{
     SelectionMode, WebGl2Backend, WebRenderer,
     backend::webgl2::WebGl2BackendOptions,
     event::KeyCode,
-    ratatui::{Terminal, style::Color},
+    ratatui::{Terminal, prelude::Widget, style::Color},
     web_sys::{
         KeyboardEvent,
         wasm_bindgen::{JsCast, closure::Closure},
         window,
     },
 };
-use rotomdex_core::{Action, RotomDexCore};
+use rotomdex_core::{Action, ActionHandler, RotomDexCore};
 use std::{cell::RefCell, rc::Rc};
 use tracing_web::MakeWebConsoleWriter;
 
@@ -52,7 +52,7 @@ fn run() -> Result<()> {
         move |f| {
             let mut core = core.borrow_mut();
             let _ = core.poll_pkmn().now_or_never();
-            core.render(f);
+            core.render(f.area(), f.buffer_mut());
         }
     });
 
@@ -68,8 +68,10 @@ fn install_key_handler(core: Rc<RefCell<RotomDexCore>>) -> Result<()> {
 
         let action = match KeyCode::from(event.clone()) {
             KeyCode::Enter => Action::Enter,
-            KeyCode::Right => Action::RightArrow,
-            KeyCode::Left => Action::LeftArrow,
+            KeyCode::Right => Action::Right,
+            KeyCode::Up => Action::Up,
+            KeyCode::Down => Action::Down,
+            KeyCode::Left => Action::Left,
             KeyCode::Backspace => Action::Backspace,
             KeyCode::Char(ch) => Action::Input(ch),
             _ => return,

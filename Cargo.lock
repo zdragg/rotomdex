@@ -3312,6 +3312,7 @@ dependencies = [
  "reqwest 0.13.4",
  "reqwest-middleware 0.5.2",
  "rustemon",
+ "strum",
  "tracing",
  "tui-big-text",
  "web-time",
