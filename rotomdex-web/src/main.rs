@@ -2,7 +2,7 @@ use color_eyre::eyre::{Result, eyre};
 use futures::FutureExt;
 use ratzilla::{
     SelectionMode, WebGl2Backend, WebRenderer,
-    backend::webgl2::WebGl2BackendOptions,
+    backend::webgl2::{FontAtlasConfig, FontAtlasData, WebGl2BackendOptions},
     event::KeyCode,
     ratatui::{Terminal, prelude::Widget, style::Color},
     web_sys::{
@@ -35,11 +35,14 @@ fn setup_logs() -> Result<()> {
 }
 
 fn run() -> Result<()> {
-    let core = Rc::new(RefCell::new(RotomDexCore::new(
-        "← / → to select variant ・ Type anything to search",
-    )));
+    let core = Rc::new(RefCell::new(RotomDexCore::new(format!(
+        "← / → to select variant {} Type anything to search",
+        ratzilla::ratatui::symbols::DOT
+    ))));
+    let font_atlas = FontAtlasData::from_binary(include_bytes!("../assets/jetbrains-mono-30.atlas"))?;
     let backend = WebGl2Backend::new_with_options(
         WebGl2BackendOptions::new()
+            .font_atlas_config(FontAtlasConfig::Static(font_atlas))
             .canvas_padding_color(Color::Black)
             .enable_mouse_selection_with_mode(SelectionMode::Block),
     )?;
