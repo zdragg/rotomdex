@@ -50,8 +50,12 @@ impl Model2WidgetProjector {
             sprite: sprite.map(|sprite| (sprite, self.timer.elapsed())),
             stats: variant.zip(species),
             name: species.map(|species| (species, variant)),
-            variant_selector: species.zip(variant_idx),
-            abilities: variant.zip(ability_idx),
+            variant_selector: species
+                .zip(variant_idx)
+                .map(|(species, variant_idx)| (species, variant_idx, self.focused)),
+            abilities: variant
+                .zip(ability_idx)
+                .map(|(variant, ability_idx)| (variant, ability_idx, self.focused)),
         }
     }
 }
@@ -61,8 +65,8 @@ pub(crate) struct ProjectorView<'a> {
     pub(crate) sprite: Option<(&'a ModelSprite, Duration)>,
     pub(crate) stats: Option<(&'a ModelVariant, &'a ModelSpecies)>,
     pub(crate) name: Option<(&'a ModelSpecies, Option<&'a ModelVariant>)>,
-    pub(crate) variant_selector: Option<(&'a ModelSpecies, usize)>,
-    pub(crate) abilities: Option<(&'a ModelVariant, usize)>,
+    pub(crate) variant_selector: Option<(&'a ModelSpecies, usize, Section)>,
+    pub(crate) abilities: Option<(&'a ModelVariant, usize, Section)>,
 }
 
 impl ActionHandler for Model2WidgetProjector {
@@ -80,7 +84,7 @@ impl ActionHandler for Model2WidgetProjector {
 }
 
 #[derive(Default)]
-pub struct Cursor {
+pub(crate) struct Cursor {
     idx: usize,
 }
 
@@ -109,8 +113,8 @@ impl ActionHandler for Cursor {
     }
 }
 
-#[derive(Default, EnumIter, PartialEq)]
-enum Section {
+#[derive(Default, Clone, Copy, EnumIter, PartialEq)]
+pub(crate) enum Section {
     #[default]
     VariantSelect,
     Abilities,

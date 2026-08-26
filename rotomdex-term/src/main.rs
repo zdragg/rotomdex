@@ -55,7 +55,11 @@ const FRAMES_PER_SECOND: f32 = 30.0;
 async fn run(cache_dir: PathBuf) -> Result<()> {
     let mut core = RotomDexCore::new_with_cache(
         cache_dir,
-        "← / → to select variant ・ Type anything to search ・ Esc / Ctrl-C to quit",
+        format!(
+            "← / → to select variant {} Type anything to search {} Esc / Ctrl-C to quit",
+            ratatui::symbols::DOT,
+            ratatui::symbols::DOT
+        ),
     );
     let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
     let mut terminal = ratatui::init();

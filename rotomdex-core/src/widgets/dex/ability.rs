@@ -1,22 +1,29 @@
 use ratatui::{
-    layout::{HorizontalAlignment, Offset},
+    layout::Rect,
     style::{Color, Style},
     symbols,
-    widgets::{Block, Paragraph, Tabs, Widget, Wrap},
+    text::Span,
+    widgets::{Paragraph, Tabs, Widget, Wrap},
 };
 
-use crate::model::{ModelAbilities, ModelVariant};
+use crate::{
+    model::{ModelAbilities, ModelVariant},
+    projector::Section,
+    widgets::WidgetExt,
+};
 
 pub(crate) struct AbilitiesWidget<'a> {
     abilities: &'a ModelAbilities,
     selected_tab: usize,
+    focused: bool,
 }
 
-impl<'a> AbilitiesWidget<'a> {
-    pub(crate) fn new(variant: &'a ModelVariant, selected_tab: usize) -> Self {
+impl<'a> WidgetExt<(&'a ModelVariant, usize, Section)> for AbilitiesWidget<'a> {
+    fn new((variant, selected_tab, section): (&'a ModelVariant, usize, Section)) -> Self {
         Self {
             abilities: variant.abilities(),
             selected_tab,
+            focused: section == Section::Abilities,
         }
     }
 }
@@ -30,30 +37,43 @@ impl<'a> Widget for AbilitiesWidget<'a> {
             .enumerate()
             .map(|(i, (slot, ability))| match ability.as_loaded() {
                 Some(ability) => {
-                    let mut result = format!("{} {}", prefix(slot), ability.name());
+                    let mut name = format!("{} {}", prefix(slot), ability.name());
                     if self.selected_tab == i {
                         desc = ability.desc();
-                        result = result.to_uppercase()
+                        name = name.to_uppercase()
                     }
-                    result
+                    name
                 }
                 None => "loading".to_string(),
             });
 
+        let highlight_style = if self.focused {
+            Style::default().bold().underlined()
+        } else {
+            Style::default().bold()
+        };
+
         let tabs = Tabs::new(names)
-            .style(Color::White)
-            .highlight_style(Style::default().magenta().bold())
+            .style(Color::Magenta)
+            .highlight_style(highlight_style)
             .select(self.selected_tab)
-            .divider(symbols::DOT)
+            .divider(Span::styled(symbols::DOT, Color::DarkGray))
             .padding(" ", " ");
 
-        Paragraph::new(desc)
-            .alignment(HorizontalAlignment::Center)
-            .block(Block::bordered())
-            .wrap(Wrap { trim: false })
-            .render(area, buf);
+        tabs.render(area, buf);
 
-        tabs.render(area + Offset::new(1, 0), buf);
+        Paragraph::new(desc)
+            .wrap(Wrap { trim: false })
+            .style(Color::White)
+            .render(
+                Rect {
+                    x: area.x,
+                    y: area.y + 1,
+                    width: area.width,
+                    height: area.height.saturating_sub(1),
+                },
+                buf,
+            );
     }
 }
 

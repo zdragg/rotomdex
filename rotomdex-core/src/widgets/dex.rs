@@ -14,9 +14,12 @@ use ratatui::{
 
 use crate::{
     projector::ProjectorView,
-    widgets::dex::{
-        ability::AbilitiesWidget, name::NameWidget, sprite::SpriteWidget, stats::StatsWidget,
-        variant_selector::VariantSelectorWidget,
+    widgets::{
+        OptionWidgetExt,
+        dex::{
+            ability::AbilitiesWidget, name::NameWidget, sprite::SpriteWidget, stats::StatsWidget,
+            variant_selector::VariantSelectorWidget,
+        },
     },
 };
 
@@ -54,33 +57,26 @@ impl<'a> Widget for DexWidget<'a> {
         let [sprite_area, _padding, stats_area] =
             Layout::vertical([Constraint::Percentage(70), Constraint::Length(1), Constraint::Fill(1)]).areas(left_area);
 
-        self.view
-            .sprite
-            .map(|(sprite, elapsed)| SpriteWidget::new(sprite, elapsed))
-            .render(sprite_area, buf);
+        self.view.sprite.render_option::<SpriteWidget>(sprite_area, buf);
 
-        self.view
-            .stats
-            .map(|(variant, species)| StatsWidget::new(variant, species)) // Species has to exist if variant exists
-            .render(stats_area, buf);
+        self.view.stats.render_option::<StatsWidget>(stats_area, buf);
 
-        let [name_area, variants_area, area] =
-            Layout::vertical([Constraint::Percentage(20), Constraint::Length(5), Constraint::Fill(1)])
-                .areas(right_area);
+        let [name_area, variants_area, abilities_area, area] = Layout::vertical([
+            Constraint::Percentage(20),
+            Constraint::Percentage(5),
+            Constraint::Percentage(20),
+            Constraint::Fill(1),
+        ])
+        .areas(right_area);
 
-        self.view
-            .name
-            .map(|(species, maybe_variant)| NameWidget::new(species, maybe_variant))
-            .render(name_area, buf);
+        self.view.name.render_option::<NameWidget>(name_area, buf);
 
         self.view
             .variant_selector
-            .map(|(species, idx)| VariantSelectorWidget::new(species, idx))
-            .render(variants_area, buf);
+            .render_option::<VariantSelectorWidget>(variants_area, buf);
 
         self.view
             .abilities
-            .map(|(variant, idx)| AbilitiesWidget::new(variant, idx))
-            .render(area, buf);
+            .render_option::<AbilitiesWidget>(abilities_area, buf);
     }
 }

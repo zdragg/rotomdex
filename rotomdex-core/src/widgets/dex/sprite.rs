@@ -3,15 +3,15 @@ use std::{char, time::Duration};
 use chafa_syms_rs::{Canvas, CanvasConfig, CanvasMode, PixelType};
 use ratatui::{prelude::*, widgets::Widget};
 
-use crate::model::ModelSprite;
+use crate::{model::ModelSprite, widgets::WidgetExt};
 
 pub(crate) struct SpriteWidget<'a> {
     sprite: &'a ModelSprite,
     elapsed: Duration,
 }
 
-impl<'a> SpriteWidget<'a> {
-    pub(crate) fn new(sprite: &'a ModelSprite, elapsed: Duration) -> Self {
+impl<'a> WidgetExt<(&'a ModelSprite, Duration)> for SpriteWidget<'a> {
+    fn new((sprite, elapsed): (&'a ModelSprite, Duration)) -> Self {
         Self { sprite, elapsed }
     }
 }

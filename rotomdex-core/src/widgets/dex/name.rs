@@ -5,15 +5,18 @@ use ratatui::{
 };
 use tui_big_text::{BigText, PixelSize};
 
-use crate::model::{ModelSpecies, ModelTypes, ModelVariant};
+use crate::{
+    model::{ModelSpecies, ModelTypes, ModelVariant},
+    widgets::WidgetExt,
+};
 
 pub(crate) struct NameWidget<'a> {
     name: &'a str,
     types: Option<&'a ModelTypes>,
 }
 
-impl<'a> NameWidget<'a> {
-    pub(crate) fn new(species: &'a ModelSpecies, variant: Option<&'a ModelVariant>) -> Self {
+impl<'a> WidgetExt<(&'a ModelSpecies, Option<&'a ModelVariant>)> for NameWidget<'a> {
+    fn new((species, variant): (&'a ModelSpecies, Option<&'a ModelVariant>)) -> Self {
         Self {
             name: &species.inner().name,
             types: variant.map(|v| v.types()),

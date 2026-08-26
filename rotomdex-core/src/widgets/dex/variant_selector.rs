@@ -5,18 +5,24 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
-use crate::model::{ModelSpecies, ModelVariant, Resource};
+use crate::{
+    model::{ModelSpecies, ModelVariant, Resource},
+    projector::Section,
+    widgets::WidgetExt,
+};
 
 pub(crate) struct VariantSelectorWidget<'a> {
     variants: &'a [Resource<ModelVariant>],
     selected_idx: usize,
+    focused: bool,
 }
 
-impl<'a> VariantSelectorWidget<'a> {
-    pub(crate) fn new(pkmn: &'a ModelSpecies, selected_idx: usize) -> Self {
+impl<'a> WidgetExt<(&'a ModelSpecies, usize, Section)> for VariantSelectorWidget<'a> {
+    fn new((pkmn, selected_idx, section): (&'a ModelSpecies, usize, Section)) -> Self {
         Self {
             variants: pkmn.variants(),
             selected_idx,
+            focused: section == Section::VariantSelect,
         }
     }
 }
@@ -33,7 +39,10 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
                     if i == self.selected_idx {
                         let mut spans = v.types().spans_iter(&v.get_variant_name().to_ascii_uppercase());
                         for span in &mut spans {
-                            span.style = span.style.underlined().bold();
+                            span.style = span.style.bold();
+                            if self.focused {
+                                span.style = span.style.underlined()
+                            }
                         }
                         spans
                     } else {

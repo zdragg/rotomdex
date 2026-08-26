@@ -4,15 +4,18 @@ use ratatui::{
     widgets::{Bar, BarChart, Widget},
 };
 
-use crate::model::{ModelSpecies, ModelStats, ModelVariant};
+use crate::{
+    model::{ModelSpecies, ModelStats, ModelVariant},
+    widgets::WidgetExt,
+};
 
 pub(crate) struct StatsWidget<'a> {
     stats: &'a ModelStats,
     highest: u32,
 }
 
-impl<'a> StatsWidget<'a> {
-    pub(crate) fn new(variant: &'a ModelVariant, species: &'a ModelSpecies) -> Self {
+impl<'a> WidgetExt<(&'a ModelVariant, &'a ModelSpecies)> for StatsWidget<'a> {
+    fn new((variant, species): (&'a ModelVariant, &'a ModelSpecies)) -> Self {
         let highest = species.variants().iter().fold(0, |acc, v| {
             if let Some(v) = v.as_loaded() {
                 acc.max(v.stats().highest())
