@@ -51,11 +51,13 @@ impl<'a> Widget for DexWidget<'a> {
         let area = block.inner(outer);
         block.render(outer, buf);
 
-        let [left_area, _padding, right_area] =
-            Layout::horizontal([Constraint::Percentage(35), Constraint::Length(1), Constraint::Fill(1)]).areas(area);
+        let [left_area, right_area] = Layout::horizontal([Constraint::Percentage(35), Constraint::Fill(1)])
+            .spacing(1)
+            .areas(area);
 
-        let [sprite_area, _padding, stats_area] =
-            Layout::vertical([Constraint::Percentage(70), Constraint::Length(1), Constraint::Fill(1)]).areas(left_area);
+        let [sprite_area, stats_area] = Layout::vertical([Constraint::Percentage(70), Constraint::Fill(1)])
+            .spacing(1)
+            .areas(left_area);
 
         self.view.sprite.render_option::<SpriteWidget>(sprite_area, buf);
 
