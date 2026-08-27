@@ -13,8 +13,8 @@ use crate::model::{Fetchable, Resource};
 
 #[derive(Debug)]
 pub(crate) struct ModelSpecies {
-    variants: Vec<Resource<ModelVariant>>,
-    inner: PokemonSpecies,
+    pub(crate) variants: Vec<Resource<ModelVariant>>,
+    pub(crate) inner: PokemonSpecies,
 }
 
 impl Fetchable for ModelSpecies {
@@ -24,7 +24,7 @@ impl Fetchable for ModelSpecies {
         let variants: Vec<_> = species
             .varieties
             .iter()
-            .map(|v| Resource::<ModelVariant>::fetch(v.pokemon.clone(), ctx.clone()))
+            .map(|v| Resource::<ModelVariant>::fetch(v.pokemon.clone(), ctx.clone(), false))
             .collect();
         Ok(Self {
             variants,

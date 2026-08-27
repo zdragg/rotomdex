@@ -1,5 +1,7 @@
 mod abilities;
 pub(crate) use abilities::*;
+mod moves;
+pub(crate) use moves::*;
 mod sprite;
 pub(crate) use sprite::*;
 mod stats;
@@ -20,12 +22,13 @@ use tracing::Span;
 
 #[derive(Debug)]
 pub(crate) struct ModelVariant {
-    types: ModelTypes,
-    stats: ModelStats,
-    sprite: Resource<ModelSprite>,
-    abilities: ModelAbilities,
+    pub(crate) types: ModelTypes,
+    pub(crate) stats: ModelStats,
+    pub(crate) moves: ModelMoves,
+    pub(crate) sprite: Resource<ModelSprite>,
+    pub(crate) abilities: ModelAbilities,
 
-    inner: Pokemon,
+    pub(crate) inner: Pokemon,
 }
 
 impl Fetchable for ModelVariant {
@@ -35,8 +38,9 @@ impl Fetchable for ModelVariant {
         let result = Self {
             types: ModelTypes::new(&variant.types)?,
             stats: ModelStats::new(&variant.stats)?,
-            sprite: Resource::<ModelSprite>::fetch(variant.sprites.clone(), ctx.clone()),
-            abilities: ModelAbilities::new(variant.abilities.clone(), ctx)?,
+            moves: ModelMoves::new(&variant.moves, ctx.clone())?,
+            sprite: Resource::<ModelSprite>::fetch(variant.sprites.clone(), ctx.clone(), false),
+            abilities: ModelAbilities::new(&variant.abilities, ctx)?,
 
             inner: variant,
         };
@@ -61,30 +65,10 @@ impl Fetchable for ModelVariant {
 }
 
 impl ModelVariant {
-    pub(crate) fn inner(&self) -> &Pokemon {
-        &self.inner
-    }
-
     pub(crate) fn get_variant_name(&self) -> &str {
         self.inner
             .name
             .strip_prefix(&format!("{}-", self.inner.species.name))
             .unwrap_or("base")
-    }
-
-    pub(crate) fn types(&self) -> &ModelTypes {
-        &self.types
-    }
-
-    pub(crate) fn stats(&self) -> &ModelStats {
-        &self.stats
-    }
-
-    pub(crate) fn sprite(&self) -> &Resource<ModelSprite> {
-        &self.sprite
-    }
-
-    pub(crate) fn abilities(&self) -> &ModelAbilities {
-        &self.abilities
     }
 }

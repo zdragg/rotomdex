@@ -1,4 +1,6 @@
 mod ability;
+mod move_gen_selector;
+mod moves;
 mod name;
 mod sprite;
 mod stats;
@@ -17,8 +19,8 @@ use crate::{
     widgets::{
         OptionWidgetExt,
         dex::{
-            ability::AbilitiesWidget, name::NameWidget, sprite::SpriteWidget, stats::StatsWidget,
-            variant_selector::VariantSelectorWidget,
+            ability::AbilitiesWidget, move_gen_selector::MoveGenSelectorWidget, moves::MovesWidget, name::NameWidget,
+            sprite::SpriteWidget, stats::StatsWidget, variant_selector::VariantSelectorWidget,
         },
     },
 };
@@ -63,11 +65,18 @@ impl<'a> Widget for DexWidget<'a> {
 
         self.view.stats.render_option::<StatsWidget>(stats_area, buf);
 
-        let [name_area, variants_area, abilities_area, area] = Layout::vertical([
+        let [
+            name_area,
+            variants_area,
+            abilities_area,
+            move_gen_selector_area,
+            moves_area,
+        ] = Layout::vertical([
             Constraint::Percentage(20),
             Constraint::Percentage(5),
             Constraint::Percentage(20),
-            Constraint::Fill(1),
+            Constraint::Percentage(5),
+            Constraint::Percentage(50),
         ])
         .areas(right_area);
 
@@ -80,5 +89,11 @@ impl<'a> Widget for DexWidget<'a> {
         self.view
             .abilities
             .render_option::<AbilitiesWidget>(abilities_area, buf);
+
+        self.view
+            .move_gens
+            .render_option::<MoveGenSelectorWidget>(move_gen_selector_area, buf);
+
+        self.view.moves.render_option::<MovesWidget>(moves_area, buf);
     }
 }

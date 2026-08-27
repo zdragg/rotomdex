@@ -37,7 +37,7 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
             .map(|(i, v)| match v {
                 Resource::Loaded(v) => {
                     if i == self.selected_idx {
-                        let mut spans = v.types().spans_iter(&v.get_variant_name().to_ascii_uppercase());
+                        let mut spans = v.types.spans_iter(&v.get_variant_name().to_ascii_uppercase());
                         for span in &mut spans {
                             span.style = span.style.bold();
                             if self.focused {
@@ -46,10 +46,13 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
                         }
                         spans
                     } else {
-                        v.types().spans_iter(v.get_variant_name())
+                        v.types.spans_iter(v.get_variant_name())
                     }
                 }
-                Resource::Loading(_) => vec![Span::raw("loading").style(Color::DarkGray)],
+                Resource::Loading { deferred, .. } if deferred.get() => {
+                    vec![Span::raw("deferred").style(Color::DarkGray)]
+                }
+                Resource::Loading { .. } => vec![Span::raw("loading").style(Color::DarkGray)],
                 Resource::Failed(_) => vec![Span::raw("failed: check log").style(Color::Red)],
             })
             .collect();

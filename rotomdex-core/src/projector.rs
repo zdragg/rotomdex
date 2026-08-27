@@ -6,7 +6,9 @@ use strum::{EnumIter, IntoEnumIterator};
 
 use crate::{
     Action, ActionHandler,
-    model::{ModelPokemon, ModelSpecies, ModelSprite, ModelVariant},
+    model::{
+        ModelAbilities, ModelPokemon, ModelSpecies, ModelSprite, ModelVariant, ModelVersionGroup, ModelVersionMove,
+    },
 };
 
 /// Projects `[ModelPokemon]` onto the canvas, `[DexWidget]`
@@ -14,8 +16,11 @@ pub(crate) struct Model2WidgetProjector {
     timer: Instant,
 
     focused: Section,
+
     var_cursor: Cursor,
     abil_cursor: Cursor,
+    move_gen_cursor: Cursor,
+    move_cursor: Cursor,
 }
 
 impl Model2WidgetProjector {
@@ -24,8 +29,11 @@ impl Model2WidgetProjector {
             timer: Instant::now(),
 
             focused: Section::default(),
+
             var_cursor: Cursor::default(),
             abil_cursor: Cursor::default(),
+            move_gen_cursor: Cursor::default(),
+            move_cursor: Cursor::default(),
         }
     }
 
@@ -33,17 +41,42 @@ impl Model2WidgetProjector {
         self.focused.reset();
         self.var_cursor.reset();
         self.abil_cursor.reset();
+        self.move_gen_cursor.reset();
+        self.move_cursor.reset();
     }
 
     pub(crate) fn project<'a>(&self, pkmn: &'a ModelPokemon) -> ProjectorView<'a> {
-        let species = pkmn.species().as_loaded();
+        let species = pkmn.species.as_loaded();
+
         let variant_idx = species.and_then(|species| self.var_cursor.get(species.variants_cnt()));
         let variant = species
             .zip(variant_idx)
             .and_then(|(species, idx)| species.variants().get(idx))
             .and_then(|variant| variant.as_loaded());
-        let ability_idx = variant.and_then(|variant| self.abil_cursor.get(variant.abilities().ability_cnt()));
-        let sprite = variant.and_then(|v| v.sprite().as_loaded());
+
+        let abilities = variant.map(|variant| &variant.abilities);
+        let ability_idx = variant.and_then(|variant| self.abil_cursor.get(variant.abilities.ability_cnt()));
+
+        let sprite = variant.and_then(|variant| variant.sprite.as_loaded());
+
+        let move_gens = variant.map(|variant| variant.moves.get_versions());
+        let move_gen_idx = variant.and_then(|variant| self.move_gen_cursor.get(variant.moves.versions_cnt()));
+        let moves = variant
+            .zip(move_gen_idx)
+            .and_then(|(variant, idx)| variant.moves.iter_moves(idx));
+        let move_idx = moves.and_then(|moves| self.move_cursor.get(moves.len()));
+
+        // Undefer focused element
+        match self.focused {
+            Section::Moves => {
+                if let Some(moves) = moves
+                    && let Some(move_idx) = move_idx
+                {
+                    moves[move_idx].undefer();
+                }
+            }
+            _ => {}
+        }
 
         ProjectorView {
             border: species,
@@ -53,9 +86,15 @@ impl Model2WidgetProjector {
             variant_selector: species
                 .zip(variant_idx)
                 .map(|(species, variant_idx)| (species, variant_idx, self.focused)),
-            abilities: variant
+            abilities: abilities
                 .zip(ability_idx)
-                .map(|(variant, ability_idx)| (variant, ability_idx, self.focused)),
+                .map(|(abilities, ability_idx)| (abilities, ability_idx, self.focused)),
+            move_gens: move_gens
+                .zip(move_gen_idx)
+                .map(|(move_gens, move_gen_idx)| (move_gens, move_gen_idx, self.focused)),
+            moves: moves
+                .zip(move_idx)
+                .map(|(moves, move_idx)| (moves, move_idx, self.focused)),
         }
     }
 }
@@ -66,7 +105,9 @@ pub(crate) struct ProjectorView<'a> {
     pub(crate) stats: Option<(&'a ModelVariant, &'a ModelSpecies)>,
     pub(crate) name: Option<(&'a ModelSpecies, Option<&'a ModelVariant>)>,
     pub(crate) variant_selector: Option<(&'a ModelSpecies, usize, Section)>,
-    pub(crate) abilities: Option<(&'a ModelVariant, usize, Section)>,
+    pub(crate) abilities: Option<(&'a ModelAbilities, usize, Section)>,
+    pub(crate) move_gens: Option<(Vec<ModelVersionGroup>, usize, Section)>,
+    pub(crate) moves: Option<(&'a [ModelVersionMove], usize, Section)>,
 }
 
 impl ActionHandler for Model2WidgetProjector {
@@ -75,6 +116,8 @@ impl ActionHandler for Model2WidgetProjector {
             Action::Left | Action::Right => match self.focused {
                 Section::VariantSelect => self.var_cursor.handle_action(action),
                 Section::Abilities => self.abil_cursor.handle_action(action),
+                Section::MoveGenSelect => self.move_gen_cursor.handle_action(action),
+                Section::Moves => self.move_cursor.handle_action(action),
             },
             Action::Down => self.focused.next(),
             Action::Up => self.focused.prev(),
@@ -118,6 +161,8 @@ pub(crate) enum Section {
     #[default]
     VariantSelect,
     Abilities,
+    MoveGenSelect,
+    Moves,
 }
 
 impl Section {

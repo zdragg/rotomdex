@@ -2,8 +2,9 @@ mod species;
 pub(crate) use species::*;
 
 use std::{
+    cell::{Cell, RefCell},
     fmt,
-    task::{Context, Poll},
+    task::{Context, Poll, Waker},
 };
 
 use color_eyre::eyre::{Report, Result};
@@ -15,7 +16,7 @@ use crate::FetchContext;
 
 pub(crate) struct ModelPokemon {
     name: String,
-    species: Resource<ModelSpecies>,
+    pub(crate) species: Resource<ModelSpecies>,
     benchmark: Instant,
     loaded: bool,
 }
@@ -28,7 +29,7 @@ impl ModelPokemon {
 
             benchmark: Instant::now(),
 
-            species: Resource::<ModelSpecies>::fetch(name, ctx),
+            species: Resource::<ModelSpecies>::fetch(name, ctx, false),
 
             loaded: false,
         }
@@ -44,10 +45,6 @@ impl ModelPokemon {
                 self.benchmark.elapsed().as_millis()
             );
         }
-    }
-
-    pub(crate) fn species(&self) -> &Resource<ModelSpecies> {
-        &self.species
     }
 
     pub(crate) fn is_loaded(&self) -> bool {
@@ -67,13 +64,17 @@ pub(crate) trait Fetchable: Sized + 'static {
 }
 
 pub(crate) enum Resource<T: Fetchable> {
-    Loading(LocalBoxFuture<'static, Result<T>>),
+    Loading {
+        deferred: Cell<bool>,
+        deferred_waker: RefCell<Option<Waker>>,
+        future: LocalBoxFuture<'static, Result<T>>,
+    },
     Loaded(T),
     Failed(Report),
 }
 
 impl<T: Fetchable> Resource<T> {
-    pub(crate) fn fetch(request: T::Request, ctx: FetchContext) -> Self {
+    pub(crate) fn fetch(request: T::Request, ctx: FetchContext, deferred: bool) -> Self {
         let span = T::fetch_span(&request);
 
         let future = async move {
@@ -85,7 +86,11 @@ impl<T: Fetchable> Resource<T> {
         }
         .instrument(span);
 
-        Self::Loading(Box::pin(future))
+        Self::Loading {
+            deferred: Cell::new(deferred),
+            deferred_waker: RefCell::new(None),
+            future: Box::pin(future),
+        }
     }
 
     pub(crate) fn is_loaded(&self) -> bool {
@@ -97,12 +102,22 @@ impl<T: Fetchable> Resource<T> {
 
     pub(crate) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         let result = match self {
-            Self::Loading(future) => match future.as_mut().poll(cx) {
-                Poll::Ready(result) => result,
-                Poll::Pending => return Poll::Pending,
-            },
+            Self::Loading {
+                deferred,
+                deferred_waker,
+                future,
+            } => {
+                if deferred.get() {
+                    *deferred_waker.borrow_mut() = Some(cx.waker().clone());
+                    return Poll::Pending;
+                }
+                match future.as_mut().poll(cx) {
+                    Poll::Ready(result) => result,
+                    Poll::Pending => return Poll::Pending,
+                }
+            }
             Self::Loaded(value) => return value.poll(cx),
-            _ => return Poll::Pending,
+            _ => return Poll::Pending, // deferred and error should be kept in place
         };
 
         *self = match result {
@@ -120,12 +135,27 @@ impl<T: Fetchable> Resource<T> {
             None
         }
     }
+
+    pub(crate) fn undefer(&self) {
+        if let Self::Loading {
+            deferred,
+            deferred_waker,
+            ..
+        } = self
+        {
+            deferred.set(false);
+            if let Some(waker) = deferred_waker.borrow_mut().take() {
+                waker.wake();
+            }
+        }
+    }
 }
 
 impl<T: fmt::Debug + Fetchable> fmt::Debug for Resource<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Loading(_) => f.write_str("Loading"),
+            Self::Loading { deferred, .. } if deferred.get() => f.write_str("Deferred"),
+            Self::Loading { .. } => f.write_str("Loading"), // not deferred
             Self::Loaded(value) => f.debug_tuple("Loaded").field(value).finish(),
             Self::Failed(error) => f.debug_tuple("Failed").field(error).finish(),
         }

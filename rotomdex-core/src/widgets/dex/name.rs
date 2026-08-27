@@ -19,7 +19,7 @@ impl<'a> WidgetExt<(&'a ModelSpecies, Option<&'a ModelVariant>)> for NameWidget<
     fn new((species, variant): (&'a ModelSpecies, Option<&'a ModelVariant>)) -> Self {
         Self {
             name: &species.inner().name,
-            types: variant.map(|v| v.types()),
+            types: variant.map(|v| &v.types),
         }
     }
 }

@@ -6,11 +6,7 @@ use ratatui::{
     widgets::{Paragraph, Tabs, Widget, Wrap},
 };
 
-use crate::{
-    model::{ModelAbilities, ModelVariant},
-    projector::Section,
-    widgets::WidgetExt,
-};
+use crate::{model::ModelAbilities, projector::Section, widgets::WidgetExt};
 
 pub(crate) struct AbilitiesWidget<'a> {
     abilities: &'a ModelAbilities,
@@ -18,10 +14,10 @@ pub(crate) struct AbilitiesWidget<'a> {
     focused: bool,
 }
 
-impl<'a> WidgetExt<(&'a ModelVariant, usize, Section)> for AbilitiesWidget<'a> {
-    fn new((variant, selected_tab, section): (&'a ModelVariant, usize, Section)) -> Self {
+impl<'a> WidgetExt<(&'a ModelAbilities, usize, Section)> for AbilitiesWidget<'a> {
+    fn new((abilities, selected_tab, section): (&'a ModelAbilities, usize, Section)) -> Self {
         Self {
-            abilities: variant.abilities(),
+            abilities,
             selected_tab,
             focused: section == Section::Abilities,
         }

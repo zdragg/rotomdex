@@ -35,7 +35,7 @@ pub(crate) enum ModelAbilities {
 }
 
 impl ModelAbilities {
-    pub(crate) fn new(abilities: Vec<PokemonAbility>, ctx: FetchContext) -> Result<Self> {
+    pub(crate) fn new(abilities: &[PokemonAbility], ctx: FetchContext) -> Result<Self> {
         let mut slots: [Option<Resource<ModelAbility>>; 3] = [const { None }; 3];
         for ability in abilities {
             let idx = if let 1..=3 = ability.slot {
@@ -44,9 +44,9 @@ impl ModelAbilities {
                 return Err(eyre!("invalid ability slot"));
             };
 
-            let api = ability.ability.ok_or_eyre("ability not found")?;
+            let api = ability.ability.clone().ok_or_eyre("ability not found")?;
 
-            let resource = Resource::<ModelAbility>::fetch(api, ctx.clone());
+            let resource = Resource::<ModelAbility>::fetch(api, ctx.clone(), false);
 
             if slots[idx].replace(resource).is_some() {
                 return Err(eyre!("duplicate ability slot"));
@@ -98,7 +98,7 @@ impl ModelAbilities {
         .flatten()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (usize, &Resource<ModelAbility>)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (usize, &Resource<ModelAbility>)> {
         match self {
             Self::None => [None, None, None],
             Self::P { primary } => [Some((0, primary)), None, None],
