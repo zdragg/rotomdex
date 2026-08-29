@@ -5,6 +5,15 @@ mod stats;
 mod tabs;
 mod variant;
 
+use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
+use crate::widgets::dex::tabs::TabsWidgetState;
+use crate::{
+    Action,
+    model::ModelPokemon,
+    widgets::dex::{
+        name::NameWidget, sprite::SpriteWidget, stats::StatsWidget, tabs::TabsWidget, variant::VariantSelectorWidget,
+    },
+};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -12,15 +21,6 @@ use ratatui::{
     widgets::{Block, Widget},
 };
 use std::time::Duration;
-
-use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
-use crate::{
-    Action,
-    model::ModelPokemon,
-    widgets::dex::{
-        name::NameWidget, sprite::SpriteWidget, stats::StatsWidget, tabs::TabWidget, variant::VariantSelectorWidget,
-    },
-};
 
 pub(crate) struct DexWidget<'a> {
     pkmn: &'a ModelPokemon,
@@ -79,7 +79,7 @@ impl Widget for DexWidget<'_> {
         StatsWidget::new(variant, species).render(stats_area, buf);
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
-        TabWidget::new(species, variant).render(tab_area, buf);
+        TabsWidget::new(species, variant, &self.state.tabs_state).render(tab_area, buf);
     }
 }
 
@@ -88,15 +88,7 @@ pub(crate) struct DexState {
     variant_cursor: Cursor,
 
     search_state: SearchWidgetState,
-}
-
-enum TabAction {
-    Left,
-    Down,
-    Up,
-    Right,
-    Enter,
-    Escape,
+    tabs_state: TabsWidgetState,
 }
 
 impl DexState {
@@ -110,17 +102,7 @@ impl DexState {
             Action::Input('d') => self.variant_cursor.prev(),
             Action::Input(':') => self.search_state.start_search(),
             _ => {
-                let action = match action {
-                    Action::Input('h') | Action::Left => TabAction::Left,
-                    Action::Input('j') | Action::Down => TabAction::Down,
-                    Action::Input('k') | Action::Up => TabAction::Up,
-                    Action::Input('l') | Action::Right => TabAction::Right,
-                    Action::Enter => TabAction::Enter,
-                    Action::Escape | Action::CapsLock => TabAction::Escape,
-                    _ => return None,
-                };
-                // let sub_state = Tabs::iter().nth(cursor.get()).unwrap().get_state();
-                // sub_state.handle(action);
+                self.tabs_state.handle_action(action);
             }
         }
         None
