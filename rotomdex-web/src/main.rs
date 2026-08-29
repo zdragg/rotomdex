@@ -11,7 +11,7 @@ use ratzilla::{
         window,
     },
 };
-use rotomdex_core::{Action, ActionHandler, RotomDexCore};
+use rotomdex_core::{Action, ActionHandler, RotomDexCore, SettingsBuilder};
 use std::{cell::RefCell, rc::Rc};
 use tracing_web::MakeWebConsoleWriter;
 
@@ -35,10 +35,13 @@ fn setup_logs() -> Result<()> {
 }
 
 fn run() -> Result<()> {
-    let core = Rc::new(RefCell::new(RotomDexCore::new(format!(
-        "← / → to select variant {} Type anything to search",
-        ratzilla::ratatui::symbols::DOT
-    ))));
+    let core = Rc::new(RefCell::new(RotomDexCore::new(
+        SettingsBuilder::default().build()?,
+        format!(
+            "← / → to select variant {} Type anything to search",
+            ratzilla::ratatui::symbols::DOT
+        ),
+    )));
     let font_atlas = FontAtlasData::from_binary(include_bytes!("../assets/jetbrains-mono-30.atlas"))?;
     let backend = WebGl2Backend::new_with_options(
         WebGl2BackendOptions::new()

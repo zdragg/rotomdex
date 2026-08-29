@@ -4,7 +4,7 @@ use color_eyre::eyre::{Result, eyre};
 use crossterm::event::{Event, EventStream, KeyCode, KeyModifiers};
 use etcetera::{AppStrategy, AppStrategyArgs};
 use ratatui::prelude::Widget;
-use rotomdex_core::{Action, ActionHandler, RotomDexCore};
+use rotomdex_core::{Action, ActionHandler, RotomDexCore, SettingsBuilder};
 use tokio_stream::StreamExt;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
@@ -54,12 +54,13 @@ fn setup_logs(log_dir: PathBuf) -> Result<WorkerGuard> {
 const FRAMES_PER_SECOND: f32 = 30.0;
 async fn run(cache_dir: PathBuf) -> Result<()> {
     let mut core = RotomDexCore::new_with_cache(
-        cache_dir,
+        SettingsBuilder::default().build()?,
         format!(
             "← / → to select variant {} Type anything to search {} Esc / Ctrl-C to quit",
             ratatui::symbols::DOT,
             ratatui::symbols::DOT
         ),
+        cache_dir,
     );
     let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
     let mut terminal = ratatui::init();

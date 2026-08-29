@@ -1,7 +1,9 @@
 use color_eyre::eyre::{Result, eyre};
 use colorgrad::{Gradient, GradientBuilder, LinearGradient};
 use ratatui::text::Span;
-use rustemon::model::pokemon::PokemonType;
+use rustemon::model::pokemon::{PokemonType, PokemonTypePast};
+
+use crate::{Generation, ModelContext};
 
 #[derive(Clone, Debug)]
 pub(crate) struct ModelTypes {
@@ -10,14 +12,26 @@ pub(crate) struct ModelTypes {
 }
 
 impl ModelTypes {
-    pub(crate) fn new(value: &[PokemonType]) -> Result<Self> {
-        let primary = value
+    pub(crate) fn new(current: &[PokemonType], past: &[PokemonTypePast], ctx: ModelContext) -> Result<Self> {
+        let target_generation = ctx.settings.version.generation();
+        let relevant_types = past
+            .iter()
+            .filter_map(|past_types| {
+                let final_gen = past_types.generation.name.parse::<Generation>().ok()?;
+                Some((final_gen, past_types.types.as_slice()))
+            })
+            .filter(|(final_gen, _)| *final_gen >= target_generation)
+            .min_by_key(|(final_gen, _)| *final_gen)
+            .map(|(_, types)| types)
+            .unwrap_or(current);
+
+        let primary = relevant_types
             .iter()
             .find(|model| model.slot == 1)
             .map(ModelType::new)
             .transpose()?
             .ok_or_else(|| eyre!("no primary type found"))?;
-        let secondary = value
+        let secondary = relevant_types
             .iter()
             .find(|model| model.slot == 2)
             .map(ModelType::new)

@@ -11,7 +11,7 @@ pub(crate) use types::*;
 
 use std::task::{Context, Poll};
 
-use crate::FetchContext;
+use crate::ModelContext;
 use crate::model::{Fetchable, Resource};
 use color_eyre::eyre::Result;
 use rustemon::{
@@ -33,14 +33,14 @@ pub(crate) struct ModelVariant {
 
 impl Fetchable for ModelVariant {
     type Request = NamedApiResource<Pokemon>;
-    async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
+    async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
         let variant = request.follow(&ctx.pkmn_client).await?;
         let result = Self {
-            types: ModelTypes::new(&variant.types)?,
-            stats: ModelStats::new(&variant.stats)?,
+            types: ModelTypes::new(&variant.types, &variant.past_types, ctx.clone())?,
+            stats: ModelStats::new(&variant.stats, &variant.past_stats, ctx.clone())?,
             moves: ModelMoves::new(&variant.moves, ctx.clone())?,
             sprite: Resource::<ModelSprite>::fetch(variant.sprites.clone(), ctx.clone(), false),
-            abilities: ModelAbilities::new(&variant.abilities, ctx)?,
+            abilities: ModelAbilities::new(&variant.abilities, &variant.past_abilities, ctx)?,
 
             inner: variant,
         };
@@ -52,8 +52,7 @@ impl Fetchable for ModelVariant {
     }
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        // bitwise OR for no short circuit
-        if self.sprite.poll(cx).is_ready() | self.abilities.poll(cx).is_ready() {
+        if self.sprite.poll(cx).is_ready() | self.abilities.poll(cx).is_ready() | self.moves.poll(cx).is_ready() {
             return Poll::Ready(());
         }
         Poll::Pending

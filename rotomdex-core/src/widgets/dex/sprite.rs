@@ -3,21 +3,25 @@ use std::{char, time::Duration};
 use chafa_syms_rs::{Canvas, CanvasConfig, CanvasMode, PixelType};
 use ratatui::{prelude::*, widgets::Widget};
 
-use crate::{model::ModelSprite, widgets::WidgetExt};
+use crate::model::ModelVariant;
 
 pub(crate) struct SpriteWidget<'a> {
-    sprite: &'a ModelSprite,
+    variant: Option<&'a ModelVariant>,
     elapsed: Duration,
 }
 
-impl<'a> WidgetExt<(&'a ModelSprite, Duration)> for SpriteWidget<'a> {
-    fn new((sprite, elapsed): (&'a ModelSprite, Duration)) -> Self {
-        Self { sprite, elapsed }
+impl<'a> SpriteWidget<'a> {
+    pub(crate) fn new(variant: Option<&'a ModelVariant>, elapsed: Duration) -> Self {
+        Self { variant, elapsed }
     }
 }
 
-impl<'a> Widget for SpriteWidget<'a> {
+impl Widget for SpriteWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let Some(sprite) = self.variant.and_then(|variant| variant.sprite.as_loaded()) else {
+            return;
+        };
+
         let side_width = area.width.min(area.height * 2);
         let side_height = side_width / 2;
         let area = area.inner(Margin::new(
@@ -25,13 +29,12 @@ impl<'a> Widget for SpriteWidget<'a> {
             (area.height - side_height) / 2,
         ));
 
-        let Some(sprite) = self
-            .sprite
+        let Some(sprite) = sprite
             .animated()
             .map(|anim| anim.frame_at(self.elapsed))
-            .or(self.sprite.image())
+            .or(sprite.image())
         else {
-            return; // TODO: handle missing sprite case. maybe render some kind of image that shows that there is no sprite
+            return;
         };
 
         let cfg = CanvasConfig::new(area.width as usize, area.height as usize).mode(CanvasMode::Truecolor);

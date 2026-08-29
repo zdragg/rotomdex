@@ -1,4 +1,4 @@
-use std::{collections::HashMap, task::Poll};
+use std::task::Poll;
 
 use color_eyre::eyre::Result;
 use rustemon::{
@@ -9,45 +9,49 @@ use rustemon::{
         resource::NamedApiResource,
     },
 };
-use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
+use strum::{Display, EnumCount, EnumIter};
 
 use crate::{
-    FetchContext,
+    ModelContext, Version,
     model::{Fetchable, Resource},
 };
 
 #[derive(Debug)]
 pub(crate) struct ModelMoves {
-    map: HashMap<ModelVersionGroup, Vec<ModelVersionMove>>,
+    moves: Vec<ModelVersionMove>,
 }
 
 impl ModelMoves {
-    pub(crate) fn new(moves: &[PokemonMove], ctx: FetchContext) -> Result<Self> {
-        let mut map: HashMap<_, Vec<_>> = HashMap::new();
+    pub(crate) fn new(moves: &[PokemonMove], ctx: ModelContext) -> Result<Self> {
+        let mut vec: Vec<_> = vec![];
         for m in moves {
             for move_version in &m.version_group_details {
-                let Ok(version) = move_version.version_group.name.parse() else {
+                let Ok(version) = move_version.version_group.name.parse::<Version>() else {
                     continue;
                 };
-                let Some(method) = ModelMoveLearnMethod::from(move_version.clone()) else {
+
+                if version != ctx.settings.version {
+                    continue;
+                }
+
+                let Some(learn_method) = ModelMoveLearnMethod::from(move_version.clone()) else {
                     continue;
                 };
-                let move_resource = Resource::<ModelMove>::fetch(m.move_.clone(), ctx.clone(), true);
-                map.entry(version).or_default().push(ModelVersionMove {
+                let resource = Resource::<ModelMove>::fetch(m.move_.clone(), ctx.clone(), true);
+                vec.push(ModelVersionMove {
                     name: m.move_.name.clone(),
-                    learn_method: method,
-                    resource: move_resource,
+                    learn_method,
+                    resource,
                 });
             }
         }
-        Ok(Self { map })
+        Ok(Self { moves: vec })
     }
 
     pub(crate) fn poll(&mut self, cx: &mut std::task::Context<'_>) -> Poll<()> {
         if self
-            .map
-            .values_mut()
-            .flatten()
+            .moves
+            .iter_mut()
             .fold(false, |is_ready, move_| is_ready | move_.resource.poll(cx).is_ready())
         {
             Poll::Ready(())
@@ -56,21 +60,8 @@ impl ModelMoves {
         }
     }
 
-    pub(crate) fn versions_cnt(&self) -> usize {
-        self.map.len()
-    }
-
-    pub(crate) fn get_versions(&self) -> Vec<ModelVersionGroup> {
-        ModelVersionGroup::iter()
-            .filter(|version| self.map.contains_key(version))
-            .collect()
-    }
-
-    pub(crate) fn iter_moves(&self, move_gen_idx: usize) -> Option<&[ModelVersionMove]> {
-        let version_group = ModelVersionGroup::iter()
-            .filter(|version| self.map.contains_key(version))
-            .nth(move_gen_idx)?;
-        self.map.get(&version_group).map(|vec| &vec[..])
+    pub(crate) fn get(&self) -> &[ModelVersionMove] {
+        &self.moves[..]
     }
 }
 
@@ -87,73 +78,12 @@ impl ModelVersionMove {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, EnumIter, EnumString)]
-#[strum(serialize_all = "kebab-case")]
-pub(crate) enum ModelVersionGroup {
-    RedBlue,
-    Yellow,
-    GoldSilver,
-    Crystal,
-    RubySapphire,
-    Emerald,
-    #[strum(serialize = "firered-leafgreen")]
-    FireRedLeafGreen,
-    DiamondPearl,
-    Platinum,
-    #[strum(serialize = "heartgold-soulsilver")]
-    HeartGoldSoulSilver,
-    BlackWhite,
-    #[strum(serialize = "black-2-white-2")]
-    Black2White2,
-    #[strum(serialize = "x-y")]
-    XY,
-    OmegaRubyAlphaSapphire,
-    SunMoon,
-    UltraSunUltraMoon,
-    LetsGoPikachuLetsGoEevee,
-    SwordShield,
-    BrilliantDiamondShiningPearl,
-    LegendsArceus,
-    ScarletViolet,
-    LegendsZa,
-}
-
-impl ModelVersionGroup {
-    pub(crate) fn abbreviation(&self) -> &'static str {
-        match &self {
-            Self::RedBlue => "rb",
-            Self::Yellow => "y",
-            Self::GoldSilver => "gs",
-            Self::Crystal => "c",
-            Self::RubySapphire => "rs",
-            Self::Emerald => "e",
-            Self::FireRedLeafGreen => "frlg",
-            Self::DiamondPearl => "dp",
-            Self::Platinum => "pt",
-            Self::HeartGoldSoulSilver => "hgss",
-            Self::BlackWhite => "bw",
-            Self::Black2White2 => "b2w2",
-            Self::XY => "xy",
-            Self::OmegaRubyAlphaSapphire => "oras",
-            Self::SunMoon => "sm",
-            Self::UltraSunUltraMoon => "usum",
-            Self::LetsGoPikachuLetsGoEevee => "lgpe",
-            Self::SwordShield => "swsh",
-            Self::BrilliantDiamondShiningPearl => "bdsp",
-            Self::LegendsArceus => "pla",
-            Self::ScarletViolet => "sv",
-            Self::LegendsZa => "plza",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Display, EnumIter, EnumCount)]
 pub(crate) enum ModelMoveLearnMethod {
     LevelUp(u32),
     Egg,
     Tutor,
     Machine,
-    // TODO: implement the rest under https://pokeapi.co/api/v2/move-learn-method/{id}
 }
 
 impl ModelMoveLearnMethod {
@@ -179,14 +109,14 @@ pub(crate) struct ModelMove {
 
 impl Fetchable for ModelMove {
     type Request = NamedApiResource<Move>;
-    async fn fetch(request: Self::Request, ctx: crate::FetchContext) -> color_eyre::eyre::Result<Self> {
+    async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
         let move_ = request.follow(&ctx.pkmn_client).await?;
         Ok(Self { inner: move_ })
     }
     fn is_loaded(&self) -> bool {
         true
     }
-    fn poll(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<()> {
+    fn poll(&mut self, _cx: &mut std::task::Context<'_>) -> Poll<()> {
         Poll::Pending
     }
     fn fetch_span(request: &Self::Request) -> tracing::Span {

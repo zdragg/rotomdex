@@ -1,8 +1,10 @@
 use std::task::{Context, Poll};
 
-use crate::FetchContext;
 use crate::model::{Fetchable, Resource};
-use color_eyre::eyre::{OptionExt, Result, eyre};
+use crate::{Generation, ModelContext};
+use color_eyre::eyre::{Result, eyre};
+use itertools::Itertools;
+use rustemon::model::pokemon::PokemonAbilityPast;
 use rustemon::{
     Follow,
     model::{
@@ -15,7 +17,7 @@ use tracing::Span;
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug)]
 pub(crate) enum ModelAbilities {
-    None, // Pokemon like Zygarde-Mega has no abilities in Z-A. Maybe it will have one later after introduced in Champions
+    None,
     P {
         primary: Resource<ModelAbility>,
     },
@@ -35,23 +37,43 @@ pub(crate) enum ModelAbilities {
 }
 
 impl ModelAbilities {
-    pub(crate) fn new(abilities: &[PokemonAbility], ctx: FetchContext) -> Result<Self> {
-        let mut slots: [Option<Resource<ModelAbility>>; 3] = [const { None }; 3];
-        for ability in abilities {
+    pub(crate) fn new(current: &[PokemonAbility], past: &[PokemonAbilityPast], ctx: ModelContext) -> Result<Self> {
+        let mut slots: [Option<NamedApiResource<Ability>>; 3] = [const { None }; 3];
+
+        let mut apply_ability = |ability: &PokemonAbility| {
             let idx = if let 1..=3 = ability.slot {
                 (ability.slot - 1) as usize
             } else {
                 return Err(eyre!("invalid ability slot"));
             };
 
-            let api = ability.ability.clone().ok_or_eyre("ability not found")?;
+            slots[idx] = ability.ability.clone();
+            Ok(())
+        };
 
-            let resource = Resource::<ModelAbility>::fetch(api, ctx.clone(), false);
+        for ability in current {
+            apply_ability(ability)?;
+        }
 
-            if slots[idx].replace(resource).is_some() {
-                return Err(eyre!("duplicate ability slot"));
+        let target_generation = ctx.settings.version.generation();
+        let patches: Vec<_> = past
+            .iter()
+            .filter_map(|patch| {
+                let generation = patch.generation.name.parse::<Generation>().ok()?;
+                (generation >= target_generation).then_some((generation, patch))
+            })
+            .sorted_unstable_by_key(|(generation, _)| std::cmp::Reverse(*generation))
+            .map(|(_, patch)| &patch.abilities[..])
+            .collect();
+
+        for patch in patches {
+            for ability in patch {
+                apply_ability(ability)?;
             }
         }
+
+        let slots =
+            slots.map(|maybe_api| maybe_api.map(|api| Resource::<ModelAbility>::fetch(api, ctx.clone(), false)));
 
         let res = match slots {
             [None, None, None] => {
@@ -68,14 +90,14 @@ impl ModelAbilities {
             },
             _ => return Err(eyre!("invalid ability set found")),
         };
+
         Ok(res)
     }
 
     pub(crate) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        // bitwise OR for no short circuit
         if self
             .iter_mut()
-            .fold(false, |is_ready, a| is_ready | a.poll(cx).is_ready())
+            .fold(false, |is_ready, ability| is_ready | ability.poll(cx).is_ready())
         {
             return Poll::Ready(());
         }
@@ -156,18 +178,18 @@ impl ModelAbility {
 
 impl Fetchable for ModelAbility {
     type Request = NamedApiResource<Ability>;
-    async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
+    async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
         let ability = request.follow(&ctx.pkmn_client).await?;
         let name = ability.name;
 
         let (_rank, desc) = ability
             .flavor_text_entries
             .into_iter()
-            .filter_map(|e| {
-                if e.language.name != "en" {
+            .filter_map(|entry| {
+                if entry.language.name != "en" {
                     return None;
                 }
-                let rank = match e.version_group.name.as_str() {
+                let rank = match entry.version_group.name.as_str() {
                     "scarlet-violet" => 9,
                     "sword-shield" => 8,
                     "sun-moon" => 7,
@@ -177,7 +199,7 @@ impl Fetchable for ModelAbility {
                     "ruby-sapphire" | "emerald" | "firered-leafgreen" => 3,
                     _ => 0,
                 };
-                Some((rank, e.flavor_text))
+                Some((rank, entry.flavor_text))
             })
             .max_by_key(|(rank, _)| *rank)
             .unwrap();

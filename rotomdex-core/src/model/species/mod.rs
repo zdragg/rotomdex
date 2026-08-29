@@ -8,7 +8,7 @@ use ratatui::style::Color;
 use rustemon::model::pokemon::PokemonSpecies;
 use tracing::Span;
 
-use crate::FetchContext;
+use crate::ModelContext;
 use crate::model::{Fetchable, Resource};
 
 #[derive(Debug)]
@@ -19,7 +19,7 @@ pub(crate) struct ModelSpecies {
 
 impl Fetchable for ModelSpecies {
     type Request = String;
-    async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
+    async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
         let species = rustemon::pokemon::pokemon_species::get_by_name(&request, &ctx.pkmn_client).await?;
         let variants: Vec<_> = species
             .varieties

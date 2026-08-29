@@ -2,7 +2,7 @@ use std::io::Cursor;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use crate::FetchContext;
+use crate::ModelContext;
 use crate::model::Fetchable;
 use color_eyre::eyre::Result;
 use image::codecs::gif;
@@ -18,7 +18,7 @@ pub(crate) struct ModelSprite {
 
 impl Fetchable for ModelSprite {
     type Request = PokemonSprites;
-    async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self> {
+    async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
         let image: Result<Option<RgbaImage>> = async {
             if let Some(image_link) = request.front_default {
                 let image_bytes = ctx.req_client.get(image_link).send().await?.bytes().await?;

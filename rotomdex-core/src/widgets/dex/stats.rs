@@ -4,35 +4,30 @@ use ratatui::{
     widgets::{Bar, BarChart, Widget},
 };
 
-use crate::{
-    model::{ModelSpecies, ModelStats, ModelVariant},
-    widgets::WidgetExt,
-};
+use crate::model::{ModelSpecies, ModelVariant};
 
 pub(crate) struct StatsWidget<'a> {
-    stats: &'a ModelStats,
-    highest: u32,
+    variant: Option<&'a ModelVariant>,
+    species: Option<&'a ModelSpecies>,
 }
 
-impl<'a> WidgetExt<(&'a ModelVariant, &'a ModelSpecies)> for StatsWidget<'a> {
-    fn new((variant, species): (&'a ModelVariant, &'a ModelSpecies)) -> Self {
-        let highest = species.variants().iter().fold(0, |acc, v| {
-            if let Some(v) = v.as_loaded() {
-                acc.max(v.stats.highest())
-            } else {
-                acc
-            }
-        });
-        Self {
-            stats: &variant.stats,
-            highest,
-        }
+impl<'a> StatsWidget<'a> {
+    pub(crate) fn new(variant: Option<&'a ModelVariant>, species: Option<&'a ModelSpecies>) -> Self {
+        Self { variant, species }
     }
 }
 
-impl<'a> Widget for StatsWidget<'a> {
+impl Widget for StatsWidget<'_> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        // I like consts. I learned this trick from a
+        let Some((variant, species)) = self.variant.zip(self.species) else {
+            return;
+        };
+        let highest = species.variants().iter().fold(0, |acc, variant| {
+            variant
+                .as_loaded()
+                .map_or(acc, |variant| acc.max(variant.stats.highest()))
+        });
+
         const BAR_COUNT: u16 = 6;
         const GAP_COUNT: u16 = BAR_COUNT - 1;
         const BAR_TO_GAP_RATIO: u16 = 3;
@@ -60,16 +55,16 @@ impl<'a> Widget for StatsWidget<'a> {
             .areas(area);
 
         let bars = vec![
-            get_bar(self.stats.hp, "HP"),
-            get_bar(self.stats.atk, "Atk"),
-            get_bar(self.stats.def, "Def"),
-            get_bar(self.stats.spa, "SpA"),
-            get_bar(self.stats.spd, "SpD"),
-            get_bar(self.stats.spe, "Spe"),
+            get_bar(variant.stats.hp, "HP"),
+            get_bar(variant.stats.atk, "Atk"),
+            get_bar(variant.stats.def, "Def"),
+            get_bar(variant.stats.spa, "SpA"),
+            get_bar(variant.stats.spd, "SpD"),
+            get_bar(variant.stats.spe, "Spe"),
         ];
 
         BarChart::vertical(bars)
-            .max(self.highest as u64)
+            .max(highest as u64)
             .bar_width(bar_width)
             .bar_gap(bar_gap)
             .render(chart_area, buf);
@@ -79,7 +74,6 @@ impl<'a> Widget for StatsWidget<'a> {
 fn get_bar(stat: u32, stat_name: &str) -> Bar<'_> {
     let ratio = (stat as f64 / 180f64).clamp(0.0, 1.0);
     let grad: BasisGradient = GradientBuilder::new()
-        // Colors inspired by pokemondb.net
         .html_colors(&["#f34444", "#ff7f0f", "#ffdd57", "#a0e515", "#23cd5e", "#00c2b8"])
         .mode(colorgrad::BlendMode::Oklab)
         .build()

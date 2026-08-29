@@ -3304,6 +3304,7 @@ dependencies = [
  "chafa-syms-rs",
  "color-eyre",
  "colorgrad",
+ "derive_builder",
  "futures",
  "http-cache-reqwest 1.0.0-alpha.8",
  "image",

@@ -5,49 +5,43 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
-use crate::{
-    model::{ModelSpecies, ModelVariant, Resource},
-    projector::Section,
-    widgets::WidgetExt,
-};
+use crate::model::{ModelSpecies, Resource};
 
 pub(crate) struct VariantSelectorWidget<'a> {
-    variants: &'a [Resource<ModelVariant>],
-    selected_idx: usize,
-    focused: bool,
+    species: Option<&'a ModelSpecies>,
+    cursor: Option<usize>,
 }
 
-impl<'a> WidgetExt<(&'a ModelSpecies, usize, Section)> for VariantSelectorWidget<'a> {
-    fn new((pkmn, selected_idx, section): (&'a ModelSpecies, usize, Section)) -> Self {
-        Self {
-            variants: pkmn.variants(),
-            selected_idx,
-            focused: section == Section::VariantSelect,
-        }
+impl<'a> VariantSelectorWidget<'a> {
+    pub(crate) fn new(species: Option<&'a ModelSpecies>, cursor: Option<usize>) -> Self {
+        Self { species, cursor }
     }
 }
 
-impl<'a> Widget for VariantSelectorWidget<'a> {
-    #[allow(unstable_name_collisions)] // Should do something about this
+impl Widget for VariantSelectorWidget<'_> {
+    #[allow(unstable_name_collisions)]
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        let variants: Vec<_> = self
-            .variants
+        let Some((species, cursor)) = self.species.zip(self.cursor) else {
+            return;
+        };
+        let variants: Vec<_> = species
+            .variants()
             .iter()
             .enumerate()
-            .map(|(i, v)| match v {
-                Resource::Loaded(v) => {
-                    if i == self.selected_idx {
-                        let mut spans = v.types.spans_iter(&v.get_variant_name().to_ascii_uppercase());
+            .map(|(idx, variant)| match variant {
+                Resource::Loaded(variant) => {
+                    let name = if idx == cursor {
+                        variant.get_variant_name().to_ascii_uppercase()
+                    } else {
+                        variant.get_variant_name().to_owned()
+                    };
+                    let mut spans = variant.types.spans_iter(&name);
+                    if idx == cursor {
                         for span in &mut spans {
                             span.style = span.style.bold();
-                            if self.focused {
-                                span.style = span.style.underlined()
-                            }
                         }
-                        spans
-                    } else {
-                        v.types.spans_iter(v.get_variant_name())
                     }
+                    spans
                 }
                 Resource::Loading { deferred, .. } if deferred.get() => {
                     vec![Span::raw("deferred").style(Color::DarkGray)]
@@ -71,12 +65,10 @@ impl<'a> Widget for VariantSelectorWidget<'a> {
             return;
         }
 
-        // If line width overflows: sophisticated thing
-        // not that good to be honest, maybe rework it later
         let line_width = line.width();
-        let selected_start = variant_widths[..self.selected_idx].iter().sum::<usize>() + self.selected_idx * 3;
+        let selected_start = variant_widths[..cursor].iter().sum::<usize>() + cursor * 3;
         let first_center = variant_widths[0];
-        let selected_center = 2 * selected_start + variant_widths[self.selected_idx];
+        let selected_center = 2 * selected_start + variant_widths[cursor];
         let last_center = 2 * line_width - variant_widths[variant_widths.len() - 1];
         let center_range = last_center - first_center;
         let scroll_range = line_width - usize::from(area.width);

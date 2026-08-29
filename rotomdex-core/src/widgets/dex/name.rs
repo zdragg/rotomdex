@@ -5,33 +5,31 @@ use ratatui::{
 };
 use tui_big_text::{BigText, PixelSize};
 
-use crate::{
-    model::{ModelSpecies, ModelTypes, ModelVariant},
-    widgets::WidgetExt,
-};
+use crate::model::{ModelSpecies, ModelVariant};
 
 pub(crate) struct NameWidget<'a> {
-    name: &'a str,
-    types: Option<&'a ModelTypes>,
+    species: Option<&'a ModelSpecies>,
+    variant: Option<&'a ModelVariant>,
 }
 
-impl<'a> WidgetExt<(&'a ModelSpecies, Option<&'a ModelVariant>)> for NameWidget<'a> {
-    fn new((species, variant): (&'a ModelSpecies, Option<&'a ModelVariant>)) -> Self {
-        Self {
-            name: &species.inner().name,
-            types: variant.map(|v| &v.types),
-        }
+impl<'a> NameWidget<'a> {
+    pub(crate) fn new(species: Option<&'a ModelSpecies>, variant: Option<&'a ModelVariant>) -> Self {
+        Self { species, variant }
     }
 }
 
 impl Widget for NameWidget<'_> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        let line = if let Some(types) = self.types {
-            Line::from(types.spans_iter(&self.name.to_uppercase()))
-        } else {
-            Line::from(self.name.to_uppercase())
+        let Some(species) = self.species else {
+            return;
         };
-        let Some((area, pixel_size)) = calculate_size(area, self.name.len()) else {
+        let name = &species.inner().name;
+        let line = if let Some(variant) = self.variant {
+            Line::from(variant.types.spans_iter(&name.to_uppercase()))
+        } else {
+            Line::from(name.to_uppercase())
+        };
+        let Some((area, pixel_size)) = calculate_size(area, name.len()) else {
             let [area] = Layout::vertical([Constraint::Length(1)]).flex(Flex::Center).areas(area);
             line.centered().render(area, buf);
             return;
@@ -45,7 +43,6 @@ impl Widget for NameWidget<'_> {
     }
 }
 
-/// Calculates the largest PixelSize fittable in the area. Also gives the Rect to render that text in
 fn calculate_size(area: Rect, char_count: usize) -> Option<(Rect, PixelSize)> {
     let char_count = u16::try_from(char_count).ok()?;
     let full_width = char_count.checked_mul(8)?;

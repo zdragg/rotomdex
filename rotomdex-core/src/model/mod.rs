@@ -12,7 +12,7 @@ use futures::future::LocalBoxFuture;
 use tracing::{Instrument, Span};
 use web_time::Instant;
 
-use crate::FetchContext;
+use crate::ModelContext;
 
 pub(crate) struct ModelPokemon {
     name: String,
@@ -22,7 +22,7 @@ pub(crate) struct ModelPokemon {
 }
 
 impl ModelPokemon {
-    pub(crate) fn new(name: impl Into<String>, ctx: FetchContext) -> Self {
+    pub(crate) fn new(name: impl Into<String>, ctx: ModelContext) -> Self {
         let name = name.into();
         Self {
             name: name.clone(),
@@ -54,7 +54,7 @@ impl ModelPokemon {
 
 pub(crate) trait Fetchable: Sized + 'static {
     type Request: 'static;
-    async fn fetch(request: Self::Request, ctx: FetchContext) -> Result<Self>;
+    async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self>;
 
     fn is_loaded(&self) -> bool;
 
@@ -74,7 +74,7 @@ pub(crate) enum Resource<T: Fetchable> {
 }
 
 impl<T: Fetchable> Resource<T> {
-    pub(crate) fn fetch(request: T::Request, ctx: FetchContext, deferred: bool) -> Self {
+    pub(crate) fn fetch(request: T::Request, ctx: ModelContext, deferred: bool) -> Self {
         let span = T::fetch_span(&request);
 
         let future = async move {
@@ -117,7 +117,7 @@ impl<T: Fetchable> Resource<T> {
                 }
             }
             Self::Loaded(value) => return value.poll(cx),
-            _ => return Poll::Pending, // deferred and error should be kept in place
+            Self::Failed(_) => return Poll::Pending,
         };
 
         *self = match result {
@@ -155,7 +155,7 @@ impl<T: fmt::Debug + Fetchable> fmt::Debug for Resource<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Loading { deferred, .. } if deferred.get() => f.write_str("Deferred"),
-            Self::Loading { .. } => f.write_str("Loading"), // not deferred
+            Self::Loading { .. } => f.write_str("Loading"),
             Self::Loaded(value) => f.debug_tuple("Loaded").field(value).finish(),
             Self::Failed(error) => f.debug_tuple("Failed").field(error).finish(),
         }
