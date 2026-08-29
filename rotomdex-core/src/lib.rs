@@ -85,7 +85,7 @@ pub enum Action {
     Down,
     Left,
     Up,
-    Ignore,
+    Escape,
 }
 
 pub trait ActionHandler {

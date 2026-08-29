@@ -80,6 +80,7 @@ fn install_key_handler(core: Rc<RefCell<RotomDexCore>>) -> Result<()> {
             KeyCode::Left => Action::Left,
             KeyCode::Backspace => Action::Backspace,
             KeyCode::Char(ch) => Action::Input(ch),
+            KeyCode::Esc => Action::Escape,
             _ => return,
         };
 

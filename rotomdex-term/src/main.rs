@@ -56,7 +56,7 @@ async fn run(cache_dir: PathBuf) -> Result<()> {
     let mut core = RotomDexCore::new_with_cache(
         SettingsBuilder::default().build()?,
         format!(
-            "← / → to select variant {} Type anything to search {} Esc / Ctrl-C to quit",
+            "← / → to select variant {} Type anything to search {} Ctrl-C to quit",
             ratatui::symbols::DOT,
             ratatui::symbols::DOT
         ),
@@ -68,9 +68,11 @@ async fn run(cache_dir: PathBuf) -> Result<()> {
     loop {
         tokio::select! {
             Some(Ok(event)) = events.next() => {
-                match map_event(event) {
-                    AppEvent::Quit => break,
-                    AppEvent::Action(action) => core.handle_action(action),
+                if let Some(event) =  map_event(event) {
+                    match event {
+                        AppEvent::Quit => break,
+                        AppEvent::Action(action) => core.handle_action(action),
+                    }
                 }
             }
             _ = core.poll_pkmn() => {}
@@ -83,24 +85,28 @@ async fn run(cache_dir: PathBuf) -> Result<()> {
 }
 
 enum AppEvent {
-    Action(Action),
     Quit,
+    Action(Action),
 }
 
-fn map_event(event: Event) -> AppEvent {
-    if let Event::Key(key) = event {
-        match (key.modifiers, key.code) {
-            (_, KeyCode::Esc) | (KeyModifiers::CONTROL, KeyCode::Char('c')) => AppEvent::Quit,
-            (_, KeyCode::Enter) => AppEvent::Action(Action::Enter),
-            (_, KeyCode::Down) => AppEvent::Action(Action::Down),
-            (_, KeyCode::Up) => AppEvent::Action(Action::Up),
-            (_, KeyCode::Right) => AppEvent::Action(Action::Right),
-            (_, KeyCode::Left) => AppEvent::Action(Action::Left),
-            (_, KeyCode::Backspace) => AppEvent::Action(Action::Backspace),
-            (_, KeyCode::Char(ch)) => AppEvent::Action(Action::Input(ch)),
-            _ => AppEvent::Action(Action::Ignore),
+fn map_event(event: Event) -> Option<AppEvent> {
+    let action = if let Event::Key(key) = event {
+        if matches!((key.modifiers, key.code), (KeyModifiers::CONTROL, KeyCode::Char('c'))) {
+            return Some(AppEvent::Quit);
+        }
+        match key.code {
+            KeyCode::Esc => Action::Escape,
+            KeyCode::Enter => Action::Enter,
+            KeyCode::Down => Action::Down,
+            KeyCode::Up => Action::Up,
+            KeyCode::Right => Action::Right,
+            KeyCode::Left => Action::Left,
+            KeyCode::Backspace => Action::Backspace,
+            KeyCode::Char(ch) => Action::Input(ch),
+            _ => return None,
         }
     } else {
-        AppEvent::Action(Action::Ignore)
-    }
+        return None;
+    };
+    Some(AppEvent::Action(action))
 }
