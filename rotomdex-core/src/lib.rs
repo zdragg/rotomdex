@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 use crate::{
     model::ModelPokemon,
-    widgets::{DexState, DexWidget, InputState, InputWidget},
+    widgets::{DexState, DexWidget},
 };
 
 pub struct RotomDexCore {
@@ -25,13 +25,12 @@ pub struct RotomDexCore {
     pkmn: ModelPokemon,
 
     dex_state: DexState,
-    input_state: InputState,
-    bottom_text: String,
+    bottom_text: &'static str,
     timer: web_time::Instant,
 }
 
 impl RotomDexCore {
-    pub fn new(settings: Settings, bottom_text: impl Into<String>) -> Self {
+    pub fn new(settings: Settings, bottom_text: &'static str) -> Self {
         let fetch_ctx = ModelContext::new(settings);
         Self {
             pkmn: ModelPokemon::new("rotom", fetch_ctx.clone()),
@@ -39,14 +38,13 @@ impl RotomDexCore {
             fetch_ctx,
 
             dex_state: DexState::default(),
-            input_state: InputState::default(),
-            bottom_text: bottom_text.into(),
+            bottom_text,
             timer: web_time::Instant::now(),
         }
     }
 
     #[cfg(feature = "cache")]
-    pub fn new_with_cache(settings: Settings, bottom_text: impl Into<String>, cache_dir: PathBuf) -> Self {
+    pub fn new_with_cache(settings: Settings, bottom_text: &'static str, cache_dir: PathBuf) -> Self {
         let fetch_ctx = ModelContext::new_with_cache(settings, cache_dir);
         Self {
             pkmn: ModelPokemon::new("rotom", fetch_ctx.clone()),
@@ -54,15 +52,14 @@ impl RotomDexCore {
             fetch_ctx,
 
             dex_state: DexState::default(),
-            input_state: InputState::default(),
-            bottom_text: bottom_text.into(),
+            bottom_text,
             timer: web_time::Instant::now(),
         }
     }
 
-    fn new_pokemon(&mut self) {
+    fn new_pokemon(&mut self, name: String) {
         self.dex_state.reset();
-        self.pkmn = ModelPokemon::new(self.input_state.take(), self.fetch_ctx.clone());
+        self.pkmn = ModelPokemon::new(name, self.fetch_ctx.clone());
     }
 
     pub async fn poll_pkmn(&mut self) {
@@ -73,7 +70,6 @@ impl RotomDexCore {
 impl Widget for &mut RotomDexCore {
     fn render(self, area: Rect, buf: &mut Buffer) {
         DexWidget::new(&self.pkmn, &self.dex_state, self.timer.elapsed(), &self.bottom_text).render(area, buf);
-        InputWidget.render(area, buf, &mut self.input_state);
     }
 }
 
@@ -86,20 +82,15 @@ pub enum Action {
     Left,
     Up,
     Escape,
+    CapsLock,
 }
 
-pub trait ActionHandler {
-    fn handle_action(&mut self, action: Action);
-}
+impl RotomDexCore {
+    pub fn handle_action(&mut self, action: Action) {
+        let pkmn_name = self.dex_state.handle_action(action);
 
-impl ActionHandler for RotomDexCore {
-    fn handle_action(&mut self, action: Action) {
-        match action {
-            Action::Enter if !self.input_state.is_empty() => self.new_pokemon(),
-            Action::Down | Action::Up | Action::Right | Action::Left => self.dex_state.handle_action(action),
-            Action::Backspace => self.input_state.backspace(),
-            Action::Input(ch) => self.input_state.handle_input(ch),
-            _ => {}
+        if let Some(name) = pkmn_name {
+            self.new_pokemon(name);
         }
     }
 }

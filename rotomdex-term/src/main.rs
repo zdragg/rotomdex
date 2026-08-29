@@ -4,7 +4,7 @@ use color_eyre::eyre::{Result, eyre};
 use crossterm::event::{Event, EventStream, KeyCode, KeyModifiers};
 use etcetera::{AppStrategy, AppStrategyArgs};
 use ratatui::prelude::Widget;
-use rotomdex_core::{Action, ActionHandler, RotomDexCore, SettingsBuilder};
+use rotomdex_core::{Action, RotomDexCore, SettingsBuilder};
 use tokio_stream::StreamExt;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
@@ -55,11 +55,7 @@ const FRAMES_PER_SECOND: f32 = 30.0;
 async fn run(cache_dir: PathBuf) -> Result<()> {
     let mut core = RotomDexCore::new_with_cache(
         SettingsBuilder::default().build()?,
-        format!(
-            "← / → to select variant {} Type anything to search {} Ctrl-C to quit",
-            ratatui::symbols::DOT,
-            ratatui::symbols::DOT
-        ),
+        constcat::concat!("Use : to Search ", ratatui::symbols::DOT, " Quit with Ctrl-C",),
         cache_dir,
     );
     let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
@@ -103,6 +99,7 @@ fn map_event(event: Event) -> Option<AppEvent> {
             KeyCode::Left => Action::Left,
             KeyCode::Backspace => Action::Backspace,
             KeyCode::Char(ch) => Action::Input(ch),
+            KeyCode::CapsLock => Action::CapsLock,
             _ => return None,
         }
     } else {

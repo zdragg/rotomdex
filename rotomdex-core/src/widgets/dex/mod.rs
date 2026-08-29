@@ -1,19 +1,19 @@
 mod name;
+mod search;
 mod sprite;
 mod stats;
 mod tabs;
 mod variant;
 
-use std::time::Duration;
-
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::Color,
-    text::Line,
     widgets::{Block, Widget},
 };
+use std::time::Duration;
 
+use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
 use crate::{
     Action,
     model::ModelPokemon,
@@ -24,18 +24,25 @@ use crate::{
 
 pub(crate) struct DexWidget<'a> {
     pkmn: &'a ModelPokemon,
-    state: &'a DexState,
     elapsed: Duration,
-    bottom_text: &'a str,
+    bottom_text: &'static str,
+
+    state: &'a DexState,
 }
 
 impl<'a> DexWidget<'a> {
-    pub(crate) fn new(pkmn: &'a ModelPokemon, state: &'a DexState, elapsed: Duration, bottom_text: &'a str) -> Self {
+    pub(crate) fn new(
+        pkmn: &'a ModelPokemon,
+        state: &'a DexState,
+        elapsed: Duration,
+        bottom_text: &'static str,
+    ) -> Self {
         Self {
             pkmn,
-            state,
             elapsed,
             bottom_text,
+
+            state,
         }
     }
 }
@@ -43,22 +50,20 @@ impl<'a> DexWidget<'a> {
 impl Widget for DexWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let species = self.pkmn.species.as_loaded();
-        let variant_idx = species.and_then(|species| self.state.variant_idx(species.variants_cnt()));
+        let variant_idx = species.and_then(|species| self.state.variant_cursor.get(species.variants_cnt()));
         let variant = species
             .zip(variant_idx)
             .and_then(|(species, idx)| species.variants().get(idx))
             .and_then(|variant| variant.as_loaded());
 
-        let block = Block::bordered()
-            .border_style(species.map_or(Color::DarkGray, |species| species.get_ratatui_color()))
-            .title_bottom(
-                Line::raw(format!(" {} ", self.bottom_text))
-                    .style(Color::DarkGray)
-                    .centered(),
-            );
+        // Block + bottom text / search widget render
+        let block =
+            Block::bordered().border_style(species.map_or(Color::DarkGray, |species| species.get_ratatui_color()));
+        let [_area, bottom_text_area] = area.layout(&Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]));
         let outer = area;
         let area = block.inner(outer);
         block.render(outer, buf);
+        SearchWidget::new(&self.state.search_state, self.bottom_text).render(bottom_text_area, buf);
 
         let [left_area, right_area] = Layout::horizontal([Constraint::Percentage(35), Constraint::Fill(1)])
             .spacing(1)
@@ -81,23 +86,48 @@ impl Widget for DexWidget<'_> {
 #[derive(Default)]
 pub(crate) struct DexState {
     variant_cursor: Cursor,
+
+    search_state: SearchWidgetState,
+}
+
+enum TabAction {
+    Left,
+    Down,
+    Up,
+    Right,
+    Enter,
+    Escape,
 }
 
 impl DexState {
-    pub(crate) fn handle_action(&mut self, action: Action) {
+    pub(crate) fn handle_action(&mut self, action: Action) -> Option<String> {
         match action {
-            Action::Right => self.variant_cursor.next(),
-            Action::Left => self.variant_cursor.prev(),
-            _ => {}
+            Action::Input(ch) if self.search_state.searching => self.search_state.handle_input(ch),
+            Action::Backspace if self.search_state.searching => self.search_state.backspace(),
+            Action::Escape | Action::CapsLock if self.search_state.searching => self.search_state.abort_search(),
+            Action::Enter if self.search_state.searching => return Some(self.search_state.take()),
+            Action::Input('f') => self.variant_cursor.next(),
+            Action::Input('d') => self.variant_cursor.prev(),
+            Action::Input(':') => self.search_state.start_search(),
+            _ => {
+                let action = match action {
+                    Action::Input('h') | Action::Left => TabAction::Left,
+                    Action::Input('j') | Action::Down => TabAction::Down,
+                    Action::Input('k') | Action::Up => TabAction::Up,
+                    Action::Input('l') | Action::Right => TabAction::Right,
+                    Action::Enter => TabAction::Enter,
+                    Action::Escape | Action::CapsLock => TabAction::Escape,
+                    _ => return None,
+                };
+                // let sub_state = Tabs::iter().nth(cursor.get()).unwrap().get_state();
+                // sub_state.handle(action);
+            }
         }
+        None
     }
 
     pub(crate) fn reset(&mut self) {
         self.variant_cursor.reset();
-    }
-
-    fn variant_idx(&self, total: usize) -> Option<usize> {
-        self.variant_cursor.get(total)
     }
 }
 

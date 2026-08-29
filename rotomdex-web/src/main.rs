@@ -11,7 +11,7 @@ use ratzilla::{
         window,
     },
 };
-use rotomdex_core::{Action, ActionHandler, RotomDexCore, SettingsBuilder};
+use rotomdex_core::{Action, RotomDexCore, SettingsBuilder};
 use std::{cell::RefCell, rc::Rc};
 use tracing_web::MakeWebConsoleWriter;
 
@@ -37,10 +37,7 @@ fn setup_logs() -> Result<()> {
 fn run() -> Result<()> {
     let core = Rc::new(RefCell::new(RotomDexCore::new(
         SettingsBuilder::default().build()?,
-        format!(
-            "← / → to select variant {} Type anything to search",
-            ratzilla::ratatui::symbols::DOT
-        ),
+        "Use : to search",
     )));
     let font_atlas = FontAtlasData::from_binary(include_bytes!("../assets/jetbrains-mono-30.atlas"))?;
     let backend = WebGl2Backend::new_with_options(
@@ -67,30 +64,49 @@ fn run() -> Result<()> {
 
 fn install_key_handler(core: Rc<RefCell<RotomDexCore>>) -> Result<()> {
     let window = window().ok_or_else(|| eyre!("unable to access the browser window"))?;
+    let mut caps_lock_state = None;
     let callback = Closure::<dyn FnMut(KeyboardEvent)>::new(move |event: KeyboardEvent| {
         if event.ctrl_key() || event.alt_key() || event.meta_key() {
             return;
         }
 
-        let action = match KeyCode::from(event.clone()) {
-            KeyCode::Enter => Action::Enter,
-            KeyCode::Right => Action::Right,
-            KeyCode::Up => Action::Up,
-            KeyCode::Down => Action::Down,
-            KeyCode::Left => Action::Left,
-            KeyCode::Backspace => Action::Backspace,
-            KeyCode::Char(ch) => Action::Input(ch),
-            KeyCode::Esc => Action::Escape,
-            _ => return,
+        let action = if event.key() == "CapsLock" {
+            let state = event.get_modifier_state("CapsLock");
+
+            // macOS may report enabling Caps Lock as keydown and disabling it as keyup,
+            // while other platforms emit both events for each press.
+            if caps_lock_state.replace(state) == Some(state) {
+                return;
+            }
+
+            Action::CapsLock
+        } else {
+            if event.type_() != "keydown" {
+                return;
+            }
+
+            match KeyCode::from(event.clone()) {
+                KeyCode::Enter => Action::Enter,
+                KeyCode::Right => Action::Right,
+                KeyCode::Up => Action::Up,
+                KeyCode::Down => Action::Down,
+                KeyCode::Left => Action::Left,
+                KeyCode::Backspace => Action::Backspace,
+                KeyCode::Char(ch) => Action::Input(ch),
+                KeyCode::Esc => Action::Escape,
+                _ => return,
+            }
         };
 
         event.prevent_default();
         core.borrow_mut().handle_action(action);
     });
 
-    window
-        .add_event_listener_with_callback("keydown", callback.as_ref().unchecked_ref())
-        .map_err(|error| eyre!("unable to install keyboard handler: {error:?}"))?;
+    for event_type in ["keydown", "keyup"] {
+        window
+            .add_event_listener_with_callback(event_type, callback.as_ref().unchecked_ref())
+            .map_err(|error| eyre!("unable to install {event_type} handler: {error:?}"))?;
+    }
     callback.forget();
 
     Ok(())
