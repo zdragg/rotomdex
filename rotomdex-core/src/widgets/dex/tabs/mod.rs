@@ -35,6 +35,9 @@ impl<'a> TabsWidget<'a> {
 
 impl Widget for TabsWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        if matches!(self.variant, None) {
+            return;
+        }
         let [tab_area, content_area] =
             area.layout(&Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).spacing(1));
 
@@ -53,7 +56,7 @@ impl Widget for TabsWidget<'_> {
 }
 
 #[derive(EnumCount, VariantArray, Display, EnumIter)]
-enum DexTab {
+pub(crate) enum DexTab {
     Basic,
     #[strum(to_string = "Abil.")]
     Abilities,

@@ -4,12 +4,12 @@ use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
 pub(crate) struct SearchWidget<'a> {
     state: &'a SearchWidgetState,
-    tutorial_text: &'static str,
+    can_exit: bool,
 }
 
 impl<'a> SearchWidget<'a> {
-    pub(crate) fn new(state: &'a SearchWidgetState, tutorial_text: &'static str) -> Self {
-        Self { state, tutorial_text }
+    pub(crate) fn new(state: &'a SearchWidgetState, can_exit: bool) -> Self {
+        Self { state, can_exit }
     }
 }
 
@@ -50,10 +50,16 @@ impl SearchWidgetState {
 
 impl<'a> Widget for SearchWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let text = if self.can_exit {
+            const_format::concatcp!("Type / to see keybinds ", ratatui::symbols::DOT, " Exit with Ctrl-C",)
+        } else {
+            "Type / to see keybinds"
+        };
+
         let span = if self.state.searching {
             Span::raw(format!(" :{} ", self.state.input.as_str())).style(Color::White)
         } else {
-            Span::raw(format!(" {} ", self.tutorial_text)).style(Color::DarkGray)
+            Span::raw(format!(" {} ", text)).style(Color::DarkGray)
         };
 
         Line::from(span).centered().render(area, buf);

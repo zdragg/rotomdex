@@ -25,12 +25,12 @@ pub struct RotomDexCore {
     pkmn: ModelPokemon,
 
     dex_state: DexState,
-    bottom_text: &'static str,
+    can_exit: bool,
     timer: web_time::Instant,
 }
 
 impl RotomDexCore {
-    pub fn new(settings: Settings, bottom_text: &'static str) -> Self {
+    pub fn new(settings: Settings, can_exit: bool) -> Self {
         let fetch_ctx = ModelContext::new(settings);
         Self {
             pkmn: ModelPokemon::new("rotom", fetch_ctx.clone()),
@@ -38,13 +38,13 @@ impl RotomDexCore {
             fetch_ctx,
 
             dex_state: DexState::default(),
-            bottom_text,
+            can_exit,
             timer: web_time::Instant::now(),
         }
     }
 
     #[cfg(feature = "cache")]
-    pub fn new_with_cache(settings: Settings, bottom_text: &'static str, cache_dir: PathBuf) -> Self {
+    pub fn new_with_cache(settings: Settings, can_exit: bool, cache_dir: PathBuf) -> Self {
         let fetch_ctx = ModelContext::new_with_cache(settings, cache_dir);
         Self {
             pkmn: ModelPokemon::new("rotom", fetch_ctx.clone()),
@@ -52,7 +52,7 @@ impl RotomDexCore {
             fetch_ctx,
 
             dex_state: DexState::default(),
-            bottom_text,
+            can_exit,
             timer: web_time::Instant::now(),
         }
     }
@@ -69,7 +69,7 @@ impl RotomDexCore {
 
 impl Widget for &mut RotomDexCore {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        DexWidget::new(&self.pkmn, &self.dex_state, self.timer.elapsed(), &self.bottom_text).render(area, buf);
+        DexWidget::new(&self.pkmn, &self.dex_state, self.timer.elapsed(), self.can_exit).render(area, buf);
     }
 }
 

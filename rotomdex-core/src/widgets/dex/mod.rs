@@ -3,10 +3,12 @@ mod search;
 mod sprite;
 mod stats;
 mod tabs;
+mod tutorial;
 mod variant;
 
 use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
 use crate::widgets::dex::tabs::TabsWidgetState;
+use crate::widgets::dex::tutorial::{TutorialWidget, TutorialWidgetState};
 use crate::{
     Action,
     model::ModelPokemon,
@@ -25,23 +27,17 @@ use std::time::Duration;
 pub(crate) struct DexWidget<'a> {
     pkmn: &'a ModelPokemon,
     elapsed: Duration,
-    bottom_text: &'static str,
+    can_exit: bool,
 
     state: &'a DexState,
 }
 
 impl<'a> DexWidget<'a> {
-    pub(crate) fn new(
-        pkmn: &'a ModelPokemon,
-        state: &'a DexState,
-        elapsed: Duration,
-        bottom_text: &'static str,
-    ) -> Self {
+    pub(crate) fn new(pkmn: &'a ModelPokemon, state: &'a DexState, elapsed: Duration, can_exit: bool) -> Self {
         Self {
             pkmn,
             elapsed,
-            bottom_text,
-
+            can_exit,
             state,
         }
     }
@@ -63,7 +59,7 @@ impl Widget for DexWidget<'_> {
         let outer = area;
         let area = block.inner(outer);
         block.render(outer, buf);
-        SearchWidget::new(&self.state.search_state, self.bottom_text).render(bottom_text_area, buf);
+        SearchWidget::new(&self.state.search_state, self.can_exit).render(bottom_text_area, buf);
 
         let [left_area, right_area] = Layout::horizontal([Constraint::Percentage(35), Constraint::Fill(1)])
             .spacing(1)
@@ -80,6 +76,9 @@ impl Widget for DexWidget<'_> {
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
         TabsWidget::new(species, variant, &self.state.tabs_state).render(tab_area, buf);
+        if self.state.tutorial_state.enabled {
+            TutorialWidget::new(self.can_exit).render(area, buf);
+        }
     }
 }
 
@@ -89,6 +88,7 @@ pub(crate) struct DexState {
 
     search_state: SearchWidgetState,
     tabs_state: TabsWidgetState,
+    tutorial_state: TutorialWidgetState,
 }
 
 impl DexState {
@@ -101,6 +101,7 @@ impl DexState {
             Action::Input('f') => self.variant_cursor.next(),
             Action::Input('d') => self.variant_cursor.prev(),
             Action::Input(':') => self.search_state.start_search(),
+            Action::Input('/') => self.tutorial_state.enabled = !self.tutorial_state.enabled,
             _ => self.tabs_state.handle_action(action),
         }
         None

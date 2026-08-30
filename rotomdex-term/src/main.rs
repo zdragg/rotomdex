@@ -53,11 +53,7 @@ fn setup_logs(log_dir: PathBuf) -> Result<WorkerGuard> {
 
 const FRAMES_PER_SECOND: f32 = 30.0;
 async fn run(cache_dir: PathBuf) -> Result<()> {
-    let mut core = RotomDexCore::new_with_cache(
-        SettingsBuilder::default().build()?,
-        constcat::concat!("Use : to Search ", ratatui::symbols::DOT, " Quit with Ctrl-C",),
-        cache_dir,
-    );
+    let mut core = RotomDexCore::new_with_cache(SettingsBuilder::default().build()?, true, cache_dir);
     let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
     let mut terminal = ratatui::init();
     let mut events = EventStream::new();

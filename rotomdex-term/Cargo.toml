@@ -14,4 +14,3 @@ tokio-stream = "0.1.19"
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3.23", features = ["chrono", "env-filter", "tracing-log"] }
 tracing = "0.1.44"
-constcat = "0.6.1"

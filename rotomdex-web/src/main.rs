@@ -37,7 +37,7 @@ fn setup_logs() -> Result<()> {
 fn run() -> Result<()> {
     let core = Rc::new(RefCell::new(RotomDexCore::new(
         SettingsBuilder::default().build()?,
-        "Use : to search",
+        false,
     )));
     let font_atlas = FontAtlasData::from_binary(include_bytes!("../assets/jetbrains-mono-30.atlas"))?;
     let backend = WebGl2Backend::new_with_options(

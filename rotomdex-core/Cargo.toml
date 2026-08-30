@@ -7,6 +7,7 @@ edition = "2024"
 chafa-syms-rs = "0.1.1"
 color-eyre = "0.6.5"
 colorgrad = "0.8.0"
+const_format = "0.2.36"
 derive_builder = "0.20.2"
 futures = "0.3.34"
 http-cache-reqwest = { version = "=1.0.0-alpha.8", features = [
