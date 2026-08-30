@@ -7,13 +7,13 @@ use ratatui::{
 use crate::model::{ModelSpecies, ModelVariant};
 
 pub(crate) struct StatsWidget<'a> {
-    variant: Option<&'a ModelVariant>,
     species: Option<&'a ModelSpecies>,
+    variant: Option<&'a ModelVariant>,
 }
 
 impl<'a> StatsWidget<'a> {
-    pub(crate) fn new(variant: Option<&'a ModelVariant>, species: Option<&'a ModelSpecies>) -> Self {
-        Self { variant, species }
+    pub(crate) fn new(species: Option<&'a ModelSpecies>, variant: Option<&'a ModelVariant>) -> Self {
+        Self { species, variant }
     }
 }
 

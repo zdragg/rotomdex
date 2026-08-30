@@ -31,9 +31,7 @@ impl<'a> TabsWidget<'a> {
 }
 
 impl Widget for TabsWidget<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        todo!()
-    }
+    fn render(self, area: Rect, buf: &mut Buffer) {}
 }
 
 #[derive(EnumCount, VariantArray, Display)]

@@ -1,11 +1,12 @@
-use itertools::Itertools;
+use crate::model::{ModelSpecies, ModelVariant, Resource};
+use ratatui::layout::{Constraint, Layout};
 use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
     style::Color,
     text::{Line, Span},
-    widgets::{Paragraph, Widget},
+    widgets::Widget,
 };
-
-use crate::model::{ModelSpecies, Resource};
 
 pub(crate) struct VariantSelectorWidget<'a> {
     species: Option<&'a ModelSpecies>,
@@ -19,65 +20,69 @@ impl<'a> VariantSelectorWidget<'a> {
 }
 
 impl Widget for VariantSelectorWidget<'_> {
-    #[allow(unstable_name_collisions)]
-    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let Some((species, cursor)) = self.species.zip(self.cursor) else {
             return;
         };
-        let variants: Vec<_> = species
-            .variants()
-            .iter()
-            .enumerate()
-            .map(|(idx, variant)| match variant {
-                Resource::Loaded(variant) => {
-                    let name = if idx == cursor {
-                        variant.get_variant_name().to_ascii_uppercase()
-                    } else {
-                        variant.get_variant_name().to_owned()
-                    };
-                    let mut spans = variant.types.spans_iter(&name);
-                    if idx == cursor {
-                        for span in &mut spans {
-                            span.style = span.style.bold();
-                        }
-                    }
-                    spans
-                }
-                Resource::Loading { deferred, .. } if deferred.get() => {
-                    vec![Span::raw("deferred").style(Color::DarkGray)]
-                }
-                Resource::Loading { .. } => vec![Span::raw("loading").style(Color::DarkGray)],
-                Resource::Failed(_) => vec![Span::raw("failed: check log").style(Color::Red)],
-            })
-            .collect();
-        let variant_widths: Vec<_> = variants
-            .iter()
-            .map(|spans| spans.iter().map(Span::width).sum::<usize>())
-            .collect();
-        let variants: Vec<_> = variants
-            .into_iter()
-            .intersperse(vec![Span::raw(" | ").style(Color::DarkGray)])
-            .flatten()
-            .collect();
-        let line = Line::from(variants);
-        if line.width() <= area.width as usize {
-            line.centered().render(area, buf);
+        let variants = species.variants();
+        let Some(selected) = variants.get(cursor) else {
+            return;
+        };
+
+        if variants.len() == 1 {
+            Line::from(get_variant_spans(selected, true))
+                .centered()
+                .render(area, buf);
             return;
         }
 
-        let line_width = line.width();
-        let selected_start = variant_widths[..cursor].iter().sum::<usize>() + cursor * 3;
-        let first_center = variant_widths[0];
-        let selected_center = 2 * selected_start + variant_widths[cursor];
-        let last_center = 2 * line_width - variant_widths[variant_widths.len() - 1];
-        let center_range = last_center - first_center;
-        let scroll_range = line_width - usize::from(area.width);
-        let scroll = (scroll_range * (selected_center - first_center) + center_range / 2)
-            .checked_div(center_range)
-            .unwrap_or(0);
+        let prev_idx = (cursor + variants.len() - 1) % variants.len();
+        let next_idx = (cursor + 1) % variants.len();
 
-        Paragraph::new(line)
-            .scroll((0, scroll.min(usize::from(u16::MAX)) as u16))
-            .render(area, buf);
+        let mut prev_span = get_variant_spans(&variants[prev_idx], false);
+        prev_span.push(Span::raw(" <-(d)- ").style(Color::DarkGray));
+        let prev_line = Line::from(prev_span);
+
+        let selected_line = Line::from(get_variant_spans(selected, true));
+
+        let mut next_span = vec![Span::raw(" -(f)-> ").style(Color::DarkGray)];
+        next_span.append(&mut get_variant_spans(&variants[next_idx], false));
+        let next_line = Line::from(next_span);
+
+        let [prev_area, selected_area, next_area] = area.layout(&Layout::horizontal([
+            Constraint::Fill(1),
+            Constraint::Length(selected_line.width() as u16),
+            Constraint::Fill(1),
+        ]));
+
+        prev_line.right_aligned().render(prev_area, buf);
+        selected_line.centered().render(selected_area, buf);
+        next_line.left_aligned().render(next_area, buf);
     }
+}
+
+fn get_variant_spans(variant: &Resource<ModelVariant>, selected: bool) -> Vec<Span<'_>> {
+    let mut spans = match variant {
+        Resource::Loaded(variant) => {
+            let name = if selected {
+                variant.get_variant_name().to_ascii_uppercase()
+            } else {
+                variant.get_variant_name().to_owned()
+            };
+            variant.types.spans_iter(&name)
+        }
+        Resource::Loading { deferred, .. } if deferred.get() => {
+            vec![Span::raw("deferred").style(Color::DarkGray)]
+        }
+        Resource::Loading { .. } => vec![Span::raw("loading").style(Color::DarkGray)],
+        Resource::Failed(_) => vec![Span::raw("failed: check log").style(Color::Red)],
+    };
+
+    if selected {
+        for span in &mut spans {
+            span.style = span.style.bold().underlined();
+        }
+    }
+
+    spans
 }

@@ -76,7 +76,7 @@ impl Widget for DexWidget<'_> {
                 .areas(right_area);
 
         SpriteWidget::new(variant, self.elapsed).render(sprite_area, buf);
-        StatsWidget::new(variant, species).render(stats_area, buf);
+        StatsWidget::new(species, variant).render(stats_area, buf);
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
         TabsWidget::new(species, variant, &self.state.tabs_state).render(tab_area, buf);
@@ -113,16 +113,16 @@ impl DexState {
 
 #[derive(Default)]
 struct Cursor {
-    idx: usize,
+    idx: isize,
 }
 
 impl Cursor {
     fn next(&mut self) {
-        self.idx = self.idx.wrapping_add(1);
+        self.idx += 1;
     }
 
     fn prev(&mut self) {
-        self.idx = self.idx.wrapping_sub(1);
+        self.idx -= 1;
     }
 
     fn reset(&mut self) {
@@ -130,6 +130,6 @@ impl Cursor {
     }
 
     fn get(&self, total: usize) -> Option<usize> {
-        self.idx.checked_rem(total)
+        self.idx.checked_rem_euclid(total as isize).map(|x| x as usize)
     }
 }
