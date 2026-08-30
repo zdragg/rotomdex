@@ -1,14 +1,14 @@
 mod abilities;
 mod basic;
-mod learnset;
+mod moveset;
 
 use crate::Action;
 use crate::model::{ModelSpecies, ModelVariant};
 use crate::widgets::dex::tabs::abilities::AbilitiesTabWidgetState;
 use crate::widgets::dex::tabs::basic::BasicTabWidgetState;
-use crate::widgets::dex::tabs::learnset::LearnsetTabWidgetState;
+use crate::widgets::dex::tabs::moveset::MovesetTabWidgetState;
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
-use strum::{EnumCount, VariantArray};
+use strum::{Display, EnumCount, VariantArray};
 
 pub(crate) struct TabsWidget<'a> {
     species: Option<&'a ModelSpecies>,
@@ -36,11 +36,14 @@ impl Widget for TabsWidget<'_> {
     }
 }
 
-#[derive(EnumCount, VariantArray)]
+#[derive(EnumCount, VariantArray, Display)]
 enum DexTab {
+    #[strum(to_string = "(1) basic")]
     Basic,
+    #[strum(to_string = "(2) abil.")]
     Abilities,
-    Learnset,
+    #[strum(to_string = "(3) moves")]
+    Moveset,
 }
 
 #[derive(Default)]
@@ -49,7 +52,7 @@ pub(crate) struct TabsWidgetState {
 
     basic_state: BasicTabWidgetState,
     abilities_state: AbilitiesTabWidgetState,
-    learnset_state: LearnsetTabWidgetState,
+    moveset_state: MovesetTabWidgetState,
 }
 
 enum TabAction {
@@ -83,7 +86,7 @@ impl TabsWidgetState {
         match DexTab::VARIANTS[self.selected_tab] {
             DexTab::Basic => &mut self.basic_state.handle_action(tab_action),
             DexTab::Abilities => &mut self.abilities_state.handle_action(tab_action),
-            DexTab::Learnset => &mut self.learnset_state.handle_action(tab_action),
+            DexTab::Moveset => &mut self.moveset_state.handle_action(tab_action),
         };
     }
 }

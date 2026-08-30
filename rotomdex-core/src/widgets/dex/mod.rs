@@ -101,9 +101,7 @@ impl DexState {
             Action::Input('f') => self.variant_cursor.next(),
             Action::Input('d') => self.variant_cursor.prev(),
             Action::Input(':') => self.search_state.start_search(),
-            _ => {
-                self.tabs_state.handle_action(action);
-            }
+            _ => self.tabs_state.handle_action(action),
         }
         None
     }
