@@ -40,12 +40,12 @@ impl Widget for VariantSelectorWidget<'_> {
         let next_idx = (cursor + 1) % variants.len();
 
         let mut prev_span = get_variant_spans(&variants[prev_idx], false);
-        prev_span.push(Span::raw(" <-(d)- ").style(Color::DarkGray));
+        prev_span.push(Span::raw(" <- ").style(Color::DarkGray));
         let prev_line = Line::from(prev_span);
 
         let selected_line = Line::from(get_variant_spans(selected, true));
 
-        let mut next_span = vec![Span::raw(" -(f)-> ").style(Color::DarkGray)];
+        let mut next_span = vec![Span::raw(" -> ").style(Color::DarkGray)];
         next_span.append(&mut get_variant_spans(&variants[next_idx], false));
         let next_line = Line::from(next_span);
 

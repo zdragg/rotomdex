@@ -4,20 +4,23 @@ mod moveset;
 
 use crate::Action;
 use crate::model::{ModelSpecies, ModelVariant};
-use crate::widgets::dex::tabs::abilities::AbilitiesTabWidgetState;
-use crate::widgets::dex::tabs::basic::BasicTabWidgetState;
-use crate::widgets::dex::tabs::moveset::MovesetTabWidgetState;
+use crate::widgets::dex::tabs::abilities::{AbilitiesTabWidget, AbilitiesTabWidgetState};
+use crate::widgets::dex::tabs::basic::{BasicTabWidget, BasicTabWidgetState};
+use crate::widgets::dex::tabs::moveset::{MovesetTabWidget, MovesetTabWidgetState};
+use ratatui::layout::{Constraint, Layout};
+use ratatui::style::{Color, Style};
+use ratatui::widgets::Tabs;
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
-use strum::{Display, EnumCount, VariantArray};
+use strum::{Display, EnumCount, EnumIter, IntoEnumIterator, VariantArray};
 
-pub(crate) struct TabsWidget<'a> {
+pub(super) struct TabsWidget<'a> {
     species: Option<&'a ModelSpecies>,
     variant: Option<&'a ModelVariant>,
     state: &'a TabsWidgetState,
 }
 
 impl<'a> TabsWidget<'a> {
-    pub(crate) fn new(
+    pub(super) fn new(
         species: Option<&'a ModelSpecies>,
         variant: Option<&'a ModelVariant>,
         state: &'a TabsWidgetState,
@@ -31,16 +34,30 @@ impl<'a> TabsWidget<'a> {
 }
 
 impl Widget for TabsWidget<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {}
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let [tab_area, content_area] =
+            area.layout(&Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).spacing(1));
+
+        Tabs::new(DexTab::iter().map(|e| e.to_string()))
+            .style(Color::White)
+            .highlight_style(Style::default().black().on_white().bold())
+            .select(self.state.selected_tab)
+            .render(tab_area, buf);
+
+        match DexTab::VARIANTS[self.state.selected_tab] {
+            DexTab::Basic => BasicTabWidget::new(self.species, self.variant).render(content_area, buf),
+            DexTab::Abilities => AbilitiesTabWidget::new(self.variant).render(content_area, buf),
+            DexTab::Moveset => MovesetTabWidget::new(self.variant).render(content_area, buf),
+        };
+    }
 }
 
-#[derive(EnumCount, VariantArray, Display)]
+#[derive(EnumCount, VariantArray, Display, EnumIter)]
 enum DexTab {
-    #[strum(to_string = "(1) basic")]
     Basic,
-    #[strum(to_string = "(2) abil.")]
+    #[strum(to_string = "Abil.")]
     Abilities,
-    #[strum(to_string = "(3) moves")]
+    #[strum(to_string = "Moves")]
     Moveset,
 }
 

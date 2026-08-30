@@ -72,7 +72,7 @@ impl Widget for DexWidget<'_> {
             .spacing(1)
             .areas(left_area);
         let [name_area, variants_area, tab_area] =
-            Layout::vertical([Constraint::Percentage(20), Constraint::Length(1), Constraint::Fill(1)])
+            Layout::vertical([Constraint::Percentage(20), Constraint::Length(2), Constraint::Fill(1)])
                 .areas(right_area);
 
         SpriteWidget::new(variant, self.elapsed).render(sprite_area, buf);
