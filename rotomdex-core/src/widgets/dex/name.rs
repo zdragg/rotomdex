@@ -1,3 +1,7 @@
+use colorgrad::{Gradient, LinearGradient};
+use ratatui::buffer::Buffer;
+use ratatui::style::Color;
+use ratatui::widgets::BlockExt;
 use ratatui::{
     layout::{Constraint, Flex, Layout, Rect},
     text::Line,
@@ -19,27 +23,38 @@ impl<'a> NameWidget<'a> {
 }
 
 impl Widget for NameWidget<'_> {
-    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let Some(species) = self.species else {
             return;
         };
-        let name = &species.inner().name;
-        let line = if let Some(variant) = self.variant {
-            Line::from(variant.types.spans_iter(&name.to_uppercase()))
-        } else {
-            Line::from(name.to_uppercase())
+        let Some(variant) = self.variant else {
+            return;
         };
+        let name = species.inner().name.to_uppercase();
+        let line = Line::from(name.as_str());
+
         let Some((area, pixel_size)) = calculate_size(area, name.len()) else {
             let [area] = Layout::vertical([Constraint::Length(1)]).flex(Flex::Center).areas(area);
             line.centered().render(area, buf);
             return;
         };
 
-        BigText::builder()
-            .pixel_size(pixel_size)
-            .lines(&[line])
-            .build()
-            .render(area, buf);
+        let big_text = BigText::builder().pixel_size(pixel_size).lines(&[line]).build();
+
+        let text_area = big_text.block.inner_if_some(area);
+
+        big_text.render(area, buf);
+
+        paint_area(variant.types.gradient(), text_area, buf);
+    }
+}
+
+fn paint_area(gradient: LinearGradient, area: Rect, buf: &mut Buffer) {
+    let width = area.width;
+    for (i, area) in area.columns().enumerate() {
+        let fraction = i as f32 / width as f32;
+        let [r, g, b, _a] = gradient.at(fraction).to_rgba8();
+        buf.set_style(area, Color::Rgb(r, g, b))
     }
 }
 

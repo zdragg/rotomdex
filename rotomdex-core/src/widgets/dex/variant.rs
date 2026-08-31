@@ -40,12 +40,12 @@ impl Widget for VariantSelectorWidget<'_> {
         let next_idx = (cursor + 1) % variants.len();
 
         let mut prev_span = get_variant_spans(&variants[prev_idx], false);
-        prev_span.push(Span::raw(" <- ").style(Color::DarkGray));
+        prev_span.push(Span::styled(" <- ", Color::DarkGray));
         let prev_line = Line::from(prev_span);
 
         let selected_line = Line::from(get_variant_spans(selected, true));
 
-        let mut next_span = vec![Span::raw(" -> ").style(Color::DarkGray)];
+        let mut next_span = vec![Span::styled(" -> ", Color::DarkGray)];
         next_span.append(&mut get_variant_spans(&variants[next_idx], false));
         let next_line = Line::from(next_span);
 
@@ -64,12 +64,14 @@ impl Widget for VariantSelectorWidget<'_> {
 fn get_variant_spans(variant: &Resource<ModelVariant>, selected: bool) -> Vec<Span<'_>> {
     let mut spans = match variant {
         Resource::Loaded(variant) => {
-            let name = if selected {
-                variant.get_variant_name().to_ascii_uppercase()
+            if selected {
+                vec![Span::styled(
+                    variant.get_variant_name().to_ascii_uppercase(),
+                    Color::White,
+                )]
             } else {
-                variant.get_variant_name().to_owned()
-            };
-            variant.types.spans_iter(&name)
+                vec![Span::styled(variant.get_variant_name(), Color::DarkGray)]
+            }
         }
         Resource::Loading { deferred, .. } if deferred.get() => {
             vec![Span::raw("deferred").style(Color::DarkGray)]

@@ -1,9 +1,9 @@
-use color_eyre::eyre::{Result, eyre};
-use colorgrad::{Gradient, GradientBuilder, LinearGradient};
-use ratatui::text::Span;
-use rustemon::model::pokemon::{PokemonType, PokemonTypePast};
-
 use crate::{Generation, ModelContext};
+use color_eyre::eyre::{Result, eyre};
+use colorgrad::{GradientBuilder, LinearGradient};
+use ratatui::style::Color;
+use rustemon::model::pokemon::{PokemonType, PokemonTypePast};
+use strum::{Display, EnumString};
 
 #[derive(Clone, Debug)]
 pub(crate) struct ModelTypes {
@@ -28,46 +28,33 @@ impl ModelTypes {
         let primary = relevant_types
             .iter()
             .find(|model| model.slot == 1)
-            .map(ModelType::new)
+            .map(|model| model.type_.name.parse())
             .transpose()?
             .ok_or_else(|| eyre!("no primary type found"))?;
         let secondary = relevant_types
             .iter()
             .find(|model| model.slot == 2)
-            .map(ModelType::new)
+            .map(|model| model.type_.name.parse())
             .transpose()?;
 
         Ok(Self { primary, secondary })
     }
 
-    pub(crate) fn spans_iter(&self, name: &str) -> Vec<Span<'_>> {
+    pub(crate) fn gradient(&self) -> LinearGradient {
         let mut builder = GradientBuilder::new();
-        let grad = if let Some(secondary) = &self.secondary {
+        if let Some(secondary) = &self.secondary {
             builder.html_colors(&[self.primary.color(), secondary.color()])
         } else {
             builder.html_colors(&[self.primary.color()])
         }
         .mode(colorgrad::BlendMode::Oklab)
         .build::<LinearGradient>()
-        .unwrap();
-
-        let char_count = name.chars().count();
-        grad.colors_iter(char_count)
-            .zip(name.chars())
-            .map(|(color, ch)| {
-                let color = color.clamp();
-                let tui_color = ratatui::style::Color::Rgb(
-                    (color.r * 255.0).round() as u8,
-                    (color.g * 255.0).round() as u8,
-                    (color.b * 255.0).round() as u8,
-                );
-                Span::styled(ch.to_string(), tui_color)
-            })
-            .collect()
+        .unwrap()
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumString, Display)]
+#[strum(ascii_case_insensitive)]
 pub(crate) enum ModelType {
     Normal,
     Fire,
@@ -87,33 +74,6 @@ pub(crate) enum ModelType {
     Dark,
     Steel,
     Fairy,
-}
-
-impl ModelType {
-    pub(crate) fn new(value: &PokemonType) -> Result<Self> {
-        let type_ = match value.type_.name.as_str() {
-            "normal" => Self::Normal,
-            "fire" => Self::Fire,
-            "water" => Self::Water,
-            "electric" => Self::Electric,
-            "grass" => Self::Grass,
-            "ice" => Self::Ice,
-            "fighting" => Self::Fighting,
-            "poison" => Self::Poison,
-            "ground" => Self::Ground,
-            "flying" => Self::Flying,
-            "psychic" => Self::Psychic,
-            "bug" => Self::Bug,
-            "rock" => Self::Rock,
-            "ghost" => Self::Ghost,
-            "dragon" => Self::Dragon,
-            "dark" => Self::Dark,
-            "steel" => Self::Steel,
-            "fairy" => Self::Fairy,
-            _ => return Err(eyre!("invalid type name found")),
-        };
-        Ok(type_)
-    }
 }
 
 impl ModelType {
@@ -139,5 +99,10 @@ impl ModelType {
             Self::Steel => "#60A1B8",
             Self::Fairy => "#EF70EF",
         }
+    }
+
+    pub(crate) fn tui_color(&self) -> Color {
+        let [r, g, b, _a] = csscolorparser::parse(self.color()).unwrap().to_rgba8();
+        Color::Rgb(r, g, b)
     }
 }

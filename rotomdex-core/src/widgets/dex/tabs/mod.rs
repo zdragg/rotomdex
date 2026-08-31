@@ -1,12 +1,12 @@
 mod abilities;
-mod basic;
 mod moveset;
+mod overview;
 
 use crate::Action;
 use crate::model::{ModelSpecies, ModelVariant};
 use crate::widgets::dex::tabs::abilities::{AbilitiesTabWidget, AbilitiesTabWidgetState};
-use crate::widgets::dex::tabs::basic::{BasicTabWidget, BasicTabWidgetState};
 use crate::widgets::dex::tabs::moveset::{MovesetTabWidget, MovesetTabWidgetState};
+use crate::widgets::dex::tabs::overview::{BasicTabWidgetState, OverviewTabWidget};
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::Tabs;
@@ -48,7 +48,7 @@ impl Widget for TabsWidget<'_> {
             .render(tab_area, buf);
 
         match DexTab::VARIANTS[self.state.selected_tab] {
-            DexTab::Basic => BasicTabWidget::new(self.species, self.variant).render(content_area, buf),
+            DexTab::Overview => OverviewTabWidget::new(self.species, self.variant).render(content_area, buf),
             DexTab::Abilities => AbilitiesTabWidget::new(self.variant).render(content_area, buf),
             DexTab::Moveset => MovesetTabWidget::new(self.variant).render(content_area, buf),
         };
@@ -57,7 +57,8 @@ impl Widget for TabsWidget<'_> {
 
 #[derive(EnumCount, VariantArray, Display, EnumIter)]
 pub(crate) enum DexTab {
-    Basic,
+    #[strum(to_string = "Ovw.")]
+    Overview,
     #[strum(to_string = "Abil.")]
     Abilities,
     #[strum(to_string = "Moves")]
@@ -102,7 +103,7 @@ impl TabsWidgetState {
         };
 
         match DexTab::VARIANTS[self.selected_tab] {
-            DexTab::Basic => &mut self.basic_state.handle_action(tab_action),
+            DexTab::Overview => &mut self.basic_state.handle_action(tab_action),
             DexTab::Abilities => &mut self.abilities_state.handle_action(tab_action),
             DexTab::Moveset => &mut self.moveset_state.handle_action(tab_action),
         };
