@@ -45,7 +45,7 @@ fn name_span<'a>(species: &'a ModelSpecies, variant: &'a ModelVariant) -> Vec<Sp
     ]
 }
 fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {
-    // Fire / Dragon
+    // Fire/Dragon
     let mut type_spans = vec![Span::styled(
         variant.types.primary.to_string(),
         variant.types.primary.tui_color(),

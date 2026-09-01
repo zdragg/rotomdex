@@ -4,6 +4,7 @@ mod overview;
 
 use crate::Action;
 use crate::model::{ModelSpecies, ModelVariant};
+use crate::widgets::dex::Cursor;
 use crate::widgets::dex::tabs::abilities::{AbilitiesTabWidget, AbilitiesTabWidgetState};
 use crate::widgets::dex::tabs::moveset::{MovesetTabWidget, MovesetTabWidgetState};
 use crate::widgets::dex::tabs::overview::{BasicTabWidgetState, OverviewTabWidget};
@@ -44,10 +45,10 @@ impl Widget for TabsWidget<'_> {
         Tabs::new(DexTab::iter().map(|e| e.to_string()))
             .style(Color::White)
             .highlight_style(Style::default().black().on_white().bold())
-            .select(self.state.selected_tab)
+            .select(self.state.selected_tab.get(DexTab::COUNT))
             .render(tab_area, buf);
 
-        match DexTab::VARIANTS[self.state.selected_tab] {
+        match DexTab::VARIANTS[self.state.selected_tab.get(DexTab::COUNT).unwrap()] {
             DexTab::Overview => OverviewTabWidget::new(self.species, self.variant).render(content_area, buf),
             DexTab::Abilities => AbilitiesTabWidget::new(self.variant).render(content_area, buf),
             DexTab::Moveset => MovesetTabWidget::new(self.variant).render(content_area, buf),
@@ -67,7 +68,7 @@ pub(crate) enum DexTab {
 
 #[derive(Default)]
 pub(crate) struct TabsWidgetState {
-    selected_tab: usize,
+    selected_tab: Cursor,
 
     basic_state: BasicTabWidgetState,
     abilities_state: AbilitiesTabWidgetState,
@@ -92,17 +93,18 @@ impl TabsWidgetState {
             Action::Input('l') | Action::Right => TabAction::Right,
             Action::Enter => TabAction::Enter,
             Action::Escape | Action::CapsLock => TabAction::Escape,
-            Action::Input(digit @ '1'..='9') => {
-                let index = (digit as u8 - b'1') as usize; // 0..=8
-                if index < DexTab::COUNT {
-                    self.selected_tab = index;
-                }
+            Action::Input('d') => {
+                self.selected_tab.prev();
+                return;
+            }
+            Action::Input('f') => {
+                self.selected_tab.next();
                 return;
             }
             _ => return,
         };
 
-        match DexTab::VARIANTS[self.selected_tab] {
+        match DexTab::VARIANTS[self.selected_tab.get(DexTab::COUNT).unwrap()] {
             DexTab::Overview => &mut self.basic_state.handle_action(tab_action),
             DexTab::Abilities => &mut self.abilities_state.handle_action(tab_action),
             DexTab::Moveset => &mut self.moveset_state.handle_action(tab_action),

@@ -36,9 +36,9 @@ impl<'a> Widget for TutorialWidget<'a> {
         let mut commands = [
             " /          close",
             " :          search",
-            " d/f        variants",
-            " hjkl/←↓↑→  navigate",
-            const_format::concatcp!(" 1-", DexTab::COUNT, "        tabs"),
+            " ;'         variants",
+            " hjkl ←↓↑→  navigate",
+            " df         tabs",
         ]
         .into_iter()
         .map(Line::from)

@@ -90,6 +90,9 @@ impl RotomDexCore {
         let pkmn_name = self.dex_state.handle_action(action);
 
         if let Some(name) = pkmn_name {
+            if name == "q" {
+                panic!()
+            }
             self.new_pokemon(name);
         }
     }
