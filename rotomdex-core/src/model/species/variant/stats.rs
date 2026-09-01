@@ -41,7 +41,7 @@ impl ModelStats {
         for stat in current {
             apply_stat(stat)?;
         }
-        let target_generation = ctx.settings.version.generation();
+        let target_generation = ctx.version.generation();
         let patches: Vec<_> = past
             .iter()
             .filter_map(|stat_patch| {

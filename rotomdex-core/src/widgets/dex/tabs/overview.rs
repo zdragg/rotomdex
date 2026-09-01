@@ -1,4 +1,5 @@
 use crate::model::{ModelSpecies, ModelVariant};
+use crate::widgets::HangingParagraph;
 use crate::widgets::dex::tabs::TabAction;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -34,6 +35,8 @@ impl<'a> Widget for OverviewTabWidget<'a> {
             [physique_span(variant)]
         ))
         .render(first_line, buf);
+
+        flavor_text_paragraph(species).render(area, buf);
     }
 }
 
@@ -68,6 +71,14 @@ fn physique_span(variant: &ModelVariant) -> Span<'_> {
         ),
         Color::White,
     )
+}
+
+fn flavor_text_paragraph(species: &ModelSpecies) -> HangingParagraph<'_> {
+    if let Some(flavor_text) = &species.flavor_text {
+        HangingParagraph::new(&flavor_text.text).style(Color::White)
+    } else {
+        HangingParagraph::new("Missing flavor text!").style(Color::Red)
+    }
 }
 
 #[derive(Default)]

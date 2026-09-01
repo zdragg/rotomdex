@@ -1,5 +1,5 @@
 mod model;
-mod settings;
+mod versions;
 mod widgets;
 
 use std::sync::Arc;
@@ -9,7 +9,7 @@ use reqwest::Client;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use rustemon::client::RustemonClient;
 
-pub use settings::*;
+pub use versions::*;
 
 #[cfg(feature = "cache")]
 use std::path::PathBuf;
@@ -20,8 +20,10 @@ use crate::{
 };
 
 pub struct RotomDexCore {
-    fetch_ctx: ModelContext,
+    ctx: ModelContext,
+    version: Version,
 
+    pkmn_name: String,
     pkmn: ModelPokemon,
 
     dex_state: DexState,
@@ -30,12 +32,16 @@ pub struct RotomDexCore {
 }
 
 impl RotomDexCore {
-    pub fn new(settings: Settings, can_exit: bool) -> Self {
-        let fetch_ctx = ModelContext::new(settings);
+    pub fn new(can_exit: bool) -> Self {
+        let version = Version::default();
+        let ctx = ModelContext::new(version);
         Self {
-            pkmn: ModelPokemon::new("rotom", fetch_ctx.clone()),
+            version: Version::default(),
 
-            fetch_ctx,
+            pkmn_name: "rotom".into(),
+            pkmn: ModelPokemon::new("rotom", ctx.clone()),
+
+            ctx,
 
             dex_state: DexState::default(),
             can_exit,
@@ -44,12 +50,15 @@ impl RotomDexCore {
     }
 
     #[cfg(feature = "cache")]
-    pub fn new_with_cache(settings: Settings, can_exit: bool, cache_dir: PathBuf) -> Self {
-        let fetch_ctx = ModelContext::new_with_cache(settings, cache_dir);
+    pub fn new_with_cache(can_exit: bool, cache_dir: PathBuf) -> Self {
+        let version = Version::default();
+        let ctx = ModelContext::new_with_cache(version, cache_dir);
         Self {
-            pkmn: ModelPokemon::new("rotom", fetch_ctx.clone()),
+            version: Version::default(),
+            pkmn_name: "rotom".into(),
+            pkmn: ModelPokemon::new("rotom", ctx.clone()),
 
-            fetch_ctx,
+            ctx,
 
             dex_state: DexState::default(),
             can_exit,
@@ -57,22 +66,30 @@ impl RotomDexCore {
         }
     }
 
-    fn new_pokemon(&mut self, name: String) {
+    fn refresh(&mut self) {
         self.dex_state.reset();
-        self.pkmn = ModelPokemon::new(name, self.fetch_ctx.clone());
+        self.pkmn = ModelPokemon::new(self.pkmn_name.clone(), self.ctx.clone());
     }
 
     pub async fn poll_pkmn(&mut self) {
-        self.pkmn.poll().await
+        self.pkmn.poll().await;
     }
 }
 
 impl Widget for &mut RotomDexCore {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        DexWidget::new(&self.pkmn, &self.dex_state, self.timer.elapsed(), self.can_exit).render(area, buf);
+        DexWidget::new(
+            &self.pkmn,
+            &mut self.dex_state,
+            self.timer.elapsed(),
+            self.can_exit,
+            self.version,
+        )
+        .render(area, buf);
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum Action {
     Input(char),
     Backspace,
@@ -85,15 +102,30 @@ pub enum Action {
     CapsLock,
 }
 
+enum ActionResult {
+    Nothing,
+    NewPokemon(String),
+    NewVersion(Version),
+}
+
 impl RotomDexCore {
     pub fn handle_action(&mut self, action: Action) {
-        let pkmn_name = self.dex_state.handle_action(action);
+        let action_result = self.dex_state.handle_action(action, self.version);
 
-        if let Some(name) = pkmn_name {
-            if name == "q" {
-                panic!()
+        match action_result {
+            ActionResult::Nothing => (),
+            ActionResult::NewPokemon(name) => {
+                if name == "q" {
+                    panic!()
+                }
+                self.pkmn_name = name;
+                self.refresh();
             }
-            self.new_pokemon(name);
+            ActionResult::NewVersion(version) => {
+                self.version = version;
+                self.ctx.version = version;
+                self.refresh();
+            }
         }
     }
 }
@@ -102,20 +134,20 @@ impl RotomDexCore {
 pub(crate) struct ModelContext {
     pub(crate) pkmn_client: Arc<RustemonClient>,
     pub(crate) req_client: ClientWithMiddleware,
-    pub(crate) settings: Settings,
+    pub(crate) version: Version,
 }
 
 impl ModelContext {
-    fn new(settings: Settings) -> Self {
+    fn new(version: Version) -> Self {
         Self {
             pkmn_client: Arc::new(RustemonClient::default()),
             req_client: ClientBuilder::new(Client::new()).build(),
-            settings,
+            version,
         }
     }
 
     #[cfg(feature = "cache")]
-    fn new_with_cache(settings: Settings, cache_dir: PathBuf) -> Self {
+    fn new_with_cache(version: Version, cache_dir: PathBuf) -> Self {
         use http_cache_reqwest::{Cache, CacheMode, HttpCache, HttpCacheOptions};
         use rustemon::client::RustemonClientBuilder;
 
@@ -139,7 +171,7 @@ impl ModelContext {
         Self {
             pkmn_client,
             req_client,
-            settings,
+            version,
         }
     }
 }

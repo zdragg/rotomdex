@@ -55,7 +55,7 @@ impl ModelAbilities {
             apply_ability(ability)?;
         }
 
-        let target_generation = ctx.settings.version.generation();
+        let target_generation = ctx.version.generation();
         let patches: Vec<_> = past
             .iter()
             .filter_map(|patch| {

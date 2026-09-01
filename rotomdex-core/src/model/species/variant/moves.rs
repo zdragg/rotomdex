@@ -12,7 +12,7 @@ use rustemon::{
 use strum::{Display, EnumCount, EnumIter};
 
 use crate::{
-    ModelContext, Version,
+    ModelContext, VersionGroup,
     model::{Fetchable, Resource},
 };
 
@@ -26,11 +26,11 @@ impl ModelMoves {
         let mut vec: Vec<_> = vec![];
         for m in moves {
             for move_version in &m.version_group_details {
-                let Ok(version) = move_version.version_group.name.parse::<Version>() else {
+                let Ok(version) = move_version.version_group.name.parse::<VersionGroup>() else {
                     continue;
                 };
 
-                if version != ctx.settings.version {
+                if version != ctx.version.version_group() {
                     continue;
                 }
 

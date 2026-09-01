@@ -3343,7 +3343,6 @@ dependencies = [
  "colorgrad",
  "const_format",
  "csscolorparser 0.8.4",
- "derive_builder",
  "futures",
  "http-cache-reqwest 1.0.0-alpha.8",
  "image",

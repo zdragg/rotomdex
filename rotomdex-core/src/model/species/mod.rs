@@ -1,4 +1,6 @@
+mod flavor_text;
 mod variant;
+pub(crate) use flavor_text::*;
 pub(crate) use variant::*;
 
 use std::task::{Context, Poll};
@@ -8,12 +10,13 @@ use ratatui::style::Color;
 use rustemon::model::pokemon::PokemonSpecies;
 use tracing::Span;
 
-use crate::ModelContext;
 use crate::model::{Fetchable, Resource};
+use crate::{ModelContext, Version};
 
 #[derive(Debug)]
 pub(crate) struct ModelSpecies {
     pub(crate) variants: Vec<Resource<ModelVariant>>,
+    pub(crate) flavor_text: Option<ModelFlavorText>,
     pub(crate) inner: PokemonSpecies,
 }
 
@@ -26,8 +29,10 @@ impl Fetchable for ModelSpecies {
             .iter()
             .map(|v| Resource::<ModelVariant>::fetch(v.pokemon.clone(), ctx.clone(), false))
             .collect();
+        let flavor_text = ModelFlavorText::new(&species.flavor_text_entries, ctx.version);
         Ok(Self {
             variants,
+            flavor_text,
             inner: species,
         })
     }

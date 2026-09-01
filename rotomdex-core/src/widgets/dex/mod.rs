@@ -5,10 +5,12 @@ mod stats;
 mod tabs;
 mod tutorial;
 mod variant;
+mod versions;
 
 use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
 use crate::widgets::dex::tabs::TabsWidgetState;
 use crate::widgets::dex::tutorial::{TutorialWidget, TutorialWidgetState};
+use crate::widgets::dex::versions::{VersionState, VersionWidget};
 use crate::{
     Action,
     model::ModelPokemon,
@@ -16,11 +18,12 @@ use crate::{
         name::NameWidget, sprite::SpriteWidget, stats::StatsWidget, tabs::TabsWidget, variant::VariantSelectorWidget,
     },
 };
+use crate::{ActionResult, Version};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::Color,
-    widgets::{Block, Widget},
+    widgets::{Block, StatefulWidget, Widget},
 };
 use std::time::Duration;
 
@@ -28,16 +31,24 @@ pub(crate) struct DexWidget<'a> {
     pkmn: &'a ModelPokemon,
     elapsed: Duration,
     can_exit: bool,
+    version: Version,
 
-    state: &'a DexState,
+    state: &'a mut DexState,
 }
 
 impl<'a> DexWidget<'a> {
-    pub(crate) fn new(pkmn: &'a ModelPokemon, state: &'a DexState, elapsed: Duration, can_exit: bool) -> Self {
+    pub(crate) fn new(
+        pkmn: &'a ModelPokemon,
+        state: &'a mut DexState,
+        elapsed: Duration,
+        can_exit: bool,
+        version: Version,
+    ) -> Self {
         Self {
             pkmn,
             elapsed,
             can_exit,
+            version,
             state,
         }
     }
@@ -75,8 +86,9 @@ impl Widget for DexWidget<'_> {
         StatsWidget::new(species, variant).render(stats_area, buf);
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
-        TabsWidget::new(species, variant, &self.state.tabs_state).render(tab_area, buf);
+        TabsWidget::new(species, variant, &self.state.tabs_state, self.elapsed).render(tab_area, buf);
         TutorialWidget::new(self.can_exit, &self.state.tutorial_state).render(area, buf);
+        VersionWidget::new(self.version).render(stats_area, buf, &mut self.state.version_state);
     }
 }
 
@@ -84,25 +96,44 @@ impl Widget for DexWidget<'_> {
 pub(crate) struct DexState {
     variant_cursor: Cursor,
 
+    version_state: VersionState,
     search_state: SearchWidgetState,
     tabs_state: TabsWidgetState,
     tutorial_state: TutorialWidgetState,
 }
 
 impl DexState {
-    pub(crate) fn handle_action(&mut self, action: Action) -> Option<String> {
+    pub(crate) fn handle_action(&mut self, action: Action, version: Version) -> ActionResult {
         match action {
-            Action::Input(ch) if self.search_state.searching => self.search_state.handle_input(ch),
-            Action::Backspace if self.search_state.searching => self.search_state.backspace(),
-            Action::Escape | Action::CapsLock if self.search_state.searching => self.search_state.abort_search(),
-            Action::Enter if self.search_state.searching => return Some(self.search_state.take()),
+            Action::Input('.') => {
+                self.version_state.toggle(version);
+                return ActionResult::Nothing;
+            }
+            Action::Input(':') => {
+                self.search_state.start_search();
+                return ActionResult::Nothing;
+            }
+            Action::Input('/') => {
+                self.tutorial_state.enabled = !self.tutorial_state.enabled;
+                return ActionResult::Nothing;
+            }
+            _ => {}
+        }
+
+        if self.version_state.enabled {
+            return self.version_state.handle_action(action);
+        }
+
+        if self.search_state.searching {
+            return self.search_state.handle_action(action);
+        }
+
+        match action {
             Action::Input('\'') => self.variant_cursor.next(),
             Action::Input(';') => self.variant_cursor.prev(),
-            Action::Input(':') => self.search_state.start_search(),
-            Action::Input('/') => self.tutorial_state.enabled = !self.tutorial_state.enabled,
             _ => self.tabs_state.handle_action(action),
         }
-        None
+        ActionResult::Nothing
     }
 
     pub(crate) fn reset(&mut self) {

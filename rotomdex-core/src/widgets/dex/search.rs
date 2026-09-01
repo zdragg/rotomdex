@@ -2,6 +2,9 @@ use ratatui::prelude::{Color, Line};
 use ratatui::text::Span;
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
+use crate::Action;
+use crate::widgets::dex::ActionResult;
+
 pub(crate) struct SearchWidget<'a> {
     state: &'a SearchWidgetState,
     can_exit: bool,
@@ -20,6 +23,20 @@ pub(crate) struct SearchWidgetState {
 }
 
 impl SearchWidgetState {
+    pub(crate) fn handle_action(&mut self, action: Action) -> ActionResult {
+        if !self.searching {
+            return ActionResult::Nothing;
+        }
+        match action {
+            Action::Input(ch) => self.handle_input(ch),
+            Action::Backspace => self.backspace(),
+            Action::Escape | Action::CapsLock => self.abort_search(),
+            Action::Enter => return ActionResult::NewPokemon(self.take()),
+            _ => (),
+        }
+        ActionResult::Nothing
+    }
+
     pub(crate) fn start_search(&mut self) {
         self.searching = true;
     }

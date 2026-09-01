@@ -1,11 +1,9 @@
-use crate::widgets::dex::tabs::DexTab;
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     text::Line,
     widgets::{Block, Clear, Paragraph, Widget},
 };
-use strum::EnumCount;
 
 pub(super) struct TutorialWidget<'a> {
     can_exit: bool,
@@ -18,6 +16,10 @@ impl<'a> TutorialWidget<'a> {
     }
 }
 
+const HEIGHT_WITHOUT_EXIT: u16 = 7;
+const HEIGHT_WITH_EXIT: u16 = 8;
+const WIDTH: u16 = 23;
+
 #[derive(Default)]
 pub(super) struct TutorialWidgetState {
     pub(super) enabled: bool,
@@ -29,9 +31,13 @@ impl<'a> Widget for TutorialWidget<'a> {
             return;
         }
 
-        let height = if self.can_exit { 8 } else { 7 };
+        let height = if self.can_exit {
+            HEIGHT_WITH_EXIT
+        } else {
+            HEIGHT_WITHOUT_EXIT
+        };
         let [_, area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(height)]).areas(area);
-        let [_, area] = Layout::horizontal([Constraint::Fill(1), Constraint::Length(23)]).areas(area);
+        let [_, area] = Layout::horizontal([Constraint::Fill(1), Constraint::Length(WIDTH)]).areas(area);
 
         let mut commands = [
             " /          close",
@@ -49,7 +55,7 @@ impl<'a> Widget for TutorialWidget<'a> {
 
         Clear.render(area, buf);
         Paragraph::new(commands)
-            .block(Block::bordered().title("Keybinds"))
+            .block(Block::bordered().title("Keybinds").title_alignment(Alignment::Right))
             .render(area, buf);
     }
 }

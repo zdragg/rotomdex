@@ -27,9 +27,6 @@ impl Widget for NameWidget<'_> {
         let Some(species) = self.species else {
             return;
         };
-        let Some(variant) = self.variant else {
-            return;
-        };
         let name = species.inner().name.to_uppercase();
         let line = Line::from(name.as_str());
 
@@ -45,7 +42,9 @@ impl Widget for NameWidget<'_> {
 
         big_text.render(area, buf);
 
-        paint_area(variant.types.gradient(), text_area, buf);
+        if let Some(variant) = self.variant {
+            paint_area(variant.types.gradient(), text_area, buf);
+        }
     }
 }
 

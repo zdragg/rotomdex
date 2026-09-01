@@ -13,7 +13,7 @@ pub(crate) struct ModelTypes {
 
 impl ModelTypes {
     pub(crate) fn new(current: &[PokemonType], past: &[PokemonTypePast], ctx: ModelContext) -> Result<Self> {
-        let target_generation = ctx.settings.version.generation();
+        let target_generation = ctx.version.generation();
         let relevant_types = past
             .iter()
             .filter_map(|past_types| {
