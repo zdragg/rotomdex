@@ -5,7 +5,7 @@ use rustemon::{
     Follow,
     model::{moves::Move, pokemon::PokemonMove, resource::NamedApiResource},
 };
-use strum::{Display, EnumCount, EnumIter, EnumString, VariantArray};
+use strum::{Display, EnumCount, EnumString, VariantArray};
 
 use crate::{
     ModelContext, VersionGroup,
@@ -58,10 +58,6 @@ impl ModelMoves {
             has_ready | move_is_ready
         });
         if has_ready { Poll::Ready(()) } else { Poll::Pending }
-    }
-
-    pub(crate) fn get(&self, basket: ModelMoveLearnMethod) -> &[ModelVersionMove] {
-        self.moves[basket as usize].as_slice()
     }
 
     pub(crate) fn get_all_nonempty(&self) -> Vec<(ModelMoveLearnMethod, &[ModelVersionMove])> {

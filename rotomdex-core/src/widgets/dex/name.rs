@@ -51,7 +51,7 @@ impl Widget for NameWidget<'_> {
 fn paint_area(gradient: LinearGradient, area: Rect, buf: &mut Buffer) {
     let width = area.width;
     for (i, area) in area.columns().enumerate() {
-        let fraction = i as f32 / width as f32;
+        let fraction = i as f32 / (width - 1) as f32;
         let [r, g, b, _a] = gradient.at(fraction).to_rgba8();
         buf.set_style(area, Color::Rgb(r, g, b))
     }
