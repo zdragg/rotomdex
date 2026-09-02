@@ -103,6 +103,14 @@ pub(crate) enum ModelMoveLearnMethod {
     Egg,
     Tutor,
     Machine,
+    StadiumSurfingPikachu,
+    LightBallEgg,
+    ColosseumPurification,
+    XdShadow,
+    XdPurification,
+    FormChange,
+    ZygardeCube,
+    Train,
 }
 
 #[derive(Debug)]
