@@ -10,6 +10,14 @@ readonly SYMBOLS_DIR="$WEB_DIR/assets/atlas-symbols"
 readonly OUTPUT="$WEB_DIR/assets/jetbrains-mono-30.atlas"
 readonly ATLAS_TOOL="${BEAMTERM_ATLAS:-beamterm-atlas}"
 
+if [[ -n ${BEAMTERM_EMOJI_FONT:-} ]]; then
+    readonly EMOJI_FONT="$BEAMTERM_EMOJI_FONT"
+elif [[ $(uname -s) == "Darwin" ]]; then
+    readonly EMOJI_FONT="Apple Color Emoji"
+else
+    readonly EMOJI_FONT="Noto Color Emoji"
+fi
+
 command -v "$ATLAS_TOOL" >/dev/null || {
     printf "error: required command '%s' is unavailable\n" "$ATLAS_TOOL" >&2
     exit 1
@@ -32,6 +40,7 @@ for symbol_file in "${symbol_files[@]}"; do
 done
 
 "$ATLAS_TOOL" generate "JetBrains Mono" \
+    --emoji-font "$EMOJI_FONT" \
     --font-size 30 \
     --range 0x20..0x7E \
     --symbols-file "$combined_symbols" \

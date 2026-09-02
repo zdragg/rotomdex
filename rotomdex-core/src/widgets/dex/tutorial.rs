@@ -16,8 +16,8 @@ impl<'a> TutorialWidget<'a> {
     }
 }
 
-const HEIGHT_WITHOUT_EXIT: u16 = 7;
-const HEIGHT_WITH_EXIT: u16 = 8;
+const HEIGHT_WITHOUT_EXIT: u16 = 8;
+const HEIGHT_WITH_EXIT: u16 = 9;
 const WIDTH: u16 = 23;
 
 #[derive(Default)]
@@ -43,8 +43,9 @@ impl<'a> Widget for TutorialWidget<'a> {
             " /          close",
             " :          search",
             " ;'         variants",
-            " hjkl ←↓↑→  navigate",
             " df         tabs",
+            " hjkl ←↓↑→  navigate",
+            " .          versions",
         ]
         .into_iter()
         .map(Line::from)
