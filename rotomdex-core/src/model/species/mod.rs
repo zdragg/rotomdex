@@ -10,8 +10,8 @@ use ratatui::style::Color;
 use rustemon::model::pokemon::PokemonSpecies;
 use tracing::Span;
 
+use crate::ModelContext;
 use crate::model::{Fetchable, Resource};
-use crate::{ModelContext, Version};
 
 #[derive(Debug)]
 pub(crate) struct ModelSpecies {

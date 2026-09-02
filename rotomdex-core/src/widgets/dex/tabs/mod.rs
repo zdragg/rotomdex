@@ -59,7 +59,7 @@ impl Widget for TabsWidget<'_> {
         match DexTab::VARIANTS[self.state.selected_tab.get(DexTab::COUNT).unwrap()] {
             DexTab::Overview => OverviewTabWidget::new(self.species, self.variant).render(content_area, buf),
             DexTab::Abilities => AbilitiesTabWidget::new(self.variant).render(content_area, buf),
-            DexTab::Moveset => MovesetTabWidget::new(self.variant).render(content_area, buf),
+            DexTab::Moveset => MovesetTabWidget::new(self.variant, &self.state.moveset_state).render(content_area, buf),
         };
     }
 }

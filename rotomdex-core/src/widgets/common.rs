@@ -1,7 +1,7 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
-use ratatui::widgets::{Paragraph, Widget};
+use ratatui::widgets::{ListState, Paragraph, Widget};
 
 pub(crate) struct HangingParagraph<'a> {
     text: &'a str,
@@ -45,5 +45,36 @@ impl Widget for HangingParagraph<'_> {
         }
 
         Paragraph::new(wrapped).style(self.style).render(area, buf);
+    }
+}
+
+#[derive(Default, Clone, Copy)]
+pub(crate) struct Cursor {
+    idx: isize,
+}
+
+impl Cursor {
+    pub(crate) fn select(&mut self, value: isize) {
+        self.idx = value;
+    }
+
+    pub(crate) fn next(&mut self) {
+        self.idx += 1;
+    }
+
+    pub(crate) fn prev(&mut self) {
+        self.idx -= 1;
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.idx = 0;
+    }
+
+    pub(crate) fn get(&self, total: usize) -> Option<usize> {
+        self.idx.checked_rem_euclid(total as isize).map(|x| x as usize)
+    }
+
+    pub(crate) fn into_list_state(&self, total: usize) -> ListState {
+        ListState::default().with_selected(self.get(total))
     }
 }

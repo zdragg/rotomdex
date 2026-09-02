@@ -1,15 +1,11 @@
-use std::task::Poll;
+use std::{fmt::Display, str::FromStr, task::Poll};
 
 use color_eyre::eyre::Result;
 use rustemon::{
     Follow,
-    model::{
-        moves::Move,
-        pokemon::{PokemonMove, PokemonMoveVersion},
-        resource::NamedApiResource,
-    },
+    model::{moves::Move, pokemon::PokemonMove, resource::NamedApiResource},
 };
-use strum::{Display, EnumCount, EnumIter};
+use strum::{Display, EnumCount, EnumIter, EnumString, VariantArray};
 
 use crate::{
     ModelContext, VersionGroup,
@@ -18,12 +14,12 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) struct ModelMoves {
-    moves: Vec<ModelVersionMove>,
+    moves: [Vec<ModelVersionMove>; ModelMoveLearnMethod::COUNT],
 }
 
 impl ModelMoves {
     pub(crate) fn new(moves: &[PokemonMove], ctx: ModelContext) -> Result<Self> {
-        let mut vec: Vec<_> = vec![];
+        let mut move_baskets = std::array::from_fn(|_| Vec::new());
         for m in moves {
             for move_version in &m.version_group_details {
                 let Ok(version) = move_version.version_group.name.parse::<VersionGroup>() else {
@@ -34,72 +30,79 @@ impl ModelMoves {
                     continue;
                 }
 
-                let Some(learn_method) = ModelMoveLearnMethod::from(move_version.clone()) else {
+                let method_name = move_version.move_learn_method.name.as_str();
+                let Ok(learn_method) = ModelMoveLearnMethod::from_str(method_name) else {
+                    tracing::warn!("unsupported move learn method {}", method_name);
                     continue;
                 };
+
                 let resource = Resource::<ModelMove>::fetch(m.move_.clone(), ctx.clone(), true);
-                vec.push(ModelVersionMove {
+                let move_model = ModelVersionMove {
                     name: m.move_.name.clone(),
-                    learn_method,
+                    level_learned_at: move_version.level_learned_at as u32,
                     resource,
-                });
+                };
+
+                move_baskets[learn_method as usize].push(move_model);
             }
         }
-        Ok(Self { moves: vec })
+        for move_basket in move_baskets.iter_mut() {
+            move_basket.sort_unstable_by_key(|move_| move_.level_learned_at);
+        }
+        Ok(Self { moves: move_baskets })
     }
 
     pub(crate) fn poll(&mut self, cx: &mut std::task::Context<'_>) -> Poll<()> {
-        if self
-            .moves
-            .iter_mut()
-            .fold(false, |is_ready, move_| is_ready | move_.resource.poll(cx).is_ready())
-        {
-            Poll::Ready(())
-        } else {
-            Poll::Pending
-        }
+        let has_ready = self.moves.iter_mut().flatten().fold(false, |has_ready, move_| {
+            let move_is_ready = move_.resource.poll(cx).is_ready();
+            has_ready | move_is_ready
+        });
+        if has_ready { Poll::Ready(()) } else { Poll::Pending }
     }
 
-    pub(crate) fn get(&self) -> &[ModelVersionMove] {
-        &self.moves[..]
+    pub(crate) fn get(&self, basket: ModelMoveLearnMethod) -> &[ModelVersionMove] {
+        self.moves[basket as usize].as_slice()
+    }
+
+    pub(crate) fn get_all_nonempty(&self) -> Vec<(ModelMoveLearnMethod, &[ModelVersionMove])> {
+        self.moves
+            .iter()
+            .enumerate()
+            .filter_map(|(i, moves)| {
+                if moves.is_empty() {
+                    None
+                } else {
+                    Some((ModelMoveLearnMethod::VARIANTS[i], moves.as_slice()))
+                }
+            })
+            .collect()
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct ModelVersionMove {
     pub(crate) name: String,
-    pub(crate) learn_method: ModelMoveLearnMethod,
+    pub(crate) level_learned_at: u32,
     pub(crate) resource: Resource<ModelMove>,
 }
 
-impl ModelVersionMove {
-    pub(crate) fn undefer(&self) {
-        self.resource.undefer();
+impl Display for ModelVersionMove {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.level_learned_at == 0 {
+            write!(f, "{}", self.name)
+        } else {
+            write!(f, "{} Lv.{}", self.name, self.level_learned_at)
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Display, EnumIter, EnumCount)]
+#[derive(Debug, Clone, Copy, PartialEq, Display, EnumCount, EnumString, VariantArray)]
+#[strum(serialize_all = "kebab-case")]
 pub(crate) enum ModelMoveLearnMethod {
-    LevelUp(u32),
+    LevelUp,
     Egg,
     Tutor,
     Machine,
-}
-
-impl ModelMoveLearnMethod {
-    fn from(value: PokemonMoveVersion) -> Option<Self> {
-        let method = match value.move_learn_method.name.as_str() {
-            "level-up" => Self::LevelUp(value.level_learned_at as u32),
-            "egg" => Self::Egg,
-            "tutor" => Self::Tutor,
-            "machine" => Self::Machine,
-            _ => {
-                tracing::warn!("unsupported move learn method {}", value.move_learn_method.name);
-                return None;
-            }
-        };
-        Some(method)
-    }
 }
 
 #[derive(Debug)]

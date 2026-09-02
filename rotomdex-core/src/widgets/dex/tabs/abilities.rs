@@ -1,5 +1,5 @@
 use crate::model::ModelVariant;
-use crate::widgets::dex::Cursor;
+use crate::widgets::Cursor;
 use crate::widgets::dex::tabs::TabAction;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;

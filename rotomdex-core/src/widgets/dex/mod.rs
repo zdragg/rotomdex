@@ -7,6 +7,7 @@ mod tutorial;
 mod variant;
 mod versions;
 
+use crate::widgets::Cursor;
 use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
 use crate::widgets::dex::tabs::TabsWidgetState;
 use crate::widgets::dex::tutorial::{TutorialWidget, TutorialWidgetState};
@@ -23,7 +24,7 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::Color,
-    widgets::{Block, StatefulWidget, Widget},
+    widgets::{Block, Widget},
 };
 use std::time::Duration;
 
@@ -33,13 +34,13 @@ pub(crate) struct DexWidget<'a> {
     can_exit: bool,
     version: Version,
 
-    state: &'a mut DexState,
+    state: &'a DexState,
 }
 
 impl<'a> DexWidget<'a> {
     pub(crate) fn new(
         pkmn: &'a ModelPokemon,
-        state: &'a mut DexState,
+        state: &'a DexState,
         elapsed: Duration,
         can_exit: bool,
         version: Version,
@@ -88,7 +89,7 @@ impl Widget for DexWidget<'_> {
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
         TabsWidget::new(species, variant, &self.state.tabs_state, self.elapsed).render(tab_area, buf);
         TutorialWidget::new(self.can_exit, &self.state.tutorial_state).render(area, buf);
-        VersionWidget::new(self.version).render(stats_area, buf, &mut self.state.version_state);
+        VersionWidget::new(self.version, &self.state.version_state).render(stats_area, buf);
     }
 }
 
@@ -138,28 +139,5 @@ impl DexState {
 
     pub(crate) fn reset(&mut self) {
         self.variant_cursor.reset();
-    }
-}
-
-#[derive(Default)]
-struct Cursor {
-    idx: isize,
-}
-
-impl Cursor {
-    fn next(&mut self) {
-        self.idx += 1;
-    }
-
-    fn prev(&mut self) {
-        self.idx -= 1;
-    }
-
-    fn reset(&mut self) {
-        self.idx = 0;
-    }
-
-    fn get(&self, total: usize) -> Option<usize> {
-        self.idx.checked_rem_euclid(total as isize).map(|x| x as usize)
     }
 }

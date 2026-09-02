@@ -3,16 +3,16 @@ use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Clear, HighlightSpacing, List, ListItem, ListState, StatefulWidget, Widget},
+    widgets::{Block, Clear, HighlightSpacing, List, ListItem, StatefulWidget, Widget},
 };
 use strum::{EnumCount, VariantArray};
 
-use crate::{Action, ActionResult, Version, VersionGroup};
+use crate::{Action, ActionResult, Version, VersionGroup, widgets::Cursor};
 
 #[derive(Default)]
 pub struct VersionState {
     pub(super) enabled: bool,
-    list: ListState,
+    cursor: Cursor,
     horizontal: usize,
 }
 
@@ -27,7 +27,7 @@ impl VersionState {
                 .iter()
                 .position(|candidate| *candidate == group)
                 .unwrap();
-            self.list.select(Some(group_idx));
+            self.cursor.select(group_idx as isize);
             self.horizontal = group
                 .versions()
                 .iter()
@@ -39,13 +39,11 @@ impl VersionState {
     pub(crate) fn handle_action(&mut self, action: Action) -> ActionResult {
         match action {
             Action::Input('j') | Action::Down => {
-                let selected = (self.selected_group() + 1) % VersionGroup::COUNT;
-                self.list.select(Some(selected));
+                self.cursor.next();
                 self.horizontal = 0;
             }
             Action::Input('k') | Action::Up => {
-                let selected = (self.selected_group() + VersionGroup::COUNT - 1) % VersionGroup::COUNT;
-                self.list.select(Some(selected));
+                self.cursor.prev();
                 self.horizontal = 0;
             }
             Action::Input('h') | Action::Left => {
@@ -62,7 +60,7 @@ impl VersionState {
     }
 
     fn selected_group(&self) -> usize {
-        self.list.selected().unwrap()
+        self.cursor.get(VersionGroup::COUNT).unwrap()
     }
 
     fn selected_versions(&self) -> Vec<Version> {
@@ -70,27 +68,26 @@ impl VersionState {
     }
 }
 
-pub struct VersionWidget {
+pub struct VersionWidget<'a> {
     version: Version,
+    state: &'a VersionState,
 }
 
-impl VersionWidget {
-    pub(crate) fn new(version: Version) -> Self {
-        Self { version }
+impl<'a> VersionWidget<'a> {
+    pub(crate) fn new(version: Version, state: &'a VersionState) -> Self {
+        Self { version, state }
     }
 }
 
-impl StatefulWidget for VersionWidget {
-    type State = VersionState;
-
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        if !state.enabled {
+impl<'a> Widget for VersionWidget<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        if !self.state.enabled {
             return;
         }
 
         let [area, _] = area.layout(&Layout::horizontal([Constraint::Length(16), Constraint::Fill(1)]));
 
-        let selected_group = state.selected_group();
+        let selected_group = self.state.selected_group();
         let items = VersionGroup::VARIANTS.iter().enumerate().map(|(group_idx, group)| {
             let mut spans = Vec::new();
 
@@ -101,7 +98,7 @@ impl StatefulWidget for VersionWidget {
 
                 let [r, g, b, _] = csscolorparser::parse(version.color()).unwrap().to_rgba8();
                 let mut style = Style::default().fg(Color::Rgb(r, g, b));
-                if group_idx == selected_group && version_idx == state.horizontal {
+                if group_idx == selected_group && version_idx == self.state.horizontal {
                     style = style.add_modifier(Modifier::REVERSED);
                 }
                 spans.push(Span::styled(version.abbreviation(), style));
@@ -117,9 +114,15 @@ impl StatefulWidget for VersionWidget {
         let list = List::new(items)
             .block(Block::bordered().title("Versions").title_alignment(Alignment::Left))
             .highlight_symbol("> ")
+            .scroll_padding(1)
             .highlight_spacing(HighlightSpacing::Always);
 
         Clear.render(area, buf);
-        StatefulWidget::render(list, area, buf, &mut state.list);
+        StatefulWidget::render(
+            list,
+            area,
+            buf,
+            &mut self.state.cursor.into_list_state(VersionGroup::COUNT),
+        );
     }
 }
