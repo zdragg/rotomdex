@@ -1,4 +1,5 @@
 mod model;
+mod rate_limiter;
 mod versions;
 mod widgets;
 
@@ -16,6 +17,7 @@ use std::path::PathBuf;
 
 use crate::{
     model::ModelPokemon,
+    rate_limiter::RateLimiter,
     widgets::{DexState, DexWidget},
 };
 
@@ -138,8 +140,7 @@ pub(crate) struct ModelContext {
 }
 
 impl ModelContext {
-    fn new(version: Version, builder: ClientBuilder) -> Self {
-        let client = builder.build();
+    fn new(version: Version, client: ClientWithMiddleware) -> Self {
         let rustemon_wrapper = Arc::new(RustemonClient {
             base: Url::try_from(Environment::default()).unwrap(),
             client: client.clone(),
@@ -152,9 +153,9 @@ impl ModelContext {
         }
     }
     fn new_without_cache(version: Version) -> Self {
-        let builder = ClientBuilder::new(Client::new());
+        let client = ClientBuilder::new(Client::new()).with(RateLimiter::new(16)).build();
 
-        ModelContext::new(version, builder)
+        ModelContext::new(version, client)
     }
 
     #[cfg(feature = "cache")]
@@ -168,8 +169,11 @@ impl ModelContext {
             options: HttpCacheOptions::default(),
         };
 
-        let builder = ClientBuilder::new(reqwest::Client::new()).with(Cache(cache_middleware));
+        let client = ClientBuilder::new(reqwest::Client::new())
+            .with(RateLimiter::new(16))
+            .with(Cache(cache_middleware))
+            .build();
 
-        ModelContext::new(version, builder)
+        ModelContext::new(version, client)
     }
 }

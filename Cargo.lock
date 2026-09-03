@@ -3022,12 +3022,15 @@ dependencies = [
 name = "rotomdex-core"
 version = "0.1.0"
 dependencies = [
+ "async-lock",
+ "async-trait",
  "chafa-syms-rs",
  "color-eyre",
  "colorgrad",
  "const_format",
  "csscolorparser 0.8.4",
  "futures",
+ "http",
  "http-cache-reqwest",
  "image",
  "itertools 0.15.0",

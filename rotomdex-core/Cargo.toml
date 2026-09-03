@@ -4,12 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-lock = "3.4.2"
+async-trait = "0.1.92"
 chafa-syms-rs = "0.1.1"
 color-eyre = "0.6.5"
 colorgrad = "0.8.0"
 const_format = "0.2.36"
 csscolorparser = "0.8.4"
 futures = "0.3.34"
+http = "1.5.0"
 http-cache-reqwest = { version = "0.16.0", features = ["manager-cacache"], optional = true }
 image = "0.25.10"
 itertools = "0.15.0"
