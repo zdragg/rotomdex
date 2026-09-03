@@ -16,7 +16,8 @@ impl RateLimiter {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl Middleware for RateLimiter {
     async fn handle(&self, req: Request, extensions: &mut Extensions, next: Next<'_>) -> Result<Response, Error> {
         let _guard = self.semaphore.acquire().await;

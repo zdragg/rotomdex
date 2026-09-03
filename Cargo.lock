@@ -3103,7 +3103,7 @@ dependencies = [
 [[package]]
 name = "rustemon"
 version = "4.6.0"
-source = "git+https://github.com/zdragg/rustemon?branch=main#5cefe8f1e4494626ddc77f19d65a77276d15e8c5"
+source = "git+https://github.com/zdragg/rustemon?branch=main#89419751a269bb294bfe39a961f15848ee981d5a"
 dependencies = [
  "http-cache-reqwest",
  "reqwest",
