@@ -6,6 +6,7 @@ mod widgets;
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 pub use versions::*;
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
 
 use crate::{
@@ -27,7 +28,7 @@ pub struct RotomDexCore {
 
 impl RotomDexCore {
     pub fn new(can_exit: bool) -> Self {
-        let ctx = ModelContext::new(None);
+        let ctx = ModelContext::new();
         Self {
             pkmn_name: "rotom".into(),
             pkmn: ModelPokemon::new("rotom", ctx.clone()),
@@ -42,7 +43,7 @@ impl RotomDexCore {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new_with_cache(can_exit: bool, cache_dir: PathBuf) -> Self {
-        let ctx = ModelContext::new(Some(cache_dir));
+        let ctx = ModelContext::new_with_cache(cache_dir);
         Self {
             pkmn_name: "rotom".into(),
             pkmn: ModelPokemon::new("rotom", ctx.clone()),

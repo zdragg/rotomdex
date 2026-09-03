@@ -1,7 +1,10 @@
 mod rate_limiter;
 mod retrier;
 
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::path::PathBuf;
 
 use reqwest::{Client, Url};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
@@ -23,30 +26,13 @@ pub(crate) struct ModelContext {
 }
 
 impl ModelContext {
-    pub(super) fn new(cache_dir: Option<PathBuf>) -> Self {
-        let builder = ClientBuilder::new(Client::new());
+    fn base_builder() -> ClientBuilder {
+        ClientBuilder::new(Client::new())
+            .with(Retrier::new(5))
+            .with(RateLimiter::new(16))
+    }
 
-        // Retry a failed request up to 3 times
-        let builder = builder.with(Retrier::new(5));
-
-        // 16 concurrent requests at a time
-        let builder = builder.with(RateLimiter::new(16));
-
-        // Add cache middleware on the outermost layer if needed
-        // Parity with the browser cache behavior on wasm (where it is cached on the innermost layer) is achieved
-        #[cfg(not(target_arch = "wasm32"))]
-        let builder = if let Some(cache_dir) = cache_dir {
-            let cache_manager = http_cache_reqwest::CACacheManager::new(cache_dir, false);
-            let cache_middleware = Cache(HttpCache {
-                mode: CacheMode::Default,
-                manager: cache_manager,
-                options: HttpCacheOptions::default(),
-            });
-            builder.with(cache_middleware)
-        } else {
-            builder
-        };
-
+    fn from_builder(builder: ClientBuilder) -> Self {
         let client = builder.build();
 
         let rustemon_wrapper = Arc::new(RustemonClient {
@@ -59,5 +45,21 @@ impl ModelContext {
             req_client: client,
             version: Version::default(),
         }
+    }
+
+    pub(super) fn new() -> Self {
+        Self::from_builder(Self::base_builder())
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(super) fn new_with_cache(cache_dir: PathBuf) -> Self {
+        let cache_manager = http_cache_reqwest::CACacheManager::new(cache_dir, false);
+        let cache = Cache(HttpCache {
+            mode: CacheMode::Default,
+            manager: cache_manager,
+            options: HttpCacheOptions::default(),
+        });
+
+        Self::from_builder(Self::base_builder().with(cache))
     }
 }
