@@ -1,4 +1,5 @@
 mod rate_limiter;
+mod retrier;
 
 use std::{path::PathBuf, sync::Arc};
 
@@ -9,7 +10,10 @@ use rustemon::client::{Environment, RustemonClient};
 #[cfg(not(target_arch = "wasm32"))]
 use http_cache_reqwest::{Cache, CacheMode, HttpCache, HttpCacheOptions};
 
-use crate::{Version, context::rate_limiter::RateLimiter};
+use crate::{
+    Version,
+    context::{rate_limiter::RateLimiter, retrier::Retrier},
+};
 
 #[derive(Clone)]
 pub(crate) struct ModelContext {
@@ -21,6 +25,9 @@ pub(crate) struct ModelContext {
 impl ModelContext {
     pub(super) fn new(cache_dir: Option<PathBuf>) -> Self {
         let builder = ClientBuilder::new(Client::new());
+
+        // Retry a failed request up to 3 times
+        let builder = builder.with(Retrier::new(5));
 
         // 16 concurrent requests at a time
         let builder = builder.with(RateLimiter::new(16));
