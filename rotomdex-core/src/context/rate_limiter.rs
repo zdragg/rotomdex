@@ -4,12 +4,12 @@ use http::Extensions;
 use reqwest::{Request, Response};
 use reqwest_middleware::{Error, Middleware, Next};
 
-pub(crate) struct RateLimiter {
+pub(super) struct RateLimiter {
     semaphore: Semaphore,
 }
 
 impl RateLimiter {
-    pub(crate) fn new(n: usize) -> Self {
+    pub(super) fn new(n: usize) -> Self {
         Self {
             semaphore: Semaphore::new(n),
         }

@@ -1356,7 +1356,6 @@ dependencies = [
  "http",
  "http-cache-semantics",
  "httpdate",
- "moka",
  "serde",
  "url",
 ]
@@ -1994,26 +1993,6 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "moka"
-version = "0.12.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4293f18e7567a1caf3c584855554377025c65e0aa445344d04171f5ad63d19b9"
-dependencies = [
- "async-lock",
- "crossbeam-channel",
- "crossbeam-epoch",
- "crossbeam-utils",
- "equivalent",
- "event-listener",
- "futures-util",
- "parking_lot",
- "portable-atomic",
- "smallvec",
- "tagptr",
- "uuid",
 ]
 
 [[package]]
@@ -3105,7 +3084,6 @@ name = "rustemon"
 version = "4.6.0"
 source = "git+https://github.com/zdragg/rustemon?branch=main#89419751a269bb294bfe39a961f15848ee981d5a"
 dependencies = [
- "http-cache-reqwest",
  "reqwest",
  "reqwest-middleware",
  "serde",
@@ -3543,12 +3521,6 @@ dependencies = [
  "quote",
  "syn 2.0.119",
 ]
-
-[[package]]
-name = "tagptr"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
 
 [[package]]
 name = "tap"
