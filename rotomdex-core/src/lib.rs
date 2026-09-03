@@ -5,9 +5,9 @@ mod widgets;
 use std::sync::Arc;
 
 use ratatui::prelude::*;
-use reqwest::Client;
+use reqwest::{Client, Url};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
-use rustemon::client::RustemonClient;
+use rustemon::client::{Environment, RustemonClient};
 
 pub use versions::*;
 
@@ -34,7 +34,7 @@ pub struct RotomDexCore {
 impl RotomDexCore {
     pub fn new(can_exit: bool) -> Self {
         let version = Version::default();
-        let ctx = ModelContext::new(version);
+        let ctx = ModelContext::new_without_cache(version);
         Self {
             version: Version::default(),
 
@@ -138,40 +138,38 @@ pub(crate) struct ModelContext {
 }
 
 impl ModelContext {
-    fn new(version: Version) -> Self {
+    fn new(version: Version, builder: ClientBuilder) -> Self {
+        let client = builder.build();
+        let rustemon_wrapper = Arc::new(RustemonClient {
+            base: Url::try_from(Environment::default()).unwrap(),
+            client: client.clone(),
+        });
+
         Self {
-            pkmn_client: Arc::new(RustemonClient::default()),
-            req_client: ClientBuilder::new(Client::new()).build(),
+            pkmn_client: rustemon_wrapper,
+            req_client: client,
             version,
         }
+    }
+    fn new_without_cache(version: Version) -> Self {
+        let builder = ClientBuilder::new(Client::new());
+
+        ModelContext::new(version, builder)
     }
 
     #[cfg(feature = "cache")]
     fn new_with_cache(version: Version, cache_dir: PathBuf) -> Self {
         use http_cache_reqwest::{Cache, CacheMode, HttpCache, HttpCacheOptions};
-        use rustemon::client::RustemonClientBuilder;
 
-        let non_pokeapi_cache_manager = http_cache_reqwest::CACacheManager::new(cache_dir.join("non-pokeapi"), false);
-        let req_client = ClientBuilder::new(reqwest::Client::new())
-            .with(Cache(HttpCache {
-                mode: CacheMode::Default,
-                manager: non_pokeapi_cache_manager,
-                options: HttpCacheOptions::default(),
-            }))
-            .build();
+        let cache_manager = http_cache_reqwest::CACacheManager::new(cache_dir, false);
+        let cache_middleware = HttpCache {
+            mode: CacheMode::Default,
+            manager: cache_manager,
+            options: HttpCacheOptions::default(),
+        };
 
-        let pokeapi_cache_manager = rustemon::client::CACacheManager::new(cache_dir.join("pokeapi"), false);
-        let pkmn_client = Arc::new(
-            RustemonClientBuilder::default()
-                .with_manager(pokeapi_cache_manager)
-                .try_build()
-                .unwrap(),
-        );
+        let builder = ClientBuilder::new(reqwest::Client::new()).with(Cache(cache_middleware));
 
-        Self {
-            pkmn_client,
-            req_client,
-            version,
-        }
+        ModelContext::new(version, builder)
     }
 }

@@ -137,7 +137,5 @@ impl DexState {
         ActionResult::Nothing
     }
 
-    pub(crate) fn reset(&mut self) {
-        self.variant_cursor.reset();
-    }
+    pub(crate) fn reset(&mut self) {}
 }

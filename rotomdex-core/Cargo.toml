@@ -10,15 +10,14 @@ colorgrad = "0.8.0"
 const_format = "0.2.36"
 csscolorparser = "0.8.4"
 futures = "0.3.34"
-http-cache-reqwest = { version = "=1.0.0-alpha.8", features = [
-    "manager-cacache"
-], optional = true }
+http-cache-reqwest = { version = "0.16.0", features = ["manager-cacache"], optional = true }
 image = "0.25.10"
 itertools = "0.15.0"
 ratatui = { version = "0.30.2", default-features = false, features = ["std"] }
-reqwest = "0.13.4"
-reqwest-middleware = "0.5.2"
-rustemon = { git = "https://github.com/zdragg/rustemon", branch = "merged", default-features = false }
+reqwest = { version = "0.12.28", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+reqwest-middleware = "0.4.2"
+reqwest-leaky-bucket = { version = "0.4.0" }
+rustemon = { git = "https://github.com/zdragg/rustemon", branch = "main", default-features = false }
 strum = { version = "0.28.0", features = ["derive"] }
 tracing = "0.1.44"
 tui-big-text = "0.8.8"
@@ -26,3 +25,4 @@ web-time = "1.1.0"
 
 [features]
 cache = ["dep:http-cache-reqwest", "rustemon/cache"]
+

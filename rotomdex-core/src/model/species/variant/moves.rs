@@ -36,7 +36,7 @@ impl ModelMoves {
                     continue;
                 };
 
-                let resource = Resource::<ModelMove>::fetch(m.move_.clone(), ctx.clone(), true);
+                let resource = Resource::<ModelMove>::fetch(m.move_.clone(), ctx.clone(), false);
                 let move_model = ModelVersionMove {
                     name: m.move_.name.clone(),
                     level_learned_at: move_version.level_learned_at as u32,
