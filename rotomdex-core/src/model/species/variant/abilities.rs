@@ -1,8 +1,8 @@
 use std::task::{Context, Poll};
 
 use crate::model::{Fetchable, Resource};
-use crate::{Generation, ModelContext};
-use color_eyre::eyre::{Result, eyre};
+use crate::{Generation, ModelContext, VersionGroup};
+use color_eyre::eyre::{OptionExt, Result, eyre};
 use itertools::Itertools;
 use rustemon::model::pokemon::PokemonAbilityPast;
 use rustemon::{
@@ -120,20 +120,18 @@ impl ModelAbilities {
         .flatten()
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (usize, &Resource<ModelAbility>)> {
+    pub(crate) fn get(&self) -> [Option<&Resource<ModelAbility>>; 3] {
         match self {
             Self::None => [None, None, None],
-            Self::P { primary } => [Some((0, primary)), None, None],
-            Self::PS { primary, secondary } => [Some((0, primary)), Some((1, secondary)), None],
-            Self::PH { primary, hidden } => [Some((0, primary)), None, Some((2, hidden))],
+            Self::P { primary } => [Some(primary), None, None],
+            Self::PS { primary, secondary } => [Some(primary), Some(secondary), None],
+            Self::PH { primary, hidden } => [Some(primary), None, Some(hidden)],
             Self::PSH {
                 primary,
                 secondary,
                 hidden,
-            } => [Some((0, primary)), Some((1, secondary)), Some((2, hidden))],
+            } => [Some(primary), Some(secondary), Some(hidden)],
         }
-        .into_iter()
-        .flatten()
     }
 
     pub(crate) fn is_loaded(&self) -> bool {
@@ -162,18 +160,10 @@ impl ModelAbilities {
 
 #[derive(Debug)]
 pub(crate) struct ModelAbility {
-    name: String,
-    desc: String,
-}
-
-impl ModelAbility {
-    pub(crate) fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub(crate) fn desc(&self) -> &str {
-        &self.desc
-    }
+    pub(crate) name: String,
+    pub(crate) flavor_text: Option<String>,
+    pub(crate) short_desc: Option<String>,
+    pub(crate) long_desc: Option<String>,
 }
 
 impl Fetchable for ModelAbility {
@@ -182,29 +172,34 @@ impl Fetchable for ModelAbility {
         let ability = request.follow(&ctx.pkmn_client).await?;
         let name = ability.name;
 
-        let (_rank, desc) = ability
+        let flavor_text = ability
             .flavor_text_entries
             .into_iter()
-            .filter_map(|entry| {
-                if entry.language.name != "en" {
+            .filter_map(|text| {
+                if text.language.name != "en" {
                     return None;
                 }
-                let rank = match entry.version_group.name.as_str() {
-                    "scarlet-violet" => 9,
-                    "sword-shield" => 8,
-                    "sun-moon" => 7,
-                    "x-y" | "omega-ruby-alpha-sapphire" => 7,
-                    "black-white" | "black-2-white-2" => 5,
-                    "diamond-pearl" | "platinum" | "heartgold-soulsilver" => 4,
-                    "ruby-sapphire" | "emerald" | "firered-leafgreen" => 3,
-                    _ => 0,
-                };
-                Some((rank, entry.flavor_text))
+                if text.version_group.name.parse::<VersionGroup>().ok()? != ctx.version.version_group() {
+                    return None;
+                }
+                let flavor_text = text.flavor_text.replace("\n", " ");
+                Some(flavor_text)
             })
-            .max_by_key(|(rank, _)| *rank)
-            .unwrap();
+            .next();
 
-        Ok(Self { name, desc })
+        let (short_desc, long_desc) = ability
+            .effect_entries
+            .into_iter()
+            .find(|effect| effect.language.name == "en")
+            .map(|effect| (effect.short_effect, effect.effect))
+            .unzip();
+
+        Ok(Self {
+            name,
+            flavor_text,
+            short_desc,
+            long_desc,
+        })
     }
 
     fn is_loaded(&self) -> bool {
