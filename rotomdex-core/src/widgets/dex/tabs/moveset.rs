@@ -1,4 +1,4 @@
-use crate::model::{ModelMoveLearnMethod, ModelVariant, ModelVersionMove};
+use crate::model::{ModelMoveLearnMethod, ModelType, ModelVariant, ModelVersionMove};
 use crate::widgets::common::Cursor;
 use crate::widgets::dex::tabs::TabAction;
 use ratatui::buffer::Buffer;
@@ -76,20 +76,25 @@ fn render_moves(
     };
 
     let block = Block::bordered().style(color).title(method.to_string());
-    let list = List::new(
-        moves
-            .iter()
-            .map(|move_| Line::from(move_.to_string()).alignment(alignment)),
-    )
-    .block(block)
-    .highlight_symbol("> ")
-    .scroll_padding(1);
+    let list = List::new(moves.iter().map(|move_| get_move_line(move_).alignment(alignment)))
+        .block(block)
+        .highlight_symbol("> ")
+        .scroll_padding(1);
 
     if let Some(state) = state {
         StatefulWidget::render(list, area, buf, state);
     } else {
         Widget::render(list, area, buf);
     }
+}
+
+fn get_move_line(move_: &ModelVersionMove) -> Line<'_> {
+    let name = move_.to_string();
+    let Some(move_) = move_.resource.as_loaded() else {
+        return Line::from(name);
+    };
+    let type_color = move_.type_.tui_color();
+    Line::styled(name, type_color)
 }
 
 #[derive(Default)]

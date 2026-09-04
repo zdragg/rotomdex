@@ -1,3 +1,6 @@
+mod machine;
+pub(crate) use machine::*;
+
 use std::{fmt::Display, str::FromStr, task::Poll};
 
 use color_eyre::eyre::Result;
@@ -9,7 +12,7 @@ use strum::{Display, EnumCount, EnumString, VariantArray};
 
 use crate::{
     ModelContext, VersionGroup,
-    model::{Fetchable, Resource},
+    model::{Fetchable, ModelType, Resource},
 };
 
 #[derive(Debug)]
@@ -87,7 +90,7 @@ impl Display for ModelVersionMove {
         if self.level_learned_at == 0 {
             write!(f, "{}", self.name)
         } else {
-            write!(f, "{} Lv.{}", self.name, self.level_learned_at)
+            write!(f, "{}. {}", self.level_learned_at, self.name)
         }
     }
 }
@@ -111,20 +114,61 @@ pub(crate) enum ModelMoveLearnMethod {
 
 #[derive(Debug)]
 pub(crate) struct ModelMove {
-    inner: Move,
+    pub(crate) name: String,
+    pub(crate) power: Option<u32>,
+    pub(crate) accuracy: Option<u32>,
+    pub(crate) type_: ModelType,
+    pub(crate) machine: Option<Resource<ModelMachine>>,
 }
 
 impl Fetchable for ModelMove {
     type Request = NamedApiResource<Move>;
     async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
         let move_ = request.follow(&ctx.pkmn_client).await?;
-        Ok(Self { inner: move_ })
+
+        let name = move_.name;
+        let power = move_.power.map(|x| x as u32);
+        let accuracy = move_.accuracy.map(|x| x as u32);
+        let type_ = move_.type_.name.parse::<ModelType>()?;
+
+        let machine = move_
+            .machines
+            .iter()
+            .filter_map(|machine| {
+                if machine.version_group.name.parse::<VersionGroup>().ok()? == ctx.version.version_group() {
+                    Some(&machine.machine)
+                } else {
+                    None
+                }
+            })
+            .next()
+            .cloned()
+            .map(|api| Resource::<ModelMachine>::fetch(api, ctx, false));
+
+        Ok(Self {
+            name,
+            power,
+            accuracy,
+            type_,
+            machine,
+        })
     }
     fn is_loaded(&self) -> bool {
+        if let Some(machine) = &self.machine {
+            if !machine.is_loaded() {
+                return false;
+            }
+        }
         true
     }
-    fn poll(&mut self, _cx: &mut std::task::Context<'_>) -> Poll<()> {
-        Poll::Pending
+    fn poll(&mut self, cx: &mut std::task::Context<'_>) -> Poll<()> {
+        let mut result = Poll::Pending;
+        if let Some(machine) = &mut self.machine {
+            if machine.poll(cx).is_ready() {
+                result = Poll::Ready(());
+            }
+        }
+        result
     }
     fn fetch_span(request: &Self::Request) -> tracing::Span {
         tracing::info_span!("fetch_move", move_ = %request.name)

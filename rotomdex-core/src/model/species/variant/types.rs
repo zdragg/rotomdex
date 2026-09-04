@@ -1,7 +1,6 @@
 use crate::{Generation, ModelContext};
 use color_eyre::eyre::{Result, eyre};
 use colorgrad::{GradientBuilder, LinearGradient};
-use ratatui::style::Color;
 use rustemon::model::pokemon::{PokemonType, PokemonTypePast};
 use strum::{Display, EnumString};
 
@@ -42,10 +41,15 @@ impl ModelTypes {
 
     pub(crate) fn gradient(&self) -> LinearGradient {
         let mut builder = GradientBuilder::new();
+        let [r1, g1, b1] = self.primary.color();
         if let Some(secondary) = &self.secondary {
-            builder.html_colors(&[self.primary.color(), secondary.color()])
+            let [r2, g2, b2] = secondary.color();
+            builder.colors(&[
+                csscolorparser::Color::from_rgba8(r1, g1, b1, 0),
+                csscolorparser::Color::from_rgba8(r2, g2, b2, 0),
+            ])
         } else {
-            builder.html_colors(&[self.primary.color()])
+            builder.colors(&[csscolorparser::Color::from_rgba8(r1, g1, b1, 0)])
         }
         .mode(colorgrad::BlendMode::Oklab)
         .build::<LinearGradient>()
@@ -77,32 +81,32 @@ pub(crate) enum ModelType {
 }
 
 impl ModelType {
-    pub(crate) const fn color(&self) -> &'static str {
+    pub(crate) const fn color(&self) -> [u8; 3] {
         // Source: https://bulbapedia.bulbagarden.net/wiki/Help%3AColor_templates#Video_game_types
         match self {
-            Self::Normal => "#9FA19F",
-            Self::Fire => "#E62829",
-            Self::Water => "#2980EF",
-            Self::Electric => "#FAC000",
-            Self::Grass => "#3FA129",
-            Self::Ice => "#3DCEF3",
-            Self::Fighting => "#FF8000",
-            Self::Poison => "#9141CB",
-            Self::Ground => "#915121",
-            Self::Flying => "#81B9EF",
-            Self::Psychic => "#EF4179",
-            Self::Bug => "#91A119",
-            Self::Rock => "#AFA981",
-            Self::Ghost => "#704170",
-            Self::Dragon => "#5060E1",
-            Self::Dark => "#624D4E",
-            Self::Steel => "#60A1B8",
-            Self::Fairy => "#EF70EF",
+            Self::Normal => [159, 161, 159],
+            Self::Fire => [230, 40, 41],
+            Self::Water => [41, 128, 239],
+            Self::Electric => [250, 192, 0],
+            Self::Grass => [63, 161, 41],
+            Self::Ice => [61, 206, 243],
+            Self::Fighting => [255, 128, 0],
+            Self::Poison => [145, 65, 203],
+            Self::Ground => [145, 81, 33],
+            Self::Flying => [129, 185, 239],
+            Self::Psychic => [239, 65, 121],
+            Self::Bug => [145, 161, 25],
+            Self::Rock => [175, 169, 129],
+            Self::Ghost => [112, 65, 112],
+            Self::Dragon => [80, 96, 225],
+            Self::Dark => [98, 77, 78],
+            Self::Steel => [96, 161, 184],
+            Self::Fairy => [239, 112, 239],
         }
     }
 
-    pub(crate) fn tui_color(&self) -> Color {
-        let [r, g, b, _a] = csscolorparser::parse(self.color()).unwrap().to_rgba8();
-        Color::Rgb(r, g, b)
+    pub(crate) fn tui_color(&self) -> ratatui::style::Color {
+        let [r, g, b] = self.color();
+        ratatui::style::Color::Rgb(r, g, b)
     }
 }

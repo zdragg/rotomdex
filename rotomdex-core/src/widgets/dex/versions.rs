@@ -96,7 +96,7 @@ impl<'a> Widget for VersionWidget<'a> {
                     spans.push(Span::styled(" / ", Color::DarkGray));
                 }
 
-                let [r, g, b, _] = csscolorparser::parse(version.color()).unwrap().to_rgba8();
+                let [r, g, b] = version.color();
                 let mut style = Style::default().fg(Color::Rgb(r, g, b));
                 if group_idx == selected_group && version_idx == self.state.horizontal {
                     style = style.add_modifier(Modifier::REVERSED);

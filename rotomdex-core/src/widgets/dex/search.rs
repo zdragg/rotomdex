@@ -68,7 +68,7 @@ impl SearchWidgetState {
 impl<'a> Widget for SearchWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let text = if self.can_exit {
-            const_format::concatcp!("Type / to see keybinds ", ratatui::symbols::DOT, " Exit with Ctrl-C",)
+            const_format::concatcp!("Type / to see keybinds • Exit with Ctrl-C",)
         } else {
             "Type / to see keybinds"
         };
