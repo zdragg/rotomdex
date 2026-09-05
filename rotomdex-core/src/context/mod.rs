@@ -29,7 +29,7 @@ impl ModelContext {
     fn base_builder() -> ClientBuilder {
         ClientBuilder::new(Client::new())
             .with(Retrier::new(5))
-            .with(RateLimiter::new(16))
+            .with(RateLimiter::new(64))
     }
 
     fn from_builder(builder: ClientBuilder) -> Self {
