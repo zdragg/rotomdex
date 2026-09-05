@@ -9,6 +9,7 @@ mod versions;
 
 use crate::widgets::Cursor;
 use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
+use crate::widgets::dex::sprite::SpriteWidgetState;
 use crate::widgets::dex::tabs::TabsWidgetState;
 use crate::widgets::dex::tutorial::{TutorialWidget, TutorialWidgetState};
 use crate::widgets::dex::versions::{VersionState, VersionWidget};
@@ -83,7 +84,7 @@ impl Widget for DexWidget<'_> {
             Layout::vertical([Constraint::Percentage(20), Constraint::Length(2), Constraint::Fill(1)])
                 .areas(right_area);
 
-        SpriteWidget::new(variant, self.elapsed).render(sprite_area, buf);
+        SpriteWidget::new(variant, self.elapsed, &self.state.sprite_cache_state).render(sprite_area, buf);
         StatsWidget::new(species, variant).render(stats_area, buf);
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
@@ -101,6 +102,7 @@ pub(crate) struct DexState {
     search_state: SearchWidgetState,
     tabs_state: TabsWidgetState,
     tutorial_state: TutorialWidgetState,
+    sprite_cache_state: SpriteWidgetState,
 }
 
 impl DexState {

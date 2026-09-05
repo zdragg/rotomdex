@@ -1,6 +1,9 @@
-use std::{char, time::Duration};
+use std::{cell::RefCell, char, num::NonZeroUsize, rc::Rc, time::Duration};
 
-use chafa_syms_rs::{Canvas, CanvasConfig, CanvasMode, PixelType};
+use chafa_syms_rs::{Canvas, CanvasConfig, CanvasMode, CellOut, PixelType};
+use image::RgbaImage;
+use lru::LruCache;
+use rapidhash::v3::rapidhash_v3;
 use ratatui::{prelude::*, widgets::Widget};
 
 use crate::model::ModelVariant;
@@ -8,11 +11,17 @@ use crate::model::ModelVariant;
 pub(crate) struct SpriteWidget<'a> {
     variant: Option<&'a ModelVariant>,
     elapsed: Duration,
+
+    state: &'a SpriteWidgetState,
 }
 
 impl<'a> SpriteWidget<'a> {
-    pub(crate) fn new(variant: Option<&'a ModelVariant>, elapsed: Duration) -> Self {
-        Self { variant, elapsed }
+    pub(crate) fn new(variant: Option<&'a ModelVariant>, elapsed: Duration, state: &'a SpriteWidgetState) -> Self {
+        Self {
+            variant,
+            elapsed,
+            state,
+        }
     }
 }
 
@@ -37,17 +46,9 @@ impl Widget for SpriteWidget<'_> {
             return;
         };
 
-        let cfg = CanvasConfig::new(area.width as usize, area.height as usize).mode(CanvasMode::Truecolor);
-        let mut canvas = Canvas::new(cfg);
-        canvas.draw_all_pixels(
-            PixelType::Rgba8,
-            sprite.as_raw(),
-            sprite.width() as usize,
-            sprite.height() as usize,
-            sprite.width() as usize * 4,
-        );
+        let cells = self.state.render_with_cache(sprite, area.width, area.height);
 
-        for (idx, source) in canvas.cells().iter().enumerate() {
+        for (idx, source) in cells.iter().enumerate() {
             let (fg_alpha, fg_color) = aarrggbb_to_color(source.fg);
             let (bg_alpha, bg_color) = aarrggbb_to_color(source.bg);
             let ch = char::from_u32(source.c).unwrap_or(' ');
@@ -71,4 +72,53 @@ fn aarrggbb_to_color(color: u32) -> (u8, Color) {
     let g = (color >> 8) as u8;
     let b = color as u8;
     (a, Color::Rgb(r, g, b))
+}
+
+#[derive(PartialEq, Eq, Hash)]
+struct CacheKey {
+    image_hash: u64,
+    target_width: u16,
+    target_height: u16,
+}
+
+pub(super) struct SpriteWidgetState {
+    cache: RefCell<LruCache<CacheKey, Rc<[CellOut]>>>,
+}
+
+impl Default for SpriteWidgetState {
+    fn default() -> Self {
+        Self {
+            cache: RefCell::new(LruCache::new(NonZeroUsize::new(128).unwrap())),
+        }
+    }
+}
+
+impl SpriteWidgetState {
+    fn render_with_cache(&self, image: &RgbaImage, target_width: u16, target_height: u16) -> Rc<[CellOut]> {
+        let key = CacheKey {
+            image_hash: rapidhash_v3(image.as_raw()),
+            target_width,
+            target_height,
+        };
+
+        if let Some(cells) = self.cache.borrow_mut().get(&key).cloned() {
+            return cells;
+        }
+
+        let cfg = CanvasConfig::new(target_width as usize, target_height as usize).mode(CanvasMode::Truecolor);
+        let mut canvas = Canvas::new(cfg);
+        canvas.draw_all_pixels(
+            PixelType::Rgba8,
+            image.as_raw(),
+            image.width() as usize,
+            image.height() as usize,
+            image.width() as usize * 4,
+        );
+
+        let cells: Rc<[CellOut]> = Rc::from(canvas.cells());
+
+        self.cache.borrow_mut().put(key, cells.clone());
+
+        cells
+    }
 }

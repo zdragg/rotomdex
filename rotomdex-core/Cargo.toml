@@ -15,6 +15,8 @@ futures = "0.3.34"
 http = "1.5.0"
 image = "0.25.10"
 itertools = "0.15.0"
+lru = "0.18.4"
+rapidhash = "4.5.1"
 ratatui = { version = "0.30.2", default-features = false, features = ["std"] }
 reqwest = { version = "0.12.28", default-features = false, features = [
   "json",
