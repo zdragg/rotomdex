@@ -110,6 +110,7 @@ pub(crate) struct ModelMove {
     pub(crate) power: Option<u32>,
     pub(crate) accuracy: Option<u32>,
     pub(crate) type_: ModelType,
+    pub(crate) damage_class: ModelDamageClass,
 
     pub(crate) machine: Option<Resource<ModelMachine>>,
 }
@@ -125,6 +126,7 @@ impl Fetchable for ModelMove {
         let power = move_.power.map(|x| x as u32);
         let accuracy = move_.accuracy.map(|x| x as u32);
         let type_ = move_.type_.name.parse::<ModelType>()?;
+        let damage_class = move_.damage_class.name.parse::<ModelDamageClass>()?;
 
         let machine = if is_machine {
             move_
@@ -149,6 +151,7 @@ impl Fetchable for ModelMove {
             power,
             accuracy,
             type_,
+            damage_class,
             machine,
         })
     }
@@ -174,4 +177,12 @@ impl Fetchable for ModelMove {
     fn fetch_span(request: &Self::Request) -> tracing::Span {
         tracing::info_span!("fetch_move", move_ = %request.0.name)
     }
+}
+
+#[derive(EnumString, Debug)]
+#[strum(ascii_case_insensitive)]
+pub(crate) enum ModelDamageClass {
+    Physical,
+    Special,
+    Status,
 }

@@ -1,9 +1,9 @@
-use crate::model::{ModelMoveLearnMethod, ModelType, ModelVariant, ModelVersionMove};
+use crate::model::{ModelDamageClass, ModelMoveLearnMethod, ModelVariant, ModelVersionMove};
 use crate::widgets::common::Cursor;
 use crate::widgets::dex::tabs::TabAction;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, HorizontalAlignment, Layout, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, ToLine};
 use ratatui::widgets::{Block, List, ListState, StatefulWidget, Widget};
 
@@ -25,7 +25,7 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         };
         let [left, center, right] = area.layout(&Layout::horizontal([
             Constraint::Fill(1),
-            Constraint::Fill(3),
+            Constraint::Fill(4),
             Constraint::Fill(1),
         ]));
 
@@ -76,7 +76,6 @@ fn render_center(
             .map(|move_| move_line(move_, item_width, method).alignment(HorizontalAlignment::Center)),
     )
     .highlight_symbol(">")
-    .highlight_style(Style::default().bold().italic())
     .block(block)
     .scroll_padding(1);
 
@@ -124,22 +123,24 @@ fn move_line(move_: &ModelVersionMove, width: usize, method: ModelMoveLearnMetho
         }
         _ => Span::default(),
     };
-    let mut center = Span::raw(move_.name.as_str());
 
-    let mut right = Span::raw("");
+    let color = move_.type_.tui_color();
+    let modifier = match move_.damage_class {
+        ModelDamageClass::Physical => Modifier::BOLD,
+        ModelDamageClass::Special => Modifier::ITALIC,
+        ModelDamageClass::Status => Modifier::UNDERLINED,
+    };
+    let center = Span::styled(move_.name.as_str(), Style::default().patch(color).patch(modifier));
 
-    center = center.style(move_.type_.tui_color());
+    let power = move_.power.map_or("_".to_string(), |x| x.to_string());
+    let accuracy = move_.accuracy.map_or("_".to_string(), |x| x.to_string());
+    let right = Span::raw(format!("{}/{}%", power, accuracy));
 
     merge_spans(left, center, right, width)
 }
 
 fn short_move_line(move_: &ModelVersionMove) -> Line<'_> {
-    let color = if let Some(move_) = move_.resource.as_loaded() {
-        move_.type_.tui_color()
-    } else {
-        Color::DarkGray
-    };
-    Line::styled(move_.name.as_str(), color)
+    Line::styled(move_.name.as_str(), Color::DarkGray)
 }
 
 fn merge_spans<'a>(
