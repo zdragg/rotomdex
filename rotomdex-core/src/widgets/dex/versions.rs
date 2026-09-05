@@ -118,11 +118,6 @@ impl<'a> Widget for VersionWidget<'a> {
             .highlight_spacing(HighlightSpacing::Always);
 
         Clear.render(area, buf);
-        StatefulWidget::render(
-            list,
-            area,
-            buf,
-            &mut self.state.cursor.into_list_state(VersionGroup::COUNT),
-        );
+        StatefulWidget::render(list, area, buf, &mut self.state.cursor.list_state(VersionGroup::COUNT));
     }
 }

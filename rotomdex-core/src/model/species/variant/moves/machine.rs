@@ -7,14 +7,16 @@ use crate::model::Fetchable;
 
 #[derive(Debug)]
 pub(crate) struct ModelMachine {
-    id: u32,
+    pub(crate) name: String,
 }
 
 impl Fetchable for ModelMachine {
     type Request = ApiResource<Machine>;
     async fn fetch(request: Self::Request, ctx: crate::context::ModelContext) -> color_eyre::eyre::Result<Self> {
         let machine = request.follow(&ctx.pkmn_client).await?;
-        Ok(Self { id: machine.id as u32 })
+        Ok(Self {
+            name: machine.item.name,
+        })
     }
     fn is_loaded(&self) -> bool {
         true

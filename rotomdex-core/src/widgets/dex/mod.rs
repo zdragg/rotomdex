@@ -87,7 +87,7 @@ impl Widget for DexWidget<'_> {
         StatsWidget::new(species, variant).render(stats_area, buf);
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
-        TabsWidget::new(species, variant, &self.state.tabs_state, self.elapsed).render(tab_area, buf);
+        TabsWidget::new(species, variant, &self.state.tabs_state).render(tab_area, buf);
         TutorialWidget::new(self.can_exit, &self.state.tutorial_state).render(area, buf);
         VersionWidget::new(self.version, &self.state.version_state).render(stats_area, buf);
     }

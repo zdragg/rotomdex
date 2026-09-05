@@ -1,6 +1,6 @@
 use crate::model::{ModelAbility, ModelVariant, Resource};
+use crate::widgets::Cursor;
 use crate::widgets::dex::tabs::TabAction;
-use crate::widgets::{Cursor, HangingParagraph};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Color;

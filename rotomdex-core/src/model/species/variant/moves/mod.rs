@@ -39,7 +39,9 @@ impl ModelMoves {
                     continue;
                 };
 
-                let resource = Resource::<ModelMove>::fetch(m.move_.clone(), ctx.clone(), false);
+                let is_machine = learn_method == ModelMoveLearnMethod::Machine;
+
+                let resource = Resource::<ModelMove>::fetch((m.move_.clone(), is_machine), ctx.clone(), false);
                 let move_model = ModelVersionMove {
                     name: m.move_.name.clone(),
                     level_learned_at: move_version.level_learned_at as u32,
@@ -85,16 +87,6 @@ pub(crate) struct ModelVersionMove {
     pub(crate) resource: Resource<ModelMove>,
 }
 
-impl Display for ModelVersionMove {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.level_learned_at == 0 {
-            write!(f, "{}", self.name)
-        } else {
-            write!(f, "{}. {}", self.level_learned_at, self.name)
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Display, EnumCount, EnumString, VariantArray)]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum ModelMoveLearnMethod {
@@ -118,32 +110,39 @@ pub(crate) struct ModelMove {
     pub(crate) power: Option<u32>,
     pub(crate) accuracy: Option<u32>,
     pub(crate) type_: ModelType,
+
     pub(crate) machine: Option<Resource<ModelMachine>>,
 }
 
 impl Fetchable for ModelMove {
-    type Request = NamedApiResource<Move>;
+    type Request = (NamedApiResource<Move>, bool); // bool -> is_machine
     async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
-        let move_ = request.follow(&ctx.pkmn_client).await?;
+        let (api, is_machine) = request;
+
+        let move_ = api.follow(&ctx.pkmn_client).await?;
 
         let name = move_.name;
         let power = move_.power.map(|x| x as u32);
         let accuracy = move_.accuracy.map(|x| x as u32);
         let type_ = move_.type_.name.parse::<ModelType>()?;
 
-        let machine = move_
-            .machines
-            .iter()
-            .filter_map(|machine| {
-                if machine.version_group.name.parse::<VersionGroup>().ok()? == ctx.version.version_group() {
-                    Some(&machine.machine)
-                } else {
-                    None
-                }
-            })
-            .next()
-            .cloned()
-            .map(|api| Resource::<ModelMachine>::fetch(api, ctx, false));
+        let machine = if is_machine {
+            move_
+                .machines
+                .iter()
+                .filter_map(|machine| {
+                    if machine.version_group.name.parse::<VersionGroup>().ok()? == ctx.version.version_group() {
+                        Some(&machine.machine)
+                    } else {
+                        None
+                    }
+                })
+                .next()
+                .cloned()
+                .map(|api| Resource::<ModelMachine>::fetch(api, ctx, false))
+        } else {
+            None
+        };
 
         Ok(Self {
             name,
@@ -153,6 +152,7 @@ impl Fetchable for ModelMove {
             machine,
         })
     }
+
     fn is_loaded(&self) -> bool {
         if let Some(machine) = &self.machine {
             if !machine.is_loaded() {
@@ -161,6 +161,7 @@ impl Fetchable for ModelMove {
         }
         true
     }
+
     fn poll(&mut self, cx: &mut std::task::Context<'_>) -> Poll<()> {
         let mut result = Poll::Pending;
         if let Some(machine) = &mut self.machine {
@@ -171,6 +172,6 @@ impl Fetchable for ModelMove {
         result
     }
     fn fetch_span(request: &Self::Request) -> tracing::Span {
-        tracing::info_span!("fetch_move", move_ = %request.name)
+        tracing::info_span!("fetch_move", move_ = %request.0.name)
     }
 }

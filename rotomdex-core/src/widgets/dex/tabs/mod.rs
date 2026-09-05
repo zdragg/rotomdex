@@ -2,8 +2,6 @@ mod abilities;
 mod moveset;
 mod overview;
 
-use std::time::Duration;
-
 use crate::Action;
 use crate::model::{ModelSpecies, ModelVariant};
 use crate::widgets::dex::Cursor;
@@ -20,8 +18,6 @@ pub(super) struct TabsWidget<'a> {
     species: Option<&'a ModelSpecies>,
     variant: Option<&'a ModelVariant>,
     state: &'a TabsWidgetState,
-
-    elapsed: Duration,
 }
 
 impl<'a> TabsWidget<'a> {
@@ -29,15 +25,11 @@ impl<'a> TabsWidget<'a> {
         species: Option<&'a ModelSpecies>,
         variant: Option<&'a ModelVariant>,
         state: &'a TabsWidgetState,
-
-        elapsed: Duration,
     ) -> Self {
         Self {
             species,
             variant,
             state,
-
-            elapsed,
         }
     }
 }
