@@ -1,2 +1,0 @@
-- implement local offline by download api-data repo on first launch, then using middleware to hijack requests and return local files directly
-- holy crap im a genius

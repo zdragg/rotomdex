@@ -1,3 +1,4 @@
+use anyhow::Context;
 use async_trait::async_trait;
 use http::Extensions;
 use reqwest::{Request, Response, StatusCode};
@@ -19,9 +20,7 @@ impl Middleware for Retrier {
     async fn handle(&self, req: Request, extensions: &mut Extensions, next: Next<'_>) -> Result<Response, Error> {
         let mut retries = 0;
         loop {
-            let request = req
-                .try_clone()
-                .ok_or_else(|| Error::middleware(std::io::Error::other("request cannot be cloned")))?;
+            let request = req.try_clone().context("request cannot be cloned")?;
 
             let result = next.clone().run(request, extensions).await;
             let not_found = match &result {

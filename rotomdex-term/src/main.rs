@@ -1,5 +1,6 @@
 use std::{fs, path::PathBuf, time::Duration};
 
+use clap::Parser;
 use color_eyre::eyre::{Result, eyre};
 use crossterm::event::{Event, EventStream, KeyCode, KeyModifiers};
 use etcetera::{AppStrategy, AppStrategyArgs};
@@ -10,9 +11,23 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::time::ChronoLocal;
 
+mod resources;
+
+#[derive(Debug, Parser)]
+struct Cli {
+    /// Use the locally downloaded PokéAPI data and sprites.
+    #[arg(long)]
+    offline: bool,
+
+    /// Download or update the offline PokéAPI data and sprites.
+    #[arg(long)]
+    download: bool,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
+    let cli = Cli::parse();
 
     let strategy = etcetera::choose_app_strategy(AppStrategyArgs {
         top_level_domain: "dev".to_string(),
@@ -20,10 +35,21 @@ async fn main() -> Result<()> {
         app_name: "rotomdex".to_string(),
     })?;
 
+    let data_dir = strategy.data_dir();
+    let resources = resources::ResourcePaths::new(data_dir);
+    if cli.download {
+        resources.download()?;
+        return Ok(());
+    }
+
     let _log_guard = setup_logs(strategy.data_dir())?;
     tracing::info!("──────── session started ────────");
 
-    let result = run(strategy.cache_dir()).await;
+    if cli.offline {
+        resources.validate()?;
+    }
+
+    let result = run(strategy.cache_dir(), cli.offline.then_some(resources)).await;
 
     ratatui::restore();
     result
@@ -52,8 +78,12 @@ fn setup_logs(log_dir: PathBuf) -> Result<WorkerGuard> {
 }
 
 const FRAMES_PER_SECOND: f32 = 30.0;
-async fn run(cache_dir: PathBuf) -> Result<()> {
-    let mut core = RotomDexCore::new_with_cache(true, cache_dir);
+async fn run(cache_dir: PathBuf, resources: Option<resources::ResourcePaths>) -> Result<()> {
+    let mut core = if let Some(resources) = resources {
+        RotomDexCore::new_offline(resources.resource_path())
+    } else {
+        RotomDexCore::new_cached(cache_dir)
+    };
     let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
     let mut terminal = ratatui::init();
     let mut events = EventStream::new();

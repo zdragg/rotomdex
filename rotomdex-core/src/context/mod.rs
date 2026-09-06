@@ -1,3 +1,4 @@
+mod offline_provider;
 mod rate_limiter;
 mod retrier;
 
@@ -52,7 +53,7 @@ impl ModelContext {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(super) fn new_with_cache(cache_dir: PathBuf) -> Self {
+    pub(super) fn new_cache(cache_dir: PathBuf) -> Self {
         let cache_manager = http_cache_reqwest::CACacheManager::new(cache_dir, false);
         let cache = Cache(HttpCache {
             mode: CacheMode::Default,
@@ -61,5 +62,17 @@ impl ModelContext {
         });
 
         Self::from_builder(Self::base_builder().with(cache))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    /// What should be under path:
+    /// api/v2/pokemon-species/index.html
+    /// sprites/pokemon/132.png
+    pub(super) fn new_offline(path: PathBuf) -> Self {
+        use crate::context::offline_provider::OfflineProvider;
+
+        let offline = OfflineProvider { path };
+
+        Self::from_builder(ClientBuilder::new(Client::new()).with(offline))
     }
 }

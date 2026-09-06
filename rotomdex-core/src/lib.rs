@@ -22,13 +22,12 @@ pub struct RotomDexCore {
     pkmn: ModelPokemon,
 
     dex_state: DexState,
-    can_exit: bool,
+    local: bool,
     timer: web_time::Instant,
 }
 
 impl RotomDexCore {
-    pub fn new(can_exit: bool) -> Self {
-        let ctx = ModelContext::new();
+    fn from_ctx(ctx: ModelContext, local: bool) -> Self {
         Self {
             pkmn_name: "rotom".into(),
             pkmn: ModelPokemon::new("rotom", ctx.clone()),
@@ -36,24 +35,29 @@ impl RotomDexCore {
             ctx,
 
             dex_state: DexState::default(),
-            can_exit,
+            local,
             timer: web_time::Instant::now(),
         }
     }
 
+    pub fn new(local: bool) -> Self {
+        let ctx = ModelContext::new();
+        Self::from_ctx(ctx, local)
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn new_with_cache(can_exit: bool, cache_dir: PathBuf) -> Self {
-        let ctx = ModelContext::new_with_cache(cache_dir);
-        Self {
-            pkmn_name: "rotom".into(),
-            pkmn: ModelPokemon::new("rotom", ctx.clone()),
+    pub fn new_cached(cache_dir: PathBuf) -> Self {
+        let ctx = ModelContext::new_cache(cache_dir);
+        Self::from_ctx(ctx, true)
+    }
 
-            ctx,
-
-            dex_state: DexState::default(),
-            can_exit,
-            timer: web_time::Instant::now(),
-        }
+    #[cfg(not(target_arch = "wasm32"))]
+    /// What should be under path:
+    /// api/v2/pokemon-species/index.html
+    /// sprites/pokemon/132.png
+    pub fn new_offline(resource_path: PathBuf) -> Self {
+        let ctx = ModelContext::new_offline(resource_path);
+        Self::from_ctx(ctx, true)
     }
 
     fn refresh(&mut self) {
@@ -72,7 +76,7 @@ impl Widget for &RotomDexCore {
             &self.pkmn,
             &self.dex_state,
             self.timer.elapsed(),
-            self.can_exit,
+            self.local,
             self.ctx.version,
         )
         .render(area, buf);
