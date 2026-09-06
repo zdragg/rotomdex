@@ -5,7 +5,7 @@ use std::{
 
 use color_eyre::eyre::{Context, Result, bail};
 use git2::{AutotagOption, FetchOptions, ProxyOptions, RemoteCallbacks, Repository, ResetType, build::RepoBuilder};
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 
 const URL: &str = "https://github.com/zdragg/rotomdex-data.git";
 
@@ -62,7 +62,7 @@ impl ResourcePaths {
 }
 
 fn clone(path: &Path) -> Result<()> {
-    let progress = ProgressBar::new(0);
+    let progress = progress_bar();
     let result = RepoBuilder::new()
         .branch("main")
         .fetch_options(fetch_options(&progress))
@@ -73,7 +73,7 @@ fn clone(path: &Path) -> Result<()> {
 }
 
 fn update(repository: &Repository) -> Result<()> {
-    let progress = ProgressBar::new(0);
+    let progress = progress_bar();
     let result = repository
         .find_remote("origin")?
         .fetch(&["main"], Some(&mut fetch_options(&progress)), None);
@@ -85,11 +85,18 @@ fn update(repository: &Repository) -> Result<()> {
     Ok(())
 }
 
-fn fetch_options(progress: &ProgressBar) -> FetchOptions<'_> {
+fn fetch_options(progress: &ProgressBar) -> FetchOptions<'static> {
     let mut callbacks = RemoteCallbacks::new();
-    callbacks.transfer_progress(move |stats| {
-        progress.set_length(stats.total_objects() as u64);
-        progress.set_position(stats.received_objects() as u64);
+    let output = progress.clone();
+    callbacks.sideband_progress(move |message| {
+        output.suspend(|| eprint!("remote: {}", String::from_utf8_lossy(message)));
+        true
+    });
+
+    let output = progress.clone();
+    callbacks.transfer_progress(move |progress| {
+        output.set_length(progress.total_objects() as u64);
+        output.set_position(progress.received_objects() as u64);
         true
     });
 
@@ -103,4 +110,14 @@ fn fetch_options(progress: &ProgressBar) -> FetchOptions<'_> {
         .proxy_options(proxy)
         .remote_callbacks(callbacks);
     options
+}
+
+fn progress_bar() -> ProgressBar {
+    let progress = ProgressBar::new(0);
+    progress.set_style(
+        ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} objects")
+            .unwrap()
+            .progress_chars("=>-"),
+    );
+    progress
 }
