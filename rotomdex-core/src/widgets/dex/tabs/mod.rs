@@ -2,7 +2,7 @@ mod abilities;
 mod moveset;
 mod overview;
 
-use crate::Action;
+use crate::DexKeyCode;
 use crate::model::{ModelSpecies, ModelVariant};
 use crate::widgets::dex::Cursor;
 use crate::widgets::dex::tabs::abilities::{AbilitiesTabWidget, AbilitiesTabWidgetState};
@@ -85,19 +85,19 @@ enum TabAction {
 }
 
 impl TabsWidgetState {
-    pub(super) fn handle_action(&mut self, action: Action) {
-        let tab_action = match action {
-            Action::Input('h') | Action::Left => TabAction::Left,
-            Action::Input('j') | Action::Down => TabAction::Down,
-            Action::Input('k') | Action::Up => TabAction::Up,
-            Action::Input('l') | Action::Right => TabAction::Right,
-            Action::Enter => TabAction::Enter,
-            Action::Escape | Action::CapsLock => TabAction::Escape,
-            Action::Input('d') => {
+    pub(super) fn handle_key(&mut self, key_code: DexKeyCode) {
+        let tab_action = match key_code {
+            DexKeyCode::Char('h') | DexKeyCode::Left => TabAction::Left,
+            DexKeyCode::Char('j') | DexKeyCode::Down => TabAction::Down,
+            DexKeyCode::Char('k') | DexKeyCode::Up => TabAction::Up,
+            DexKeyCode::Char('l') | DexKeyCode::Right => TabAction::Right,
+            DexKeyCode::Enter => TabAction::Enter,
+            DexKeyCode::Escape | DexKeyCode::CapsLock => TabAction::Escape,
+            DexKeyCode::Char('d') => {
                 self.selected_tab.prev();
                 return;
             }
-            Action::Input('f') => {
+            DexKeyCode::Char('f') => {
                 self.selected_tab.next();
                 return;
             }

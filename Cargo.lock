@@ -3313,6 +3313,7 @@ dependencies = [
  "async-fs",
  "async-lock",
  "async-trait",
+ "bitflags 2.13.1",
  "chafa-syms-rs",
  "color-eyre",
  "colorgrad",

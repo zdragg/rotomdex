@@ -11,12 +11,13 @@ use ratzilla::{
         window,
     },
 };
-use rotomdex_core::{Action, RotomDexCore};
+use rotomdex_core::{ActionResult, DexKeyCode, DexKeyModifiers, RotomDexCore};
 use std::{cell::RefCell, rc::Rc};
 use tracing_web::MakeWebConsoleWriter;
 
 const MIN_TERMINAL_COLS: u32 = 81;
 const MIN_TERMINAL_ROWS: u32 = 25;
+const EXIT_URL: &str = "https://github.com/zdragg/rotomdex";
 
 fn main() -> Result<()> {
     setup_logs()?;
@@ -38,7 +39,7 @@ fn setup_logs() -> Result<()> {
 }
 
 fn run() -> Result<()> {
-    let core = Rc::new(RefCell::new(RotomDexCore::new(false)));
+    let core = Rc::new(RefCell::new(RotomDexCore::new()));
     let font_atlas = FontAtlasData::from_binary(include_bytes!("../assets/jetbrains-mono-30.atlas"))?;
     let padded_cell_size = font_atlas.cell_size();
     let cell_size = (
@@ -180,13 +181,10 @@ mod tests {
 
 fn install_key_handler(core: Rc<RefCell<RotomDexCore>>) -> Result<()> {
     let window = window().ok_or_else(|| eyre!("unable to access the browser window"))?;
+    let redirect_window = window.clone();
     let mut caps_lock_state = None;
     let callback = Closure::<dyn FnMut(KeyboardEvent)>::new(move |event: KeyboardEvent| {
-        if event.ctrl_key() || event.alt_key() || event.meta_key() {
-            return;
-        }
-
-        let action = if event.key() == "CapsLock" {
+        let key_code = if event.key() == "CapsLock" {
             let state = event.get_modifier_state("CapsLock");
 
             // macOS may report enabling Caps Lock as keydown and disabling it as keyup,
@@ -195,27 +193,27 @@ fn install_key_handler(core: Rc<RefCell<RotomDexCore>>) -> Result<()> {
                 return;
             }
 
-            Action::CapsLock
+            DexKeyCode::CapsLock
         } else {
             if event.type_() != "keydown" {
                 return;
             }
 
-            match KeyCode::from(event.clone()) {
-                KeyCode::Enter => Action::Enter,
-                KeyCode::Right => Action::Right,
-                KeyCode::Up => Action::Up,
-                KeyCode::Down => Action::Down,
-                KeyCode::Left => Action::Left,
-                KeyCode::Backspace => Action::Backspace,
-                KeyCode::Char(ch) => Action::Input(ch),
-                KeyCode::Esc => Action::Escape,
-                _ => return,
-            }
+            let Some(key_code) = map_key_code(event.clone().into()) else {
+                return;
+            };
+            key_code
         };
 
         event.prevent_default();
-        core.borrow_mut().handle_action(action);
+        if matches!(
+            core.borrow_mut().handle_key(map_modifiers(&event), key_code),
+            ActionResult::Exit
+        ) {
+            if let Err(error) = redirect_window.location().set_href(EXIT_URL) {
+                tracing::error!(?error, "unable to redirect to project page");
+            }
+        }
     });
 
     for event_type in ["keydown", "keyup"] {
@@ -226,4 +224,27 @@ fn install_key_handler(core: Rc<RefCell<RotomDexCore>>) -> Result<()> {
     callback.forget();
 
     Ok(())
+}
+
+fn map_key_code(key_code: KeyCode) -> Option<DexKeyCode> {
+    match key_code {
+        KeyCode::Char(ch) => Some(DexKeyCode::Char(ch)),
+        KeyCode::Backspace => Some(DexKeyCode::Backspace),
+        KeyCode::Enter => Some(DexKeyCode::Enter),
+        KeyCode::Right => Some(DexKeyCode::Right),
+        KeyCode::Down => Some(DexKeyCode::Down),
+        KeyCode::Left => Some(DexKeyCode::Left),
+        KeyCode::Up => Some(DexKeyCode::Up),
+        KeyCode::Esc => Some(DexKeyCode::Escape),
+        _ => None,
+    }
+}
+
+fn map_modifiers(event: &KeyboardEvent) -> DexKeyModifiers {
+    let mut modifiers = DexKeyModifiers::empty();
+    modifiers.set(DexKeyModifiers::SHIFT, event.shift_key());
+    modifiers.set(DexKeyModifiers::CONTROL, event.ctrl_key());
+    modifiers.set(DexKeyModifiers::ALT, event.alt_key());
+    modifiers.set(DexKeyModifiers::META, event.meta_key());
+    modifiers
 }

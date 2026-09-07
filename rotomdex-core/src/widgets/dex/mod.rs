@@ -14,13 +14,13 @@ use crate::widgets::dex::tabs::TabsWidgetState;
 use crate::widgets::dex::tutorial::{TutorialWidget, TutorialWidgetState};
 use crate::widgets::dex::versions::{VersionState, VersionWidget};
 use crate::{
-    Action,
+    DexKeyCode,
     model::ModelPokemon,
     widgets::dex::{
         name::NameWidget, sprite::SpriteWidget, stats::StatsWidget, tabs::TabsWidget, variant::VariantSelectorWidget,
     },
 };
-use crate::{ActionResult, Version};
+use crate::{InnerActionResult, Version};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -32,24 +32,16 @@ use std::time::Duration;
 pub(crate) struct DexWidget<'a> {
     pkmn: &'a ModelPokemon,
     elapsed: Duration,
-    can_exit: bool,
     version: Version,
 
     state: &'a DexState,
 }
 
 impl<'a> DexWidget<'a> {
-    pub(crate) fn new(
-        pkmn: &'a ModelPokemon,
-        state: &'a DexState,
-        elapsed: Duration,
-        can_exit: bool,
-        version: Version,
-    ) -> Self {
+    pub(crate) fn new(pkmn: &'a ModelPokemon, state: &'a DexState, elapsed: Duration, version: Version) -> Self {
         Self {
             pkmn,
             elapsed,
-            can_exit,
             version,
             state,
         }
@@ -72,7 +64,7 @@ impl Widget for DexWidget<'_> {
         let outer = area;
         let area = block.inner(outer);
         block.render(outer, buf);
-        SearchWidget::new(&self.state.search_state, self.can_exit).render(bottom_text_area, buf);
+        SearchWidget::new(&self.state.search_state).render(bottom_text_area, buf);
 
         let [left_area, right_area] = Layout::horizontal([Constraint::Percentage(35), Constraint::Fill(1)])
             .spacing(1)
@@ -89,7 +81,7 @@ impl Widget for DexWidget<'_> {
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
         TabsWidget::new(species, variant, &self.state.tabs_state).render(tab_area, buf);
-        TutorialWidget::new(self.can_exit, &self.state.tutorial_state).render(area, buf);
+        TutorialWidget::new(&self.state.tutorial_state).render(area, buf);
         VersionWidget::new(self.version, &self.state.version_state).render(stats_area, buf);
     }
 }
@@ -106,37 +98,37 @@ pub(crate) struct DexState {
 }
 
 impl DexState {
-    pub(crate) fn handle_action(&mut self, action: Action, version: Version) -> ActionResult {
-        match action {
-            Action::Input('.') => {
+    pub(crate) fn handle_key(&mut self, key_code: DexKeyCode, version: Version) -> InnerActionResult {
+        match key_code {
+            DexKeyCode::Char('.') => {
                 self.version_state.toggle(version);
-                return ActionResult::Nothing;
+                return InnerActionResult::Nothing;
             }
-            Action::Input(':') => {
+            DexKeyCode::Char(':') => {
                 self.search_state.start_search();
-                return ActionResult::Nothing;
+                return InnerActionResult::Nothing;
             }
-            Action::Input('/') => {
+            DexKeyCode::Char('/') => {
                 self.tutorial_state.enabled = !self.tutorial_state.enabled;
-                return ActionResult::Nothing;
+                return InnerActionResult::Nothing;
             }
             _ => {}
         }
 
         if self.version_state.enabled {
-            return self.version_state.handle_action(action);
+            return self.version_state.handle_key(key_code);
         }
 
         if self.search_state.searching {
-            return self.search_state.handle_action(action);
+            return self.search_state.handle_key(key_code);
         }
 
-        match action {
-            Action::Input('\'') => self.variant_cursor.next(),
-            Action::Input(';') => self.variant_cursor.prev(),
-            _ => self.tabs_state.handle_action(action),
+        match key_code {
+            DexKeyCode::Char('\'') => self.variant_cursor.next(),
+            DexKeyCode::Char(';') => self.variant_cursor.prev(),
+            _ => self.tabs_state.handle_key(key_code),
         }
-        ActionResult::Nothing
+        InnerActionResult::Nothing
     }
 
     pub(crate) fn reset(&mut self) {}

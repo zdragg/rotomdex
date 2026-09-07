@@ -2,17 +2,16 @@ use ratatui::prelude::{Color, Line};
 use ratatui::text::Span;
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
-use crate::Action;
-use crate::widgets::dex::ActionResult;
+use crate::DexKeyCode;
+use crate::widgets::dex::InnerActionResult;
 
 pub(crate) struct SearchWidget<'a> {
     state: &'a SearchWidgetState,
-    can_exit: bool,
 }
 
 impl<'a> SearchWidget<'a> {
-    pub(crate) fn new(state: &'a SearchWidgetState, can_exit: bool) -> Self {
-        Self { state, can_exit }
+    pub(crate) fn new(state: &'a SearchWidgetState) -> Self {
+        Self { state }
     }
 }
 
@@ -23,18 +22,18 @@ pub(crate) struct SearchWidgetState {
 }
 
 impl SearchWidgetState {
-    pub(crate) fn handle_action(&mut self, action: Action) -> ActionResult {
+    pub(crate) fn handle_key(&mut self, key_code: DexKeyCode) -> InnerActionResult {
         if !self.searching {
-            return ActionResult::Nothing;
+            return InnerActionResult::Nothing;
         }
-        match action {
-            Action::Input(ch) => self.handle_input(ch),
-            Action::Backspace => self.backspace(),
-            Action::Escape | Action::CapsLock => self.abort_search(),
-            Action::Enter => return ActionResult::NewPokemon(self.take()),
+        match key_code {
+            DexKeyCode::Char(ch) => self.handle_input(ch),
+            DexKeyCode::Backspace => self.backspace(),
+            DexKeyCode::Escape | DexKeyCode::CapsLock => self.abort_search(),
+            DexKeyCode::Enter => return InnerActionResult::NewPokemon(self.take()),
             _ => (),
         }
-        ActionResult::Nothing
+        InnerActionResult::Nothing
     }
 
     pub(crate) fn start_search(&mut self) {
@@ -67,11 +66,7 @@ impl SearchWidgetState {
 
 impl<'a> Widget for SearchWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let text = if self.can_exit {
-            const_format::concatcp!("Type / to see keybinds • Exit with Ctrl-C",)
-        } else {
-            "Type / to see keybinds"
-        };
+        let text = const_format::concatcp!("Type / to see keybinds • Exit with Ctrl-C");
 
         let span = if self.state.searching {
             Span::raw(format!(" :{} ", self.state.input.as_str())).style(Color::White)

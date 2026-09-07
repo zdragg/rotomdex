@@ -6,18 +6,16 @@ use ratatui::{
 };
 
 pub(super) struct TutorialWidget<'a> {
-    can_exit: bool,
     state: &'a TutorialWidgetState,
 }
 
 impl<'a> TutorialWidget<'a> {
-    pub(super) fn new(can_exit: bool, state: &'a TutorialWidgetState) -> Self {
-        Self { can_exit, state }
+    pub(super) fn new(state: &'a TutorialWidgetState) -> Self {
+        Self { state }
     }
 }
 
-const HEIGHT_WITHOUT_EXIT: u16 = 8;
-const HEIGHT_WITH_EXIT: u16 = 9;
+const HEIGHT: u16 = 9;
 const WIDTH: u16 = 23;
 
 #[derive(Default)]
@@ -31,28 +29,21 @@ impl<'a> Widget for TutorialWidget<'a> {
             return;
         }
 
-        let height = if self.can_exit {
-            HEIGHT_WITH_EXIT
-        } else {
-            HEIGHT_WITHOUT_EXIT
-        };
-        let [_, area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(height)]).areas(area);
+        let [_, area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(HEIGHT)]).areas(area);
         let [_, area] = Layout::horizontal([Constraint::Fill(1), Constraint::Length(WIDTH)]).areas(area);
 
-        let mut commands = [
+        let commands = [
             " /          close",
             " :          search",
             " ;'         variants",
             " df         tabs",
             " hjkl ←↓↑→  navigate",
             " .          versions",
+            " Ctrl+C     exit",
         ]
         .into_iter()
         .map(Line::from)
         .collect::<Vec<_>>();
-        if self.can_exit {
-            commands.push(Line::from(" Ctrl+C     exit"));
-        }
 
         Clear.render(area, buf);
         Paragraph::new(commands)

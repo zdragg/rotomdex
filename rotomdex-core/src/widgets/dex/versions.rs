@@ -7,7 +7,7 @@ use ratatui::{
 };
 use strum::{EnumCount, VariantArray};
 
-use crate::{Action, ActionResult, Version, VersionGroup, widgets::Cursor};
+use crate::{InnerActionResult, DexKeyCode, Version, VersionGroup, widgets::Cursor};
 
 #[derive(Default)]
 pub struct VersionState {
@@ -36,27 +36,27 @@ impl VersionState {
         }
     }
 
-    pub(crate) fn handle_action(&mut self, action: Action) -> ActionResult {
-        match action {
-            Action::Input('j') | Action::Down => {
+    pub(crate) fn handle_key(&mut self, key_code: DexKeyCode) -> InnerActionResult {
+        match key_code {
+            DexKeyCode::Char('j') | DexKeyCode::Down => {
                 self.cursor.next();
                 self.horizontal = 0;
             }
-            Action::Input('k') | Action::Up => {
+            DexKeyCode::Char('k') | DexKeyCode::Up => {
                 self.cursor.prev();
                 self.horizontal = 0;
             }
-            Action::Input('h') | Action::Left => {
+            DexKeyCode::Char('h') | DexKeyCode::Left => {
                 let count = self.selected_versions().len();
                 self.horizontal = (self.horizontal + count - 1) % count;
             }
-            Action::Input('l') | Action::Right => {
+            DexKeyCode::Char('l') | DexKeyCode::Right => {
                 self.horizontal = (self.horizontal + 1) % self.selected_versions().len();
             }
-            Action::Enter => return ActionResult::NewVersion(self.selected_versions()[self.horizontal]),
+            DexKeyCode::Enter => return InnerActionResult::NewVersion(self.selected_versions()[self.horizontal]),
             _ => {}
         }
-        ActionResult::Nothing
+        InnerActionResult::Nothing
     }
 
     fn selected_group(&self) -> usize {

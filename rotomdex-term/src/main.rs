@@ -2,10 +2,10 @@ use std::{fs, path::PathBuf, time::Duration};
 
 use clap::Parser;
 use color_eyre::eyre::{Result, eyre};
-use crossterm::event::{Event, EventStream, KeyCode, KeyModifiers};
+use crossterm::event::{Event, EventStream, KeyCode};
 use etcetera::{AppStrategy, AppStrategyArgs};
 use ratatui::prelude::Widget;
-use rotomdex_core::{Action, RotomDexCore};
+use rotomdex_core::{ActionResult, DexKeyCode, DexKeyModifiers, RotomDexCore};
 use tokio_stream::StreamExt;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
@@ -90,11 +90,10 @@ async fn run(cache_dir: PathBuf, resources: Option<resources::ResourcePaths>) ->
     loop {
         tokio::select! {
             Some(Ok(event)) = events.next() => {
-                if let Some(event) =  map_event(event) {
-                    match event {
-                        AppEvent::Quit => break,
-                        AppEvent::Action(action) => core.handle_action(action),
-                    }
+                if let Some((modifiers, key_code)) = map_event(event)
+                    && matches!(core.handle_key(modifiers, key_code), ActionResult::Exit)
+                {
+                    break;
                 }
             }
             _ = core.poll_pkmn() => {}
@@ -106,30 +105,22 @@ async fn run(cache_dir: PathBuf, resources: Option<resources::ResourcePaths>) ->
     Ok(())
 }
 
-enum AppEvent {
-    Quit,
-    Action(Action),
-}
-
-fn map_event(event: Event) -> Option<AppEvent> {
-    let action = if let Event::Key(key) = event {
-        if matches!((key.modifiers, key.code), (KeyModifiers::CONTROL, KeyCode::Char('c'))) {
-            return Some(AppEvent::Quit);
-        }
-        match key.code {
-            KeyCode::Esc => Action::Escape,
-            KeyCode::Enter => Action::Enter,
-            KeyCode::Down => Action::Down,
-            KeyCode::Up => Action::Up,
-            KeyCode::Right => Action::Right,
-            KeyCode::Left => Action::Left,
-            KeyCode::Backspace => Action::Backspace,
-            KeyCode::Char(ch) => Action::Input(ch),
-            KeyCode::CapsLock => Action::CapsLock,
-            _ => return None,
-        }
-    } else {
+fn map_event(event: Event) -> Option<(DexKeyModifiers, DexKeyCode)> {
+    let Event::Key(event) = event else {
         return None;
     };
-    Some(AppEvent::Action(action))
+
+    let key_code = match event.code {
+        KeyCode::Char(ch) => DexKeyCode::Char(ch),
+        KeyCode::Backspace => DexKeyCode::Backspace,
+        KeyCode::Enter => DexKeyCode::Enter,
+        KeyCode::Right => DexKeyCode::Right,
+        KeyCode::Down => DexKeyCode::Down,
+        KeyCode::Left => DexKeyCode::Left,
+        KeyCode::Up => DexKeyCode::Up,
+        KeyCode::Esc => DexKeyCode::Escape,
+        KeyCode::CapsLock => DexKeyCode::CapsLock,
+        _ => return None,
+    };
+    Some((DexKeyModifiers::from_bits_retain(event.modifiers.bits()), key_code))
 }

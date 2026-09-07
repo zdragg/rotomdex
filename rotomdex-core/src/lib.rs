@@ -22,12 +22,11 @@ pub struct RotomDexCore {
     pkmn: ModelPokemon,
 
     dex_state: DexState,
-    local: bool,
     timer: web_time::Instant,
 }
 
 impl RotomDexCore {
-    fn from_ctx(ctx: ModelContext, local: bool) -> Self {
+    fn from_ctx(ctx: ModelContext) -> Self {
         Self {
             pkmn_name: "rotom".into(),
             pkmn: ModelPokemon::new("rotom", ctx.clone()),
@@ -35,20 +34,19 @@ impl RotomDexCore {
             ctx,
 
             dex_state: DexState::default(),
-            local,
             timer: web_time::Instant::now(),
         }
     }
 
-    pub fn new(local: bool) -> Self {
+    pub fn new() -> Self {
         let ctx = ModelContext::new();
-        Self::from_ctx(ctx, local)
+        Self::from_ctx(ctx)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new_cached(cache_dir: PathBuf) -> Self {
         let ctx = ModelContext::new_cache(cache_dir);
-        Self::from_ctx(ctx, true)
+        Self::from_ctx(ctx)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -57,7 +55,7 @@ impl RotomDexCore {
     /// sprites/pokemon/132.png
     pub fn new_offline(resource_path: PathBuf) -> Self {
         let ctx = ModelContext::new_offline(resource_path);
-        Self::from_ctx(ctx, true)
+        Self::from_ctx(ctx)
     }
 
     fn refresh(&mut self) {
@@ -72,20 +70,13 @@ impl RotomDexCore {
 
 impl Widget for &RotomDexCore {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        DexWidget::new(
-            &self.pkmn,
-            &self.dex_state,
-            self.timer.elapsed(),
-            self.local,
-            self.ctx.version,
-        )
-        .render(area, buf);
+        DexWidget::new(&self.pkmn, &self.dex_state, self.timer.elapsed(), self.ctx.version).render(area, buf);
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum Action {
-    Input(char),
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DexKeyCode {
+    Char(char),
     Backspace,
     Enter,
     Right,
@@ -96,29 +87,56 @@ pub enum Action {
     CapsLock,
 }
 
-enum ActionResult {
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct DexKeyModifiers: u8 {
+        const SHIFT = 1 << 0;
+        const CONTROL = 1 << 1;
+        const ALT = 1 << 2;
+        const SUPER = 1 << 3;
+        const HYPER = 1 << 4;
+        const META = 1 << 5;
+    }
+}
+
+pub enum ActionResult {
+    Nothing,
+    Exit,
+}
+
+enum InnerActionResult {
     Nothing,
     NewPokemon(String),
     NewVersion(Version),
 }
 
 impl RotomDexCore {
-    pub fn handle_action(&mut self, action: Action) {
-        let action_result = self.dex_state.handle_action(action, self.ctx.version);
+    pub fn handle_key(&mut self, modifiers: DexKeyModifiers, key_code: DexKeyCode) -> ActionResult {
+        if modifiers.contains(DexKeyModifiers::CONTROL) {
+            return if matches!(key_code, DexKeyCode::Char('c' | 'C')) {
+                ActionResult::Exit
+            } else {
+                ActionResult::Nothing
+            };
+        }
+
+        let action_result = self.dex_state.handle_key(key_code, self.ctx.version);
 
         match action_result {
-            ActionResult::Nothing => (),
-            ActionResult::NewPokemon(name) => {
+            InnerActionResult::Nothing => (),
+            InnerActionResult::NewPokemon(name) => {
                 if name == "q" {
-                    panic!()
+                    return ActionResult::Exit;
                 }
                 self.pkmn_name = name;
                 self.refresh();
             }
-            ActionResult::NewVersion(version) => {
+            InnerActionResult::NewVersion(version) => {
                 self.ctx.version = version;
                 self.refresh();
             }
         }
+
+        ActionResult::Nothing
     }
 }
