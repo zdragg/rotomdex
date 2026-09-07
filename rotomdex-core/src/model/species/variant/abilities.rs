@@ -37,7 +37,7 @@ pub(crate) enum ModelAbilities {
 }
 
 impl ModelAbilities {
-    pub(crate) fn new(current: &[PokemonAbility], past: &[PokemonAbilityPast], ctx: ModelContext) -> Result<Self> {
+    pub(crate) fn new(current: &[PokemonAbility], past: &[PokemonAbilityPast], ctx: &ModelContext) -> Result<Self> {
         let mut slots: [Option<NamedApiResource<Ability>>; 3] = [const { None }; 3];
 
         let mut apply_ability = |ability: &PokemonAbility| {
@@ -72,7 +72,7 @@ impl ModelAbilities {
             }
         }
 
-        let slots = slots.map(|maybe_api| maybe_api.map(|api| Resource::<ModelAbility>::fetch(api, ctx.clone())));
+        let slots = slots.map(|maybe_api| maybe_api.map(|api| Resource::<ModelAbility>::fetch(api, &ctx)));
 
         let res = match slots {
             [None, None, None] => {

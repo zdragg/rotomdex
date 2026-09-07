@@ -36,11 +36,11 @@ impl Fetchable for ModelVariant {
     async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
         let variant = request.follow(&ctx.pkmn_client).await?;
         let result = Self {
-            types: ModelTypes::new(&variant.types, &variant.past_types, ctx.clone())?,
-            stats: ModelStats::new(&variant.stats, &variant.past_stats, ctx.clone())?,
-            moves: ModelMoves::new(&variant.moves, ctx.clone())?,
-            sprite: Resource::<ModelSprite>::fetch(variant.sprites.clone(), ctx.clone()),
-            abilities: ModelAbilities::new(&variant.abilities, &variant.past_abilities, ctx)?,
+            types: ModelTypes::new(&variant.types, &variant.past_types, &ctx)?,
+            stats: ModelStats::new(&variant.stats, &variant.past_stats, &ctx)?,
+            moves: ModelMoves::new(&variant.moves, &ctx)?,
+            sprite: Resource::<ModelSprite>::fetch(variant.sprites.clone(), &ctx),
+            abilities: ModelAbilities::new(&variant.abilities, &variant.past_abilities, &ctx)?,
 
             inner: variant,
         };

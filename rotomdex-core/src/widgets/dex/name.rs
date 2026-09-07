@@ -27,7 +27,7 @@ impl Widget for NameWidget<'_> {
         let Some(species) = self.species else {
             return;
         };
-        let name = species.inner().name.to_uppercase();
+        let name = species.name.to_uppercase();
         let line = Line::from(name.as_str());
 
         let Some((area, pixel_size)) = calculate_size(area, name.len()) else {

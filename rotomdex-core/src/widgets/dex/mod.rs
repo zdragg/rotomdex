@@ -58,8 +58,7 @@ impl Widget for DexWidget<'_> {
             .and_then(|variant| variant.as_loaded());
 
         // Block + bottom text / search widget render
-        let block =
-            Block::bordered().border_style(species.map_or(Color::DarkGray, |species| species.get_ratatui_color()));
+        let block = Block::bordered().border_style(species.map_or(Color::DarkGray, |species| species.color));
         let [_area, bottom_text_area] = area.layout(&Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]));
         let outer = area;
         let area = block.inner(outer);

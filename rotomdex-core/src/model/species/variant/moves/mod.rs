@@ -21,7 +21,7 @@ pub(crate) struct ModelMoves {
 }
 
 impl ModelMoves {
-    pub(crate) fn new(moves: &[PokemonMove], ctx: ModelContext) -> Result<Self> {
+    pub(crate) fn new(moves: &[PokemonMove], ctx: &ModelContext) -> Result<Self> {
         let mut move_baskets = std::array::from_fn(|_| Vec::new());
         for m in moves {
             for move_version in &m.version_group_details {
@@ -41,7 +41,7 @@ impl ModelMoves {
 
                 let is_machine = learn_method == ModelMoveLearnMethod::Machine;
 
-                let resource = Resource::<ModelMove>::fetch((m.move_.clone(), is_machine), ctx.clone());
+                let resource = Resource::<ModelMove>::fetch((m.move_.clone(), is_machine), &ctx);
                 let move_model = ModelVersionMove {
                     name: m.move_.name.clone(),
                     level_learned_at: move_version.level_learned_at as u32,
@@ -141,7 +141,7 @@ impl Fetchable for ModelMove {
                 })
                 .next()
                 .cloned()
-                .map(|api| Resource::<ModelMachine>::fetch(api, ctx))
+                .map(|api| Resource::<ModelMachine>::fetch(api, &ctx))
         } else {
             None
         };

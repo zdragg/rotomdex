@@ -44,7 +44,7 @@ fn name_span<'a>(species: &'a ModelSpecies, variant: &'a ModelVariant) -> Vec<Sp
     // charizard-mega-x#0006
     vec![
         Span::styled(&variant.inner.name, Color::White),
-        Span::styled(format!("#{:04}  ", species.inner.id), Color::DarkGray),
+        Span::styled(format!("#{:04}  ", species.national_dex), Color::DarkGray),
     ]
 }
 fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {

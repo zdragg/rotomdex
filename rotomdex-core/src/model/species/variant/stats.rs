@@ -15,7 +15,7 @@ pub(crate) struct ModelStats {
 }
 
 impl ModelStats {
-    pub(crate) fn new(current: &[PokemonStat], past: &[PokemonStatPast], ctx: ModelContext) -> Result<Self> {
+    pub(crate) fn new(current: &[PokemonStat], past: &[PokemonStatPast], ctx: &ModelContext) -> Result<Self> {
         let mut stats: [Option<u32>; 6] = [None; 6];
         let mut apply_stat = |stat: &PokemonStat| {
             let stat_index = match stat.stat.name.as_str() {

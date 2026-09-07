@@ -29,7 +29,7 @@ impl ModelPokemon {
 
             benchmark: Instant::now(),
 
-            species: Resource::<ModelSpecies>::fetch(name, ctx),
+            species: Resource::<ModelSpecies>::fetch(name, &ctx),
 
             loaded: false,
         }
@@ -74,7 +74,8 @@ pub(crate) enum Resource<T: Fetchable> {
 }
 
 impl<T: Fetchable> Resource<T> {
-    pub(crate) fn fetch(request: T::Request, ctx: ModelContext) -> Self {
+    pub(crate) fn fetch(request: T::Request, ctx: &ModelContext) -> Self {
+        let ctx = ctx.clone();
         let span = T::fetch_span(&request);
 
         let future = async move {
