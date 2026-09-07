@@ -20,14 +20,16 @@ impl<'a> MovesetTabWidget<'a> {
 
 impl<'a> Widget for MovesetTabWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let Some(variant) = self.variant else {
-            return;
-        };
-        let [left, center, right] = area.layout(&Layout::horizontal([
+        let areas: [Rect; 3] = area.layout(&Layout::horizontal([
             Constraint::Fill(1),
             Constraint::Fill(4),
             Constraint::Fill(1),
         ]));
+
+        let Some(variant) = self.variant else {
+            areas.into_iter().for_each(|area| Block::bordered().render(area, buf));
+            return;
+        };
 
         let nonempty_buckets = variant.moves.get_all_nonempty();
         if nonempty_buckets.is_empty() {
@@ -41,23 +43,23 @@ impl<'a> Widget for MovesetTabWidget<'a> {
             moves,
             method,
             &mut self.state.vertical_cursor.list_state(moves.len()),
-            center,
+            areas[1],
             buf,
         );
 
         if bucket_cnt == 1 {
-            Block::bordered().style(Color::DarkGray).render(left, buf);
-            Block::bordered().style(Color::DarkGray).render(right, buf);
+            Block::bordered().style(Color::DarkGray).render(areas[0], buf);
+            Block::bordered().style(Color::DarkGray).render(areas[2], buf);
             return;
         }
 
         let left_idx = (center_idx + bucket_cnt - 1) % bucket_cnt;
         let (method, moves) = nonempty_buckets[left_idx];
-        render_left(moves, method.to_line(), left, buf);
+        render_left(moves, method.to_line(), areas[0], buf);
 
         let right_idx = (center_idx + 1) % bucket_cnt;
         let (method, moves) = nonempty_buckets[right_idx];
-        render_right(moves, method.to_line(), right, buf);
+        render_right(moves, method.to_line(), areas[2], buf);
     }
 }
 

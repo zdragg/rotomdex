@@ -19,12 +19,12 @@ impl<'a> AbilitiesTabWidget<'a> {
 
 impl<'a> Widget for AbilitiesTabWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let areas: [Rect; 3] = area.layout(&Layout::vertical([Constraint::Fill(1); 3]));
         let Some(variant) = self.variant else {
+            areas.into_iter().for_each(|area| Block::bordered().render(area, buf));
             return;
         };
         let [first, second, hidden] = variant.abilities.get();
-
-        let areas: [Rect; 3] = area.layout(&Layout::vertical([Constraint::Fill(1); 3]));
 
         render_ability(first, false, areas[0], buf);
         render_ability(second, false, areas[1], buf);
