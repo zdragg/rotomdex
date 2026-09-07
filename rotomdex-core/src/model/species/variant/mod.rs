@@ -39,7 +39,7 @@ impl Fetchable for ModelVariant {
             types: ModelTypes::new(&variant.types, &variant.past_types, ctx.clone())?,
             stats: ModelStats::new(&variant.stats, &variant.past_stats, ctx.clone())?,
             moves: ModelMoves::new(&variant.moves, ctx.clone())?,
-            sprite: Resource::<ModelSprite>::fetch(variant.sprites.clone(), ctx.clone(), false),
+            sprite: Resource::<ModelSprite>::fetch(variant.sprites.clone(), ctx.clone()),
             abilities: ModelAbilities::new(&variant.abilities, &variant.past_abilities, ctx)?,
 
             inner: variant,

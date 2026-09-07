@@ -29,7 +29,7 @@ impl ModelPokemon {
 
             benchmark: Instant::now(),
 
-            species: Resource::<ModelSpecies>::fetch(name, ctx, false),
+            species: Resource::<ModelSpecies>::fetch(name, ctx),
 
             loaded: false,
         }
@@ -40,7 +40,7 @@ impl ModelPokemon {
         if !self.loaded && self.is_loaded() {
             self.loaded = true;
             tracing::info!(
-                "{} fully loaded in {}ms",
+                "{} probably did not fully load in {}ms. This benchmark may be BROKEN.",
                 self.name,
                 self.benchmark.elapsed().as_millis()
             );
@@ -74,7 +74,7 @@ pub(crate) enum Resource<T: Fetchable> {
 }
 
 impl<T: Fetchable> Resource<T> {
-    pub(crate) fn fetch(request: T::Request, ctx: ModelContext, deferred: bool) -> Self {
+    pub(crate) fn fetch(request: T::Request, ctx: ModelContext) -> Self {
         let span = T::fetch_span(&request);
 
         let future = async move {
@@ -87,17 +87,18 @@ impl<T: Fetchable> Resource<T> {
         .instrument(span);
 
         Self::Loading {
-            deferred: Cell::new(deferred),
+            deferred: Cell::new(true),
             deferred_waker: RefCell::new(None),
             future: Box::pin(future),
         }
     }
 
     pub(crate) fn is_loaded(&self) -> bool {
-        if let Self::Loaded(value) = self {
-            return value.is_loaded();
+        match self {
+            Self::Loaded(value) => value.is_loaded(),
+            Self::Loading { deferred, .. } => deferred.get(),
+            _ => false,
         }
-        false
     }
 
     pub(crate) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
@@ -129,24 +130,20 @@ impl<T: Fetchable> Resource<T> {
     }
 
     pub(crate) fn as_loaded(&self) -> Option<&T> {
-        if let Self::Loaded(inner) = self {
-            Some(inner)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn undefer(&self) {
-        if let Self::Loading {
-            deferred,
-            deferred_waker,
-            ..
-        } = self
-        {
-            deferred.set(false);
-            if let Some(waker) = deferred_waker.borrow_mut().take() {
-                waker.wake();
+        match self {
+            Self::Loaded(inner) => Some(inner),
+            Self::Loading {
+                deferred,
+                deferred_waker,
+                ..
+            } => {
+                deferred.set(false);
+                if let Some(waker) = deferred_waker.borrow_mut().take() {
+                    waker.wake();
+                }
+                None
             }
+            Self::Failed(_) => None,
         }
     }
 }

@@ -2,7 +2,7 @@ use std::task::{Context, Poll};
 
 use crate::model::{Fetchable, Resource};
 use crate::{Generation, ModelContext, VersionGroup};
-use color_eyre::eyre::{OptionExt, Result, eyre};
+use color_eyre::eyre::{Result, eyre};
 use itertools::Itertools;
 use rustemon::model::pokemon::PokemonAbilityPast;
 use rustemon::{
@@ -72,8 +72,7 @@ impl ModelAbilities {
             }
         }
 
-        let slots =
-            slots.map(|maybe_api| maybe_api.map(|api| Resource::<ModelAbility>::fetch(api, ctx.clone(), false)));
+        let slots = slots.map(|maybe_api| maybe_api.map(|api| Resource::<ModelAbility>::fetch(api, ctx.clone())));
 
         let res = match slots {
             [None, None, None] => {

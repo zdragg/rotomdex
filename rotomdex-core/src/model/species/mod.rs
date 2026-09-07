@@ -27,7 +27,7 @@ impl Fetchable for ModelSpecies {
         let variants: Vec<_> = species
             .varieties
             .iter()
-            .map(|v| Resource::<ModelVariant>::fetch(v.pokemon.clone(), ctx.clone(), false))
+            .map(|v| Resource::<ModelVariant>::fetch(v.pokemon.clone(), ctx.clone()))
             .collect();
         let flavor_text = ModelFlavorText::new(&species.flavor_text_entries, ctx.version);
         Ok(Self {

@@ -1,7 +1,7 @@
 mod machine;
 pub(crate) use machine::*;
 
-use std::{fmt::Display, str::FromStr, task::Poll};
+use std::{str::FromStr, task::Poll};
 
 use color_eyre::eyre::Result;
 use rustemon::{
@@ -41,7 +41,7 @@ impl ModelMoves {
 
                 let is_machine = learn_method == ModelMoveLearnMethod::Machine;
 
-                let resource = Resource::<ModelMove>::fetch((m.move_.clone(), is_machine), ctx.clone(), false);
+                let resource = Resource::<ModelMove>::fetch((m.move_.clone(), is_machine), ctx.clone());
                 let move_model = ModelVersionMove {
                     name: m.move_.name.clone(),
                     level_learned_at: move_version.level_learned_at as u32,
@@ -141,7 +141,7 @@ impl Fetchable for ModelMove {
                 })
                 .next()
                 .cloned()
-                .map(|api| Resource::<ModelMachine>::fetch(api, ctx, false))
+                .map(|api| Resource::<ModelMachine>::fetch(api, ctx))
         } else {
             None
         };
