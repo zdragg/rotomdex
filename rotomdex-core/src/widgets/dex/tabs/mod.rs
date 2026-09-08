@@ -7,7 +7,7 @@ use crate::model::{ModelSpecies, ModelVariant};
 use crate::widgets::dex::Cursor;
 use crate::widgets::dex::tabs::abilities::{AbilitiesTabWidget, AbilitiesTabWidgetState};
 use crate::widgets::dex::tabs::moveset::{MovesetTabWidget, MovesetTabWidgetState};
-use crate::widgets::dex::tabs::overview::{BasicTabWidgetState, OverviewTabWidget};
+use crate::widgets::dex::tabs::overview::{OverviewTabWidget, OverviewTabWidgetState};
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::Tabs;
@@ -49,7 +49,9 @@ impl Widget for TabsWidget<'_> {
             .render(tab_area, buf);
 
         match DexTab::VARIANTS[self.state.selected_tab.get(DexTab::COUNT).unwrap()] {
-            DexTab::Overview => OverviewTabWidget::new(self.species, self.variant).render(content_area, buf),
+            DexTab::Overview => {
+                OverviewTabWidget::new(self.species, self.variant, &self.state.overview_state).render(content_area, buf)
+            }
             DexTab::Abilities => AbilitiesTabWidget::new(self.variant).render(content_area, buf),
             DexTab::Moveset => MovesetTabWidget::new(self.variant, &self.state.moveset_state).render(content_area, buf),
         };
@@ -70,7 +72,7 @@ pub(crate) enum DexTab {
 pub(crate) struct TabsWidgetState {
     selected_tab: Cursor,
 
-    basic_state: BasicTabWidgetState,
+    overview_state: OverviewTabWidgetState,
     abilities_state: AbilitiesTabWidgetState,
     moveset_state: MovesetTabWidgetState,
 }
@@ -105,7 +107,7 @@ impl TabsWidgetState {
         };
 
         match DexTab::VARIANTS[self.selected_tab.get(DexTab::COUNT).unwrap()] {
-            DexTab::Overview => &mut self.basic_state.handle_action(tab_action),
+            DexTab::Overview => &mut self.overview_state.handle_action(tab_action),
             DexTab::Abilities => &mut self.abilities_state.handle_action(tab_action),
             DexTab::Moveset => &mut self.moveset_state.handle_action(tab_action),
         };

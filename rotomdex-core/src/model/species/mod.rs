@@ -1,6 +1,7 @@
 mod evolution_chain;
 mod flavor_text;
 mod variant;
+pub(crate) use evolution_chain::*;
 pub(crate) use flavor_text::*;
 pub(crate) use variant::*;
 
@@ -69,6 +70,11 @@ impl Fetchable for ModelSpecies {
             .fold(false, |is_ready, variant| is_ready | variant.poll(cx).is_ready())
         {
             return Poll::Ready(());
+        }
+        if let Some(evolution_chain) = &mut self.evolution_chain {
+            if evolution_chain.poll(cx).is_ready() {
+                return Poll::Ready(());
+            }
         }
         Poll::Pending
     }
