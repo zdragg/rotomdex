@@ -125,8 +125,8 @@ impl DexState {
         match key_code {
             DexKeyCode::Char('\'') => self.variant_cursor.next(),
             DexKeyCode::Char(';') => self.variant_cursor.prev(),
-            _ => self.tabs_state.handle_key(key_code),
-        }
+            _ => return self.tabs_state.handle_key(key_code),
+        };
         InnerActionResult::Nothing
     }
 

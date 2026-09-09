@@ -1,3 +1,4 @@
+use crate::InnerActionResult;
 use crate::model::{ModelDamageClass, ModelMoveLearnMethod, ModelVariant, ModelVersionMove};
 use crate::widgets::common::Cursor;
 use crate::widgets::dex::tabs::TabAction;
@@ -180,7 +181,7 @@ pub(super) struct MovesetTabWidgetState {
 }
 
 impl MovesetTabWidgetState {
-    pub(super) fn handle_action(&mut self, action: TabAction) {
+    pub(super) fn handle_action(&mut self, action: TabAction) -> InnerActionResult {
         match action {
             TabAction::Right => {
                 self.horizontal_cursor.next();
@@ -194,5 +195,6 @@ impl MovesetTabWidgetState {
             TabAction::Up => self.vertical_cursor.prev(),
             _ => {}
         }
+        InnerActionResult::Nothing
     }
 }

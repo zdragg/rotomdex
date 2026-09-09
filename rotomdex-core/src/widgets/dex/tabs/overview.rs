@@ -1,3 +1,6 @@
+use std::cell::Cell;
+
+use crate::InnerActionResult;
 use crate::model::{ModelEvolutionDetail, ModelSpecies, ModelVariant};
 use crate::widgets::dex::tabs::TabAction;
 use crate::widgets::{Cursor, RenderBlockExt};
@@ -41,7 +44,7 @@ impl<'a> Widget for OverviewTabWidget<'a> {
 
         let evo_area = render_flavor_text(species, area, buf);
 
-        render_evolutions(species, &self.state.evolution_cursor, evo_area, buf);
+        render_evolutions(species, &self.state.evolution_cursor, self.state, evo_area, buf);
     }
 }
 
@@ -103,7 +106,13 @@ fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> R
     rest_area
 }
 
-fn render_evolutions(species: &ModelSpecies, cursor: &Cursor, area: Rect, buf: &mut Buffer) {
+fn render_evolutions(
+    species: &ModelSpecies,
+    cursor: &Cursor,
+    state: &OverviewTabWidgetState,
+    area: Rect,
+    buf: &mut Buffer,
+) {
     let Some(chain) = &species.evolution_chain else {
         Line::styled("No evolutions!", Color::Red).render(area, buf);
         return;
@@ -121,13 +130,18 @@ fn render_evolutions(species: &ModelSpecies, cursor: &Cursor, area: Rect, buf: &
         return;
     }
 
-    let [tree_area, detail_area] = area.layout(&Layout::horizontal([Constraint::Percentage(35), Constraint::Fill(1)]));
+    let [tree_area, detail_area] = area.layout(&Layout::horizontal([Constraint::Percentage(40), Constraint::Fill(1)]));
 
     let selected = cursor.get(views.len()).unwrap();
     let mut lines = Vec::with_capacity(views.len());
     let mut ancestor_prefix = Vec::new();
 
     for (index, view) in views.iter().enumerate() {
+        if selected == index && state.needs_new_name.get() {
+            state.selected_pkmn_name.set(view.species_name.to_owned());
+            state.needs_new_name.set(false);
+        }
+
         ancestor_prefix.truncate(view.depth);
         let mut prefix = String::new();
         for continues in ancestor_prefix.iter().skip(1) {
@@ -164,23 +178,42 @@ fn render_evolutions(species: &ModelSpecies, cursor: &Cursor, area: Rect, buf: &
 }
 
 fn render_evo_details(detail: &ModelEvolutionDetail, area: Rect, buf: &mut Buffer) {
-    let Some(detail) = &detail.inner else {
-        Span::styled("No evo found", Color::Red).render(area, buf);
+    let reqs = detail.to_strings();
+    if reqs.is_empty() {
+        Span::styled("No evolution found", Color::Red).render(area, buf);
         return;
     };
+
+    let iter = reqs.iter().map(|str| Line::from(format!("- {}", str)));
+
+    let mut lines = vec![Line::raw("Evolution requires:")];
+    lines.extend(iter);
+
+    let paragraph = Paragraph::new(lines);
+    paragraph.render(area, buf);
 }
 
 #[derive(Default)]
 pub(super) struct OverviewTabWidgetState {
     evolution_cursor: Cursor,
+    needs_new_name: Cell<bool>,
+    selected_pkmn_name: Cell<String>,
 }
 
 impl OverviewTabWidgetState {
-    pub(super) fn handle_action(&mut self, action: TabAction) {
+    pub(super) fn handle_action(&mut self, action: TabAction) -> InnerActionResult {
         match action {
-            TabAction::Down => self.evolution_cursor.next(),
-            TabAction::Up => self.evolution_cursor.prev(),
+            TabAction::Down => {
+                self.evolution_cursor.next();
+                self.needs_new_name.set(true);
+            }
+            TabAction::Up => {
+                self.evolution_cursor.prev();
+                self.needs_new_name.set(true);
+            }
+            TabAction::Enter => return InnerActionResult::NewPokemon(self.selected_pkmn_name.take()),
             _ => {}
         }
+        InnerActionResult::Nothing
     }
 }

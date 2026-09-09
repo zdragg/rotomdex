@@ -169,7 +169,7 @@ impl Version {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, EnumCount, VariantArray)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumString, EnumCount, VariantArray)]
 #[strum(serialize_all = "kebab-case")]
 pub enum VersionGroup {
     RedBlue,

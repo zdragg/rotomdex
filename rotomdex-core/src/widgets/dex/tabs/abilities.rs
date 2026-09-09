@@ -1,3 +1,4 @@
+use crate::InnerActionResult;
 use crate::model::{ModelAbility, ModelVariant, Resource};
 use crate::widgets::dex::tabs::TabAction;
 use crate::widgets::{Cursor, RenderBlockExt};
@@ -75,5 +76,7 @@ pub(super) struct AbilitiesTabWidgetState {
 }
 
 impl AbilitiesTabWidgetState {
-    pub(super) fn handle_action(&mut self, action: TabAction) {}
+    pub(super) fn handle_action(&mut self, action: TabAction) -> InnerActionResult {
+        InnerActionResult::Nothing
+    }
 }

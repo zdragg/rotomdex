@@ -2,12 +2,12 @@ mod abilities;
 mod moveset;
 mod overview;
 
-use crate::DexKeyCode;
 use crate::model::{ModelSpecies, ModelVariant};
 use crate::widgets::dex::Cursor;
 use crate::widgets::dex::tabs::abilities::{AbilitiesTabWidget, AbilitiesTabWidgetState};
 use crate::widgets::dex::tabs::moveset::{MovesetTabWidget, MovesetTabWidgetState};
 use crate::widgets::dex::tabs::overview::{OverviewTabWidget, OverviewTabWidgetState};
+use crate::{DexKeyCode, InnerActionResult};
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::Style;
 use ratatui::widgets::Tabs;
@@ -86,7 +86,7 @@ enum TabAction {
 }
 
 impl TabsWidgetState {
-    pub(super) fn handle_key(&mut self, key_code: DexKeyCode) {
+    pub(super) fn handle_key(&mut self, key_code: DexKeyCode) -> InnerActionResult {
         let tab_action = match key_code {
             DexKeyCode::Char('h') | DexKeyCode::Left => TabAction::Left,
             DexKeyCode::Char('j') | DexKeyCode::Down => TabAction::Down,
@@ -96,19 +96,20 @@ impl TabsWidgetState {
             DexKeyCode::Escape | DexKeyCode::CapsLock => TabAction::Escape,
             DexKeyCode::Char('d') => {
                 self.selected_tab.prev();
-                return;
+                return InnerActionResult::Nothing;
             }
             DexKeyCode::Char('f') => {
                 self.selected_tab.next();
-                return;
+                return InnerActionResult::Nothing;
             }
-            _ => return,
+            _ => return InnerActionResult::Nothing,
         };
 
-        match DexTab::VARIANTS[self.selected_tab.get(DexTab::COUNT).unwrap()] {
-            DexTab::Overview => &mut self.overview_state.handle_action(tab_action),
-            DexTab::Abilities => &mut self.abilities_state.handle_action(tab_action),
-            DexTab::Moveset => &mut self.moveset_state.handle_action(tab_action),
+        let result = match DexTab::VARIANTS[self.selected_tab.get(DexTab::COUNT).unwrap()] {
+            DexTab::Overview => self.overview_state.handle_action(tab_action),
+            DexTab::Abilities => self.abilities_state.handle_action(tab_action),
+            DexTab::Moveset => self.moveset_state.handle_action(tab_action),
         };
+        result
     }
 }
