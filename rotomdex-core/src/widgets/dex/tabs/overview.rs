@@ -86,7 +86,7 @@ fn physique_span(variant: &ModelVariant) -> Span<'_> {
 
 fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> Rect {
     let flavor = if let Some(flavor_text) = &species.flavor_text {
-        Paragraph::new(flavor_text.text.as_str()).style(Color::White)
+        Paragraph::new(flavor_text.text.as_str()).style(Color::Gray)
     } else {
         Paragraph::new("Missing flavor text!").style(Color::Red)
     }

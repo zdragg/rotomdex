@@ -94,7 +94,7 @@ fn color<'a>(name: &'a str) -> Color {
         "pink" => Color::LightMagenta,
         "purple" => Color::Magenta,
         "red" => Color::Red,
-        "white" => Color::White,
+        "white" => Color::Gray,
         "yellow" => Color::Yellow,
         _ => unreachable!(),
     }
