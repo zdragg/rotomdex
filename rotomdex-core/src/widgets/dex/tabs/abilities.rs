@@ -19,37 +19,28 @@ impl<'a> AbilitiesTabWidget<'a> {
 
 impl<'a> Widget for AbilitiesTabWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let areas: [Rect; 3] = area.layout(&Layout::vertical([Constraint::Fill(1); 3]));
         let Some(variant) = self.variant else {
-            areas.into_iter().for_each(|area| Block::bordered().render(area, buf));
             return;
         };
         let [first, second, hidden] = variant.abilities.get();
 
-        render_ability(first, false, areas[0], buf);
-        render_ability(second, false, areas[1], buf);
-        render_ability(hidden, true, areas[2], buf);
+        let area = render_ability(first, false, area, buf);
+        let area = render_ability(second, false, area, buf);
+        let _ = render_ability(hidden, true, area, buf);
     }
 }
 
-fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, area: Rect, buf: &mut Buffer) {
+fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, area: Rect, buf: &mut Buffer) -> Rect {
     let Some(ability) = ability else {
-        Block::default()
-            .borders(Borders::TOP)
-            .title(Line::from(vec![
-                Span::raw("── "),
-                Span::styled("no ability in slot ", Color::Red),
-            ]))
-            .render(area, buf);
-        return;
+        return area;
     };
 
     let Some(ability) = ability.as_loaded() else {
-        Block::default()
+        let rest_area = Block::default()
             .borders(Borders::TOP)
             .title(Line::raw("── loading "))
-            .render(area, buf);
-        return;
+            .render_inner(area, buf);
+        return rest_area;
     };
 
     let block_title = if is_hidden {
@@ -67,9 +58,14 @@ fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, are
         .render_inner(area, buf);
 
     if let Some(flavor_text) = &ability.flavor_text {
-        Paragraph::new(flavor_text.as_str())
-            .wrap(Wrap { trim: true })
-            .render(area, buf);
+        let text = Paragraph::new(flavor_text.as_str()).wrap(Wrap { trim: true });
+        let line_count = text.line_count(area.width);
+        let [this_area, rest_area] =
+            area.layout(&Layout::vertical([Constraint::Length(line_count as u16), Constraint::Fill(1)]).spacing(1));
+        text.render(this_area, buf);
+        return rest_area;
+    } else {
+        return area;
     }
 }
 
