@@ -21,7 +21,7 @@ pub(crate) struct ModelMoves {
 }
 
 impl ModelMoves {
-    pub(crate) fn new(moves: &[PokemonMove], ctx: &ModelContext) -> Result<Self> {
+    pub(crate) fn new(moves: Vec<PokemonMove>, ctx: &ModelContext) -> Result<Self> {
         let mut move_baskets = std::array::from_fn(|_| Vec::new());
         for m in moves {
             for move_version in &m.version_group_details {
@@ -131,16 +131,15 @@ impl Fetchable for ModelMove {
         let machine = if is_machine {
             move_
                 .machines
-                .iter()
+                .into_iter()
                 .filter_map(|machine| {
                     if machine.version_group.name.parse::<VersionGroup>().ok()? == ctx.version.version_group() {
-                        Some(&machine.machine)
+                        Some(machine.machine)
                     } else {
                         None
                     }
                 })
                 .next()
-                .cloned()
                 .map(|api| Resource::<ModelMachine>::fetch(api, &ctx))
         } else {
             None

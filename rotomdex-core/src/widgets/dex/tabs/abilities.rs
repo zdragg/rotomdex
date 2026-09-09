@@ -1,11 +1,11 @@
 use crate::model::{ModelAbility, ModelVariant, Resource};
-use crate::widgets::Cursor;
 use crate::widgets::dex::tabs::TabAction;
+use crate::widgets::{Cursor, RenderBlockExt};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Color;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Paragraph, Widget, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph, Widget, Wrap};
 
 pub(super) struct AbilitiesTabWidget<'a> {
     variant: Option<&'a ModelVariant>,
@@ -34,33 +34,42 @@ impl<'a> Widget for AbilitiesTabWidget<'a> {
 
 fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, area: Rect, buf: &mut Buffer) {
     let Some(ability) = ability else {
-        let block = Block::bordered().title(Line::styled("No ability in slot", Color::Red));
-        block.render(area, buf);
+        Block::default()
+            .borders(Borders::TOP)
+            .title(Line::from(vec![
+                Span::raw("── "),
+                Span::styled("no ability in slot ", Color::Red),
+            ]))
+            .render(area, buf);
         return;
     };
 
     let Some(ability) = ability.as_loaded() else {
-        let block = Block::bordered().title(Line::styled("Loading", Color::White));
-        block.render(area, buf);
+        Block::default()
+            .borders(Borders::TOP)
+            .title(Line::raw("── loading "))
+            .render(area, buf);
         return;
     };
 
     let block_title = if is_hidden {
         Line::from(vec![
-            Span::styled(&ability.name, Color::White),
-            Span::styled(" (hidden)", Color::DarkGray),
+            Span::raw(format!("── {}", &ability.name)),
+            Span::styled(" (hidden) ", Color::DarkGray),
         ])
     } else {
-        Line::styled(&ability.name, Color::White)
+        Line::raw(format!("── {} ", &ability.name))
     };
-    let block = Block::bordered().title(block_title);
-    let inner_area = block.inner(area);
-    block.render(area, buf);
+
+    let area = Block::default()
+        .borders(Borders::TOP)
+        .title(block_title)
+        .render_inner(area, buf);
 
     if let Some(flavor_text) = &ability.flavor_text {
         Paragraph::new(flavor_text.as_str())
             .wrap(Wrap { trim: true })
-            .render(inner_area, buf);
+            .render(area, buf);
     }
 }
 

@@ -1,11 +1,11 @@
-use crate::model::{ModelSpecies, ModelVariant};
-use crate::widgets::Cursor;
+use crate::model::{ModelEvolutionDetail, ModelSpecies, ModelVariant};
 use crate::widgets::dex::tabs::TabAction;
+use crate::widgets::{Cursor, RenderBlockExt};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Color;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{List, Paragraph, StatefulWidget, Widget, Wrap};
+use ratatui::widgets::{Block, Borders, List, Paragraph, StatefulWidget, Widget, Wrap};
 
 pub(super) struct OverviewTabWidget<'a> {
     species: Option<&'a ModelSpecies>,
@@ -37,12 +37,11 @@ impl<'a> Widget for OverviewTabWidget<'a> {
         };
 
         let [first_line, area] = area.layout(&Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]));
-
         render_basic(species, variant, first_line, buf);
-        let [flavor_area, evolution_area] =
-            area.layout(&Layout::vertical([Constraint::Percentage(20), Constraint::Fill(1)]));
-        render_flavor_text(species, flavor_area, buf);
-        render_evolution(species, &self.state.evolution_cursor, evolution_area, buf);
+
+        let evo_area = render_flavor_text(species, area, buf);
+
+        render_evolutions(species, &self.state.evolution_cursor, evo_area, buf);
     }
 }
 
@@ -58,7 +57,7 @@ fn render_basic(species: &ModelSpecies, variant: &ModelVariant, area: Rect, buf:
 fn name_span<'a>(species: &'a ModelSpecies, variant: &'a ModelVariant) -> Vec<Span<'a>> {
     // charizard-mega-x#0006
     vec![
-        Span::styled(&variant.inner.name, Color::White),
+        Span::raw(&variant.name),
         Span::styled(format!("#{:04}  ", species.national_dex), Color::DarkGray),
     ]
 }
@@ -69,7 +68,7 @@ fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {
         variant.types.primary.tui_color(),
     )];
     if let Some(secondary) = &variant.types.secondary {
-        type_spans.push(Span::styled("/", Color::White));
+        type_spans.push(Span::raw("/"));
         type_spans.push(Span::styled(secondary.to_string(), secondary.tui_color()));
     }
     type_spans.push(Span::raw("  "));
@@ -78,30 +77,38 @@ fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {
 
 fn physique_span(variant: &ModelVariant) -> Span<'_> {
     // 1.7m 110.5kg
-    Span::styled(
-        format!(
-            "{:.1}m {:.1}kg ",
-            (variant.inner.height as f64) / 10.0,
-            (variant.inner.weight as f64) / 10.0,
-        ),
-        Color::White,
-    )
+    Span::raw(format!(
+        "{:.1}m {:.1}kg ",
+        (variant.height as f64) / 10.0,
+        (variant.weight as f64) / 10.0,
+    ))
 }
 
-fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) {
+fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> Rect {
     let flavor = if let Some(flavor_text) = &species.flavor_text {
         Paragraph::new(flavor_text.text.as_str()).style(Color::White)
     } else {
         Paragraph::new("Missing flavor text!").style(Color::Red)
-    };
-    flavor.wrap(Wrap { trim: true }).render(area, buf);
+    }
+    .wrap(Wrap { trim: true });
+
+    let line_count = flavor.line_count(area.width - 1);
+
+    let [this_area, rest_area] =
+        area.layout(&Layout::vertical([Constraint::Length(line_count as u16), Constraint::Fill(1)]).spacing(1));
+
+    let this_area = Block::default().borders(Borders::LEFT).render_inner(this_area, buf);
+    flavor.render(this_area, buf);
+
+    rest_area
 }
 
-fn render_evolution(species: &ModelSpecies, cursor: &Cursor, area: Rect, buf: &mut Buffer) {
+fn render_evolutions(species: &ModelSpecies, cursor: &Cursor, area: Rect, buf: &mut Buffer) {
     let Some(chain) = &species.evolution_chain else {
         Line::styled("No evolutions!", Color::Red).render(area, buf);
         return;
     };
+
     let Some(chain) = chain.as_loaded() else {
         Line::styled("Loading...", Color::DarkGray).render(area, buf);
         return;
@@ -109,12 +116,14 @@ fn render_evolution(species: &ModelSpecies, cursor: &Cursor, area: Rect, buf: &m
 
     let views = chain.get_views();
 
-    if views.len() == 1 {
+    if views.len() <= 1 {
         Line::styled("Only child!", Color::Yellow).render(area, buf);
         return;
     }
 
-    let selected = cursor.get(views.len());
+    let [tree_area, detail_area] = area.layout(&Layout::horizontal([Constraint::Percentage(35), Constraint::Fill(1)]));
+
+    let selected = cursor.get(views.len()).unwrap();
     let mut lines = Vec::with_capacity(views.len());
     let mut ancestor_prefix = Vec::new();
 
@@ -129,19 +138,36 @@ fn render_evolution(species: &ModelSpecies, cursor: &Cursor, area: Rect, buf: &m
         }
         ancestor_prefix.push(!view.last_in_depth);
 
-        let color = if view.species_name == species.name {
-            Color::Yellow
+        let name = if selected == index {
+            Span::raw(view.species_name.to_uppercase())
         } else {
-            Color::Reset
+            Span::raw(view.species_name)
         };
-        let mut spans = vec![Span::raw(prefix), Span::styled(view.species_name, color)];
-        if selected == Some(index) {
-            spans.push(Span::raw(" <"));
-        }
-        lines.push(Line::from(spans));
+        let name = if view.species_name == species.name {
+            name.style(Color::Yellow)
+        } else {
+            name
+        };
+        let line = Line::from(if selected == index {
+            vec![Span::raw(prefix), name, Span::raw(" <")]
+        } else {
+            vec![Span::raw(prefix), name]
+        });
+        lines.push(line);
     }
 
-    StatefulWidget::render(List::new(lines), area, buf, &mut cursor.list_state(views.len()));
+    let list = List::new(lines).scroll_padding(1);
+
+    StatefulWidget::render(list, tree_area, buf, &mut cursor.list_state(views.len()));
+
+    render_evo_details(views[selected].evolution_detail, detail_area, buf);
+}
+
+fn render_evo_details(detail: &ModelEvolutionDetail, area: Rect, buf: &mut Buffer) {
+    let Some(detail) = &detail.inner else {
+        Span::styled("No evo found", Color::Red).render(area, buf);
+        return;
+    };
 }
 
 #[derive(Default)]

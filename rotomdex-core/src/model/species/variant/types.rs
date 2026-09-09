@@ -4,20 +4,21 @@ use colorgrad::{GradientBuilder, LinearGradient};
 use rustemon::model::pokemon::{PokemonType, PokemonTypePast};
 use strum::{Display, EnumString};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct ModelTypes {
     pub(crate) primary: ModelType,
     pub(crate) secondary: Option<ModelType>,
 }
 
 impl ModelTypes {
-    pub(crate) fn new(current: &[PokemonType], past: &[PokemonTypePast], ctx: &ModelContext) -> Result<Self> {
+    pub(crate) fn new(current: Vec<PokemonType>, past: Vec<PokemonTypePast>, ctx: &ModelContext) -> Result<Self> {
         let target_generation = ctx.version.generation();
+
         let relevant_types = past
-            .iter()
+            .into_iter()
             .filter_map(|past_types| {
                 let final_gen = past_types.generation.name.parse::<Generation>().ok()?;
-                Some((final_gen, past_types.types.as_slice()))
+                Some((final_gen, past_types.types))
             })
             .filter(|(final_gen, _)| *final_gen >= target_generation)
             .min_by_key(|(final_gen, _)| *final_gen)
@@ -30,6 +31,7 @@ impl ModelTypes {
             .map(|model| model.type_.name.parse())
             .transpose()?
             .ok_or_else(|| eyre!("no primary type found"))?;
+
         let secondary = relevant_types
             .iter()
             .find(|model| model.slot == 2)
@@ -57,7 +59,7 @@ impl ModelTypes {
     }
 }
 
-#[derive(Clone, Debug, EnumString, Display)]
+#[derive(Clone, Copy, Debug, EnumString, Display)]
 #[strum(ascii_case_insensitive)]
 pub(crate) enum ModelType {
     Normal,

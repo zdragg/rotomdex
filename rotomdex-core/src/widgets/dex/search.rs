@@ -69,7 +69,7 @@ impl<'a> Widget for SearchWidget<'a> {
         let text = const_format::concatcp!("Type / to see keybinds • Exit with Ctrl-C");
 
         let span = if self.state.searching {
-            Span::raw(format!(" :{} ", self.state.input.as_str())).style(Color::White)
+            Span::raw(format!(" :{} ", self.state.input.as_str()))
         } else {
             Span::raw(format!(" {} ", text)).style(Color::DarkGray)
         };

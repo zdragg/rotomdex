@@ -15,7 +15,6 @@ use web_time::Instant;
 use crate::ModelContext;
 
 pub(crate) struct ModelPokemon {
-    name: String,
     pub(crate) species: Resource<ModelSpecies>,
     benchmark: Instant,
     loaded: bool,
@@ -25,8 +24,6 @@ impl ModelPokemon {
     pub(crate) fn new(name: impl Into<String>, ctx: ModelContext) -> Self {
         let name = name.into();
         Self {
-            name: name.clone(),
-
             benchmark: Instant::now(),
 
             species: Resource::<ModelSpecies>::fetch(name, &ctx),
@@ -41,7 +38,7 @@ impl ModelPokemon {
             self.loaded = true;
             tracing::info!(
                 "{} probably did not fully load in {}ms. This benchmark may be BROKEN.",
-                self.name,
+                self.species.as_loaded().unwrap().name,
                 self.benchmark.elapsed().as_millis()
             );
         }

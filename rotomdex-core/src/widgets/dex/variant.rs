@@ -65,10 +65,7 @@ fn get_variant_spans(variant: &Resource<ModelVariant>, selected: bool) -> Vec<Sp
     let mut spans = match variant {
         Resource::Loaded(variant) => {
             if selected {
-                vec![Span::styled(
-                    variant.get_variant_name().to_ascii_uppercase(),
-                    Color::White,
-                )]
+                vec![Span::raw(variant.get_variant_name().to_ascii_uppercase())]
             } else {
                 vec![Span::styled(variant.get_variant_name(), Color::DarkGray)]
             }

@@ -22,29 +22,41 @@ use tracing::Span;
 
 #[derive(Debug)]
 pub(crate) struct ModelVariant {
+    pub(crate) name: String,
+    pub(crate) species_name: String,
+
+    pub(crate) height: u32,
+    pub(crate) weight: u32,
+
     pub(crate) types: ModelTypes,
     pub(crate) stats: ModelStats,
-    pub(crate) moves: ModelMoves,
-    pub(crate) sprite: Resource<ModelSprite>,
     pub(crate) abilities: ModelAbilities,
 
-    pub(crate) inner: Pokemon,
+    pub(crate) moves: ModelMoves,
+
+    pub(crate) sprite: Resource<ModelSprite>,
 }
 
 impl Fetchable for ModelVariant {
     type Request = NamedApiResource<Pokemon>;
     async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
         let variant = request.follow(&ctx.pkmn_client).await?;
-        let result = Self {
-            types: ModelTypes::new(&variant.types, &variant.past_types, &ctx)?,
-            stats: ModelStats::new(&variant.stats, &variant.past_stats, &ctx)?,
-            moves: ModelMoves::new(&variant.moves, &ctx)?,
-            sprite: Resource::<ModelSprite>::fetch(variant.sprites.clone(), &ctx),
-            abilities: ModelAbilities::new(&variant.abilities, &variant.past_abilities, &ctx)?,
 
-            inner: variant,
-        };
-        Ok(result)
+        Ok(Self {
+            name: variant.name,
+            species_name: variant.species.name,
+
+            height: variant.height as u32,
+            weight: variant.weight as u32,
+
+            types: ModelTypes::new(variant.types, variant.past_types, &ctx)?,
+            stats: ModelStats::new(variant.stats, variant.past_stats, &ctx)?,
+            abilities: ModelAbilities::new(variant.abilities, variant.past_abilities, &ctx)?,
+
+            moves: ModelMoves::new(variant.moves, &ctx)?,
+
+            sprite: Resource::<ModelSprite>::fetch(variant.sprites, &ctx),
+        })
     }
 
     fn is_loaded(&self) -> bool {
@@ -65,9 +77,8 @@ impl Fetchable for ModelVariant {
 
 impl ModelVariant {
     pub(crate) fn get_variant_name(&self) -> &str {
-        self.inner
-            .name
-            .strip_prefix(&format!("{}-", self.inner.species.name))
+        self.name
+            .strip_prefix(&format!("{}-", self.species_name))
             .unwrap_or("base")
     }
 }

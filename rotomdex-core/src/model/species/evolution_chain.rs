@@ -92,7 +92,7 @@ pub(crate) struct ModelChainLinkView<'a> {
 #[derive(Debug)]
 pub(crate) struct ModelEvolutionDetail {
     // This part of the evolution chain does not exist if this is None
-    detail: Option<EvolutionDetail>,
+    pub(crate) inner: Option<EvolutionDetail>,
 }
 
 impl ModelEvolutionDetail {
@@ -105,6 +105,6 @@ impl ModelEvolutionDetail {
             })
             .next();
 
-        Ok(Self { detail })
+        Ok(Self { inner: detail })
     }
 }

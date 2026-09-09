@@ -9,7 +9,7 @@ use crate::widgets::dex::tabs::abilities::{AbilitiesTabWidget, AbilitiesTabWidge
 use crate::widgets::dex::tabs::moveset::{MovesetTabWidget, MovesetTabWidgetState};
 use crate::widgets::dex::tabs::overview::{OverviewTabWidget, OverviewTabWidgetState};
 use ratatui::layout::{Constraint, Layout};
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::widgets::Tabs;
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 use strum::{Display, EnumCount, EnumIter, IntoEnumIterator, VariantArray};
@@ -43,7 +43,6 @@ impl Widget for TabsWidget<'_> {
             area.layout(&Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).spacing(1));
 
         Tabs::new(DexTab::iter().map(|e| e.to_string()))
-            .style(Color::White)
             .highlight_style(Style::default().black().on_white().bold())
             .select(self.state.selected_tab.get(DexTab::COUNT))
             .render(tab_area, buf);

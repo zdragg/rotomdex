@@ -19,7 +19,7 @@ image = "0.25.10"
 itertools = "0.15.0"
 lru = "0.18.4"
 rapidhash = "4.5.1"
-ratatui = { version = "0.30.2", default-features = false, features = ["std"] }
+ratatui = { version = "0.30.2", default-features = false, features = ["std", "unstable-rendered-line-info"] }
 reqwest = { version = "0.12.28", default-features = false, features = [
   "json",
   "rustls-tls-native-roots"

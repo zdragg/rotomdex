@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustemon::model::resource::FlavorText;
 
 use crate::Version;
@@ -8,17 +9,19 @@ pub(crate) struct ModelFlavorText {
 }
 
 impl ModelFlavorText {
-    pub(super) fn new(entries: &[FlavorText], target_version: Version) -> Option<Self> {
-        let maybe_text = entries.iter().find_map(|entry| {
-            if entry.version.clone()?.name.parse::<Version>().ok()? != target_version {
+    pub(super) fn new(entries: Vec<FlavorText>, target_version: Version) -> Option<Self> {
+        let maybe_text = entries.into_iter().find_map(|entry| {
+            if entry.version?.name.parse::<Version>().ok()? != target_version {
                 return None;
             }
+
             if entry.language.name != "en" {
                 return None;
             }
-            Some(Self {
-                text: entry.flavor_text.clone(),
-            })
+
+            let text = entry.flavor_text.split_whitespace().join(" ");
+
+            Some(Self { text })
         });
         if maybe_text.is_none() {
             tracing::warn!("relevant flavor text not found");

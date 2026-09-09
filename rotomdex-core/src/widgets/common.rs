@@ -1,7 +1,9 @@
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
 
-use ratatui::widgets::ListState;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
+use ratatui::widgets::{Block, ListState, Widget};
 
 #[derive(Default, Clone)]
 pub(crate) struct Cursor {
@@ -61,5 +63,19 @@ impl DerefMut for CursorListStateGuard<'_> {
 impl Drop for CursorListStateGuard<'_> {
     fn drop(&mut self) {
         self.offset.set(self.list_state.offset());
+    }
+}
+
+pub(crate) trait RenderBlockExt {
+    /// Renders provided block and returns the inner area
+    #[must_use = "Must use the calculated inner Rect. Use Block::render() otherwise"]
+    fn render_inner(self, area: Rect, buf: &mut Buffer) -> Rect;
+}
+
+impl RenderBlockExt for Block<'_> {
+    fn render_inner(self, area: Rect, buf: &mut Buffer) -> Rect {
+        let inner = self.inner(area);
+        self.render(area, buf);
+        inner
     }
 }

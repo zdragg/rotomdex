@@ -37,17 +37,17 @@ pub(crate) enum ModelAbilities {
 }
 
 impl ModelAbilities {
-    pub(crate) fn new(current: &[PokemonAbility], past: &[PokemonAbilityPast], ctx: &ModelContext) -> Result<Self> {
+    pub(crate) fn new(current: Vec<PokemonAbility>, past: Vec<PokemonAbilityPast>, ctx: &ModelContext) -> Result<Self> {
         let mut slots: [Option<NamedApiResource<Ability>>; 3] = [const { None }; 3];
 
-        let mut apply_ability = |ability: &PokemonAbility| {
+        let mut apply_ability = |ability: PokemonAbility| {
             let idx = if let 1..=3 = ability.slot {
                 (ability.slot - 1) as usize
             } else {
                 return Err(eyre!("invalid ability slot"));
             };
 
-            slots[idx] = ability.ability.clone();
+            slots[idx] = ability.ability;
             Ok(())
         };
 
@@ -57,13 +57,13 @@ impl ModelAbilities {
 
         let target_generation = ctx.version.generation();
         let patches: Vec<_> = past
-            .iter()
+            .into_iter()
             .filter_map(|patch| {
                 let generation = patch.generation.name.parse::<Generation>().ok()?;
                 (generation >= target_generation).then_some((generation, patch))
             })
             .sorted_unstable_by_key(|(generation, _)| std::cmp::Reverse(*generation))
-            .map(|(_, patch)| &patch.abilities[..])
+            .map(|(_, patch)| patch.abilities)
             .collect();
 
         for patch in patches {

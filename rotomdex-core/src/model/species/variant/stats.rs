@@ -15,9 +15,9 @@ pub(crate) struct ModelStats {
 }
 
 impl ModelStats {
-    pub(crate) fn new(current: &[PokemonStat], past: &[PokemonStatPast], ctx: &ModelContext) -> Result<Self> {
+    pub(crate) fn new(current: Vec<PokemonStat>, past: Vec<PokemonStatPast>, ctx: &ModelContext) -> Result<Self> {
         let mut stats: [Option<u32>; 6] = [None; 6];
-        let mut apply_stat = |stat: &PokemonStat| {
+        let mut apply_stat = |stat: PokemonStat| {
             let stat_index = match stat.stat.name.as_str() {
                 "hp" => 0,
                 "attack" => 1,
@@ -43,13 +43,13 @@ impl ModelStats {
         }
         let target_generation = ctx.version.generation();
         let patches: Vec<_> = past
-            .iter()
+            .into_iter()
             .filter_map(|stat_patch| {
                 let generation = stat_patch.generation.name.parse::<Generation>().ok()?;
                 (generation >= target_generation).then_some((generation, stat_patch))
             })
             .sorted_unstable_by_key(|(generation, _)| std::cmp::Reverse(*generation))
-            .map(|(_, stat_patch)| &stat_patch.stats[..])
+            .map(|(_, stat_patch)| stat_patch.stats)
             .collect();
 
         for patch in patches {

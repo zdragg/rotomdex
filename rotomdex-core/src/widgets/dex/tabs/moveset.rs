@@ -70,7 +70,7 @@ fn render_center(
     area: Rect,
     buf: &mut Buffer,
 ) {
-    let block = Block::bordered().style(Color::White).title(method.to_line());
+    let block = Block::bordered().title(method.to_line());
     let item_width = area.width.saturating_sub(4) as usize;
     let list = List::new(
         moves
