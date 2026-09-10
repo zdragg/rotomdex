@@ -2,8 +2,8 @@ use std::io::Cursor;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use crate::ModelContext;
 use crate::model::Fetchable;
+use crate::ModelContext;
 use color_eyre::eyre::Result;
 use image::codecs::gif;
 use image::{AnimationDecoder, Frame, RgbaImage, imageops};

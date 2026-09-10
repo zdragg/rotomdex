@@ -75,7 +75,7 @@ impl Widget for DexWidget<'_> {
             Layout::vertical([Constraint::Percentage(20), Constraint::Length(2), Constraint::Fill(1)])
                 .areas(right_area);
 
-        SpriteWidget::new(variant, self.elapsed, &self.state.sprite_cache_state).render(sprite_area, buf);
+        SpriteWidget::new(variant, self.elapsed, &self.state.sprite_state).render(sprite_area, buf);
         StatsWidget::new(species, variant).render(stats_area, buf);
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
@@ -93,7 +93,7 @@ pub(crate) struct DexState {
     search_state: SearchWidgetState,
     tabs_state: TabsWidgetState,
     tutorial_state: TutorialWidgetState,
-    sprite_cache_state: SpriteWidgetState,
+    pub(crate) sprite_state: SpriteWidgetState,
 }
 
 impl DexState {
@@ -123,6 +123,7 @@ impl DexState {
         }
 
         match key_code {
+            DexKeyCode::Char('g') => self.sprite_state.toggle_animation(),
             DexKeyCode::Char('\'') => self.variant_cursor.next(),
             DexKeyCode::Char(';') => self.variant_cursor.prev(),
             _ => return self.tabs_state.handle_key(key_code),

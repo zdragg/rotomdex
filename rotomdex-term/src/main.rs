@@ -99,7 +99,7 @@ async fn run(cache_dir: PathBuf, resources: Option<resources::ResourcePaths>) ->
                 }
             }
             _ = core.poll_pkmn() => {}
-            _ = interval.tick() => {}
+            _ = interval.tick(), if core.needs_continuous_render() => {}
         }
 
         terminal.draw(|frame| core.render(frame.area(), frame.buffer_mut()))?;

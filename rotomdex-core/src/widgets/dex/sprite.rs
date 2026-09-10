@@ -38,11 +38,12 @@ impl Widget for SpriteWidget<'_> {
             (area.height - side_height) / 2,
         ));
 
-        let Some(sprite) = sprite
-            .animated()
-            .map(|anim| anim.frame_at(self.elapsed))
-            .or(sprite.image())
-        else {
+        let selected = if self.state.prefer_animation {
+            sprite.animated().map(|anim| anim.frame_at(self.elapsed))
+        } else {
+            sprite.image()
+        };
+        let Some(sprite) = selected else {
             return;
         };
 
@@ -81,19 +82,25 @@ struct CacheKey {
     target_height: u16,
 }
 
-pub(super) struct SpriteWidgetState {
+pub(crate) struct SpriteWidgetState {
+    pub(crate) prefer_animation: bool,
     cache: RefCell<LruCache<CacheKey, Rc<[CellOut]>>>,
 }
 
 impl Default for SpriteWidgetState {
     fn default() -> Self {
         Self {
+            prefer_animation: true,
             cache: RefCell::new(LruCache::new(NonZeroUsize::new(128).unwrap())),
         }
     }
 }
 
 impl SpriteWidgetState {
+    pub(super) fn toggle_animation(&mut self) {
+        self.prefer_animation = !self.prefer_animation;
+    }
+
     fn render_with_cache(&self, image: &RgbaImage, target_width: u16, target_height: u16) -> Rc<[CellOut]> {
         let key = CacheKey {
             image_hash: rapidhash_v3(image.as_raw()),

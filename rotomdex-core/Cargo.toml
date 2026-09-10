@@ -11,11 +11,10 @@ bitflags = "2.13.1"
 chafa-syms-rs = "0.1.1"
 color-eyre = "0.6.5"
 colorgrad = "0.8.0"
-const_format = "0.2.36"
-csscolorparser = "0.8.4"
-futures = "0.3.34"
+csscolorparser = { version = "0.8.4", default-features = false }
+futures = { version = "0.3.34", default-features = false, features = ["alloc"] }
 http = "1.5.0"
-image = "0.25.10"
+image = { version = "0.25.10", default-features = false, features = ["png", "gif"] }
 itertools = "0.15.0"
 lru = "0.18.4"
 rapidhash = "4.5.1"

@@ -15,7 +15,7 @@ impl<'a> TutorialWidget<'a> {
     }
 }
 
-const HEIGHT: u16 = 9;
+const HEIGHT: u16 = 10;
 const WIDTH: u16 = 23;
 
 #[derive(Default)]
@@ -37,6 +37,7 @@ impl<'a> Widget for TutorialWidget<'a> {
             " :          search",
             " ;'         variants",
             " df         tabs",
+            " g          animate",
             " hjkl ←↓↑→  navigate",
             " .          versions",
             " Ctrl+C     exit",

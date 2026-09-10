@@ -23,7 +23,7 @@ pub struct RotomDexCore {
     pkmn_name: String,
     pkmn: ModelPokemon,
 
-    dex_state: DexState,
+    pub(crate) dex_state: DexState,
     timer: web_time::Instant,
 }
 
@@ -67,6 +67,10 @@ impl RotomDexCore {
 
     pub async fn poll_pkmn(&mut self) {
         self.pkmn.poll().await;
+    }
+
+    pub fn needs_continuous_render(&self) -> bool {
+        self.dex_state.sprite_state.prefer_animation
     }
 }
 
