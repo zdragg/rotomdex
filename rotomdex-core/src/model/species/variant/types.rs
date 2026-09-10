@@ -59,7 +59,7 @@ impl ModelTypes {
     }
 }
 
-#[derive(Clone, Copy, Debug, EnumString, Display)]
+#[derive(Clone, Copy, Debug, EnumString, Display, PartialEq, PartialOrd, Eq, Ord)]
 #[strum(ascii_case_insensitive)]
 pub(crate) enum ModelType {
     Normal,

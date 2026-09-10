@@ -2,10 +2,11 @@ use crate::InnerActionResult;
 use crate::model::{ModelDamageClass, ModelMoveLearnMethod, ModelVariant, ModelVersionMove};
 use crate::widgets::common::Cursor;
 use crate::widgets::dex::tabs::TabAction;
+use itertools::Itertools;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, HorizontalAlignment, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span, ToLine};
+use ratatui::text::{Line, Span, ToLine, ToSpan};
 use ratatui::widgets::{Block, List, ListState, StatefulWidget, Widget};
 
 pub(super) struct MovesetTabWidget<'a> {
@@ -73,14 +74,11 @@ fn render_center(
 ) {
     let block = Block::bordered().title(method.to_line());
     let item_width = area.width.saturating_sub(4) as usize;
-    let list = List::new(
-        moves
-            .iter()
-            .map(|move_| move_line(move_, item_width, method).alignment(HorizontalAlignment::Center)),
-    )
-    .highlight_symbol(">")
-    .block(block)
-    .scroll_padding(1);
+    let moves = moves
+        .into_iter()
+        .sorted_unstable()
+        .map(|move_| move_line(move_, item_width, method).alignment(HorizontalAlignment::Center));
+    let list = List::new(moves).highlight_symbol(">").block(block).scroll_padding(1);
 
     StatefulWidget::render(list, area, buf, state);
 }
@@ -119,7 +117,7 @@ fn move_line(move_: &ModelVersionMove, width: usize, method: ModelMoveLearnMetho
         ModelMoveLearnMethod::LevelUp => Span::raw(format!("lv{}", level_learned_at)),
         ModelMoveLearnMethod::Machine => {
             if let Some(machine) = move_.machine.as_ref().map(|resource| resource.as_loaded()).flatten() {
-                Span::raw(&machine.name)
+                machine.to_span()
             } else {
                 Span::default()
             }

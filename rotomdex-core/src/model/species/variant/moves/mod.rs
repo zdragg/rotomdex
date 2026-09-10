@@ -1,7 +1,7 @@
 mod machine;
 pub(crate) use machine::*;
 
-use std::{str::FromStr, task::Poll};
+use std::{cmp::Ordering, str::FromStr, task::Poll};
 
 use color_eyre::eyre::Result;
 use rustemon::{
@@ -87,6 +87,36 @@ pub(crate) struct ModelVersionMove {
     pub(crate) resource: Resource<ModelMove>,
 }
 
+impl PartialEq for ModelVersionMove {
+    fn eq(&self, other: &Self) -> bool {
+        self.level_learned_at == other.level_learned_at && self.resource == other.resource
+    }
+}
+
+impl Eq for ModelVersionMove {}
+
+impl PartialOrd for ModelVersionMove {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ModelVersionMove {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let level_order = self.level_learned_at.cmp(&other.level_learned_at);
+        if level_order != Ordering::Equal {
+            return level_order;
+        }
+
+        let resource_order = self.resource.cmp(&other.resource);
+        if resource_order != Ordering::Equal {
+            return resource_order;
+        }
+
+        Ordering::Equal
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Display, EnumCount, EnumString, VariantArray)]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum ModelMoveLearnMethod {
@@ -113,6 +143,41 @@ pub(crate) struct ModelMove {
     pub(crate) damage_class: ModelDamageClass,
 
     pub(crate) machine: Option<Resource<ModelMachine>>,
+}
+
+impl PartialEq for ModelMove {
+    fn eq(&self, other: &Self) -> bool {
+        self.machine == other.machine && self.type_ == other.type_ && self.damage_class == other.damage_class
+    }
+}
+
+impl Eq for ModelMove {}
+
+impl PartialOrd for ModelMove {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ModelMove {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let machine_order = self.machine.cmp(&other.machine);
+        if machine_order != Ordering::Equal {
+            return machine_order;
+        }
+
+        let type_order = self.type_.cmp(&other.type_);
+        if type_order != Ordering::Equal {
+            return type_order;
+        }
+
+        let class_order = self.damage_class.cmp(&other.damage_class);
+        if class_order != Ordering::Equal {
+            return class_order;
+        }
+
+        Ordering::Equal
+    }
 }
 
 impl Fetchable for ModelMove {
@@ -178,7 +243,7 @@ impl Fetchable for ModelMove {
     }
 }
 
-#[derive(EnumString, Debug)]
+#[derive(EnumString, Debug, PartialEq, PartialOrd, Eq, Ord)]
 #[strum(ascii_case_insensitive)]
 pub(crate) enum ModelDamageClass {
     Physical,

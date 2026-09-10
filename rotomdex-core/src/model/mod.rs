@@ -3,6 +3,7 @@ pub(crate) use species::*;
 
 use std::{
     cell::{Cell, RefCell},
+    cmp::Ordering,
     fmt,
     task::{Context, Poll, Waker},
 };
@@ -153,6 +154,42 @@ impl<T: fmt::Debug + Fetchable> fmt::Debug for Resource<T> {
             Self::Loading { .. } => f.write_str("Loading"),
             Self::Loaded(value) => f.debug_tuple("Loaded").field(value).finish(),
             Self::Failed(error) => f.debug_tuple("Failed").field(error).finish(),
+        }
+    }
+}
+
+impl<T: PartialEq + Fetchable> PartialEq for Resource<T> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.as_loaded(), other.as_loaded()) {
+            (Some(me), Some(other)) => me == other,
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+/// Mark all unloaded resources as greater. When sorting, these go to the back.
+impl<T: PartialOrd + Fetchable> PartialOrd for Resource<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self.as_loaded(), other.as_loaded()) {
+            (Some(me), Some(other)) => me.partial_cmp(&other),
+            (Some(_me), None) => Some(Ordering::Less),
+            (None, Some(_other)) => Some(Ordering::Greater),
+            (None, None) => Some(Ordering::Equal),
+        }
+    }
+}
+
+impl<T: Eq + Fetchable> Eq for Resource<T> {}
+
+/// Mark all unloaded resources as greater. When sorting, these go to the back.
+impl<T: Ord + Fetchable> Ord for Resource<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self.as_loaded(), other.as_loaded()) {
+            (Some(me), Some(other)) => me.cmp(&other),
+            (Some(_me), None) => Ordering::Less,
+            (None, Some(_other)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
         }
     }
 }
