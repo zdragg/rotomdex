@@ -27,9 +27,6 @@ impl Fetchable for ModelEvolutionChain {
     fn poll(&mut self, _cx: &mut std::task::Context<'_>) -> Poll<()> {
         Poll::Pending
     }
-    fn is_loaded(&self) -> bool {
-        true
-    }
     fn fetch_span(_request: &Self::Request) -> tracing::Span {
         tracing::info_span!("fetch_evolution")
     }

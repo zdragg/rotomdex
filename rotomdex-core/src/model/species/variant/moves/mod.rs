@@ -220,15 +220,6 @@ impl Fetchable for ModelMove {
         })
     }
 
-    fn is_loaded(&self) -> bool {
-        if let Some(machine) = &self.machine {
-            if !machine.is_loaded() {
-                return false;
-            }
-        }
-        true
-    }
-
     fn poll(&mut self, cx: &mut std::task::Context<'_>) -> Poll<()> {
         let mut result = Poll::Pending;
         if let Some(machine) = &mut self.machine {

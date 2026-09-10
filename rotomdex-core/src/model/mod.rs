@@ -11,50 +11,30 @@ use std::{
 use color_eyre::eyre::{Report, Result};
 use futures::future::LocalBoxFuture;
 use tracing::{Instrument, Span};
-use web_time::Instant;
 
 use crate::ModelContext;
 
 pub(crate) struct ModelPokemon {
     pub(crate) species: Resource<ModelSpecies>,
-    benchmark: Instant,
-    loaded: bool,
 }
 
 impl ModelPokemon {
     pub(crate) fn new(name: impl Into<String>, ctx: ModelContext) -> Self {
         let name = name.into();
         Self {
-            benchmark: Instant::now(),
-
             species: Resource::<ModelSpecies>::fetch(name, &ctx),
-
-            loaded: false,
         }
     }
 
     pub(crate) async fn poll(&mut self) {
         std::future::poll_fn(|cx| self.species.poll(cx)).await;
-        if !self.loaded && self.is_loaded() {
-            self.loaded = true;
-            tracing::info!(
-                "{} probably did not fully load in {}ms. This benchmark may be BROKEN.",
-                self.species.as_loaded().unwrap().name,
-                self.benchmark.elapsed().as_millis()
-            );
-        }
     }
 
-    pub(crate) fn is_loaded(&self) -> bool {
-        self.species.is_loaded()
-    }
 }
 
 pub(crate) trait Fetchable: Sized + 'static {
     type Request: 'static;
     async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self>;
-
-    fn is_loaded(&self) -> bool;
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()>;
 
@@ -92,13 +72,6 @@ impl<T: Fetchable> Resource<T> {
         }
     }
 
-    pub(crate) fn is_loaded(&self) -> bool {
-        match self {
-            Self::Loaded(value) => value.is_loaded(),
-            Self::Loading { deferred, .. } => deferred.get(),
-            _ => false,
-        }
-    }
 
     pub(crate) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         let result = match self {

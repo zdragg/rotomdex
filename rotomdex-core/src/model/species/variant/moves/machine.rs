@@ -43,9 +43,6 @@ impl Fetchable for ModelMachine {
 
         Ok(Self { type_, id })
     }
-    fn is_loaded(&self) -> bool {
-        true
-    }
     fn poll(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<()> {
         std::task::Poll::Pending
     }

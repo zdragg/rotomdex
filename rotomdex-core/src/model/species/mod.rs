@@ -58,10 +58,6 @@ impl Fetchable for ModelSpecies {
         })
     }
 
-    fn is_loaded(&self) -> bool {
-        self.variants.iter().all(|variant| variant.is_loaded())
-    }
-
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         // bitwise OR for no short circuit
         if self

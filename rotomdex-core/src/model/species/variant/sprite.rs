@@ -58,10 +58,6 @@ impl Fetchable for ModelSprite {
         })
     }
 
-    fn is_loaded(&self) -> bool {
-        true
-    }
-
     fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<()> {
         Poll::Pending
     }

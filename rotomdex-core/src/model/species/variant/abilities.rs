@@ -132,29 +132,6 @@ impl ModelAbilities {
             } => [Some(primary), Some(secondary), Some(hidden)],
         }
     }
-
-    pub(crate) fn is_loaded(&self) -> bool {
-        match self {
-            Self::None => true,
-            Self::P { primary } => primary.is_loaded(),
-            Self::PH { primary, hidden } => primary.is_loaded() && hidden.is_loaded(),
-            Self::PS { primary, secondary } => primary.is_loaded() && secondary.is_loaded(),
-            Self::PSH {
-                primary,
-                secondary,
-                hidden,
-            } => primary.is_loaded() && secondary.is_loaded() && hidden.is_loaded(),
-        }
-    }
-
-    pub(crate) fn ability_cnt(&self) -> usize {
-        match self {
-            Self::None => 0,
-            Self::P { .. } => 1,
-            Self::PH { .. } | Self::PS { .. } => 2,
-            Self::PSH { .. } => 3,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -199,10 +176,6 @@ impl Fetchable for ModelAbility {
             short_desc,
             long_desc,
         })
-    }
-
-    fn is_loaded(&self) -> bool {
-        true
     }
 
     fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<()> {

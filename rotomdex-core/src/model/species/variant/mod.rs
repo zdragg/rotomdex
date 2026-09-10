@@ -59,10 +59,6 @@ impl Fetchable for ModelVariant {
         })
     }
 
-    fn is_loaded(&self) -> bool {
-        self.sprite.is_loaded() && self.abilities.is_loaded()
-    }
-
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         if self.sprite.poll(cx).is_ready() | self.abilities.poll(cx).is_ready() | self.moves.poll(cx).is_ready() {
             return Poll::Ready(());
