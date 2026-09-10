@@ -1,12 +1,13 @@
+use std::borrow::Cow;
 use std::cell::Cell;
 
 use crate::InnerActionResult;
-use crate::model::{ModelEvolutionDetail, ModelSpecies, ModelVariant};
+use crate::model::{ModelEvolutionDetail, ModelSpecies, ModelType, ModelTypeEffectiveness, ModelVariant};
 use crate::widgets::dex::tabs::TabAction;
 use crate::widgets::{Cursor, RenderBlockExt};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::Color;
+use ratatui::style::{Color, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, Paragraph, StatefulWidget, Widget, Wrap};
 
@@ -52,7 +53,7 @@ fn render_basic(species: &ModelSpecies, variant: &ModelVariant, area: Rect, buf:
     Line::from_iter(itertools::chain!(
         name_span(species, variant),
         types_span(variant),
-        [physique_span(variant)]
+        effectiveness_span(variant)
     ))
     .render(area, buf);
 }
@@ -61,9 +62,10 @@ fn name_span<'a>(species: &'a ModelSpecies, variant: &'a ModelVariant) -> Vec<Sp
     // charizard-mega-x#0006
     vec![
         Span::raw(&variant.name),
-        Span::styled(format!("#{:04}  ", species.national_dex), Color::DarkGray),
+        Span::styled(format!("#{:04} ", species.national_dex), Color::DarkGray),
     ]
 }
+
 fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {
     // Fire/Dragon
     let mut type_spans = vec![Span::styled(
@@ -74,17 +76,38 @@ fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {
         type_spans.push(Span::raw("/"));
         type_spans.push(Span::styled(secondary.to_string(), secondary.tui_color()));
     }
-    type_spans.push(Span::raw("  "));
+    type_spans.push(Span::raw(" "));
     type_spans
 }
+fn effectiveness_span(variant: &ModelVariant) -> Vec<Span<'_>> {
+    let ModelTypeEffectiveness {
+        four,
+        two,
+        half,
+        quarter,
+        zero,
+    } = variant.types.def_effectiveness();
 
-fn physique_span(variant: &ModelVariant) -> Span<'_> {
-    // 1.7m 110.5kg
-    Span::raw(format!(
-        "{:.1}m {:.1}kg ",
-        (variant.height as f64) / 10.0,
-        (variant.weight as f64) / 10.0,
-    ))
+    let mut spans = vec![];
+
+    let mut push_spans = |symbol: &'static str, types: Cow<'static, [ModelType]>| {
+        if !types.is_empty() {
+            spans.push(Span::raw(symbol).bold());
+            for type_ in types.iter() {
+                let span = Span::styled(type_.initial(), type_.tui_color());
+                spans.push(span);
+            }
+            spans.push(Span::raw(" "));
+        }
+    };
+
+    push_spans("4", four);
+    push_spans("2", two);
+    push_spans("½", half);
+    push_spans("¼", quarter);
+    push_spans("0", zero);
+
+    spans
 }
 
 fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> Rect {
@@ -211,7 +234,12 @@ impl OverviewTabWidgetState {
                 self.evolution_cursor.prev();
                 self.needs_new_name.set(true);
             }
-            TabAction::Enter => return InnerActionResult::NewPokemon(self.selected_pkmn_name.take()),
+            TabAction::Enter => {
+                let name = self.selected_pkmn_name.take();
+                if !name.is_empty() {
+                    return InnerActionResult::NewPokemon(name);
+                }
+            }
             _ => {}
         }
         InnerActionResult::Nothing

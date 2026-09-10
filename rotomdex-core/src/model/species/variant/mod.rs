@@ -25,9 +25,6 @@ pub(crate) struct ModelVariant {
     pub(crate) name: String,
     pub(crate) species_name: String,
 
-    pub(crate) height: u32,
-    pub(crate) weight: u32,
-
     pub(crate) types: ModelTypes,
     pub(crate) stats: ModelStats,
     pub(crate) abilities: ModelAbilities,
@@ -45,9 +42,6 @@ impl Fetchable for ModelVariant {
         Ok(Self {
             name: variant.name,
             species_name: variant.species.name,
-
-            height: variant.height as u32,
-            weight: variant.weight as u32,
 
             types: ModelTypes::new(variant.types, variant.past_types, &ctx)?,
             stats: ModelStats::new(variant.stats, variant.past_stats, &ctx)?,

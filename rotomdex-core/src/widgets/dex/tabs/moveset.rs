@@ -176,6 +176,8 @@ fn merge_spans<'a>(
 pub(super) struct MovesetTabWidgetState {
     horizontal_cursor: Cursor,
     vertical_cursor: Cursor,
+
+    move_detail_mode: bool,
 }
 
 impl MovesetTabWidgetState {
@@ -191,6 +193,7 @@ impl MovesetTabWidgetState {
             }
             TabAction::Down => self.vertical_cursor.next(),
             TabAction::Up => self.vertical_cursor.prev(),
+            TabAction::Enter => self.move_detail_mode = !self.move_detail_mode,
             _ => {}
         }
         InnerActionResult::Nothing

@@ -15,8 +15,32 @@ impl<'a> TutorialWidget<'a> {
     }
 }
 
-const HEIGHT: u16 = 10;
-const WIDTH: u16 = 23;
+const COMMANDS: [&'static str; 9] = [
+    " /          close",
+    " :          search",
+    " ;'         variants",
+    " df         tabs",
+    " g          animate",
+    " hjkl ←↓↑→  navigate",
+    " .          versions",
+    " enter      select",
+    " ctrl+c     exit",
+];
+const HEIGHT: u16 = COMMANDS.len() as u16 + 2;
+const WIDTH: u16 = {
+    let mut max_len = 0;
+    let mut i = 0;
+
+    while i < COMMANDS.len() {
+        let cmd_len = COMMANDS[i].len() as u16;
+        if cmd_len > max_len {
+            max_len = cmd_len;
+        }
+        i += 1;
+    }
+
+    max_len
+};
 
 #[derive(Default)]
 pub(super) struct TutorialWidgetState {
@@ -32,19 +56,7 @@ impl<'a> Widget for TutorialWidget<'a> {
         let [_, area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(HEIGHT)]).areas(area);
         let [_, area] = Layout::horizontal([Constraint::Fill(1), Constraint::Length(WIDTH)]).areas(area);
 
-        let commands = [
-            " /          close",
-            " :          search",
-            " ;'         variants",
-            " df         tabs",
-            " g          animate",
-            " hjkl ←↓↑→  navigate",
-            " .          versions",
-            " Ctrl+C     exit",
-        ]
-        .into_iter()
-        .map(Line::from)
-        .collect::<Vec<_>>();
+        let commands = COMMANDS.into_iter().map(Line::from).collect::<Vec<_>>();
 
         Clear.render(area, buf);
         Paragraph::new(commands)
