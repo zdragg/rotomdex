@@ -23,12 +23,12 @@ impl Middleware for Retrier {
             let request = req.try_clone().context("request cannot be cloned")?;
 
             let result = next.clone().run(request, extensions).await;
-            let not_found = match &result {
-                Ok(response) => response.status() == StatusCode::NOT_FOUND,
+            let should_return = match &result {
+                Ok(response) => response.status() == StatusCode::NOT_FOUND || response.status() == StatusCode::OK,
                 Err(_) => false,
             };
 
-            if not_found || retries >= self.retry_count {
+            if should_return || retries >= self.retry_count {
                 return result;
             }
             retries += 1;
