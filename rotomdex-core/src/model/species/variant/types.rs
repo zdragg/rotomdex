@@ -103,11 +103,11 @@ type TypeSlice = Cow<'static, [ModelType]>;
 
 #[derive(Default)]
 pub(crate) struct ModelTypeEffectiveness {
-    pub(crate) four: Cow<'static, [ModelType]>,
-    pub(crate) two: Cow<'static, [ModelType]>,
-    pub(crate) half: Cow<'static, [ModelType]>,
-    pub(crate) quarter: Cow<'static, [ModelType]>,
-    pub(crate) zero: Cow<'static, [ModelType]>,
+    pub(crate) four: TypeSlice,
+    pub(crate) two: TypeSlice,
+    pub(crate) half: TypeSlice,
+    pub(crate) quarter: TypeSlice,
+    pub(crate) zero: TypeSlice,
 }
 
 impl ModelTypeEffectiveness {
