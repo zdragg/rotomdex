@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use color_eyre::eyre::{Result, eyre};
 use futures::FutureExt;
 use ratzilla::{

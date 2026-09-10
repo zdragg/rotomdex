@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use std::{fs, path::PathBuf, time::Duration};
 
 use clap::Parser;

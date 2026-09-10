@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod context;
 mod model;
 mod versions;
