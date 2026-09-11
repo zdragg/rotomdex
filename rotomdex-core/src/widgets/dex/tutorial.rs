@@ -16,30 +16,27 @@ impl<'a> TutorialWidget<'a> {
 }
 
 const COMMANDS: [&'static str; 9] = [
-    " /          close",
-    " :          search",
-    " ;'         variants",
-    " df         tabs",
-    " g          animate",
-    " hjkl ←↓↑→  navigate",
-    " .          versions",
-    " enter      select",
-    " ctrl+c     exit",
+    " /          close ",
+    " :          search ",
+    " ;'         variants ",
+    " df         tabs ",
+    " g          animate ",
+    " hjkl ←↓↑→  navigate ",
+    " .          versions ",
+    " enter      select ",
+    " ctrl+c     exit ",
 ];
 const HEIGHT: u16 = COMMANDS.len() as u16 + 2;
 const WIDTH: u16 = {
     let mut max_len = 0;
-    let mut i = 0;
 
-    while i < COMMANDS.len() {
-        let cmd_len = COMMANDS[i].len() as u16;
-        if cmd_len > max_len {
-            max_len = cmd_len;
-        }
-        i += 1;
+    konst::iter::for_each! {string in COMMANDS =>
+        let chars = konst::string::chars(string);
+        let len = konst::iter::eval!(chars, count());
+        if len > max_len { max_len = len }
     }
 
-    max_len
+    max_len as u16 + 2
 };
 
 #[derive(Default)]

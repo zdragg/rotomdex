@@ -16,6 +16,7 @@ futures = { version = "0.3.34", default-features = false, features = ["alloc"] }
 http = "1.5.0"
 image = { version = "0.25.10", default-features = false, features = ["png", "gif"] }
 itertools = "0.15.0"
+konst = { version = "0.4.3", default-features = false, features = ["iter"] }
 lru = "0.18.4"
 rapidhash = "4.5.1"
 ratatui = { version = "0.30.2", default-features = false, features = ["std", "layout-cache", "unstable-rendered-line-info"] }
