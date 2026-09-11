@@ -110,10 +110,12 @@ pub enum ActionResult {
     Exit,
 }
 
+#[derive(PartialEq, Eq)]
 enum InnerActionResult {
     Nothing,
     NewPokemon(String),
     NewVersion(Version),
+    FocusModeChange,
 }
 
 impl RotomDexCore {
@@ -141,6 +143,7 @@ impl RotomDexCore {
                 self.ctx.version = version;
                 self.refresh();
             }
+            _ => {}
         }
 
         ActionResult::Nothing

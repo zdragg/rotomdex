@@ -1,4 +1,5 @@
 mod machine;
+use itertools::Itertools;
 pub(crate) use machine::*;
 
 use std::{cmp::Ordering, str::FromStr, task::Poll};
@@ -137,10 +138,17 @@ pub(crate) enum ModelMoveLearnMethod {
 #[derive(Debug)]
 pub(crate) struct ModelMove {
     pub(crate) name: String,
+
     pub(crate) power: Option<u32>,
     pub(crate) accuracy: Option<u32>,
+    pub(crate) effect_chance: Option<u32>,
+
     pub(crate) type_: ModelType,
+
     pub(crate) damage_class: ModelDamageClass,
+
+    pub(crate) effect: Option<String>,
+    pub(crate) short_effect: Option<String>,
 
     pub(crate) machine: Option<Resource<ModelMachine>>,
 }
@@ -190,8 +198,20 @@ impl Fetchable for ModelMove {
         let name = move_.name;
         let power = move_.power.map(|x| x as u32);
         let accuracy = move_.accuracy.map(|x| x as u32);
+        let effect_chance = move_.effect_chance.map(|x| x as u32);
         let type_ = move_.type_.name.parse::<ModelType>()?;
         let damage_class = move_.damage_class.name.parse::<ModelDamageClass>()?;
+
+        let (effect, short_effect) = move_
+            .effect_entries
+            .into_iter()
+            .find(|entry| entry.language.name == "en")
+            .map(|e| {
+                let long = e.effect.split_whitespace().join(" ");
+                let short = e.short_effect.split_whitespace().join(" ");
+                (long, short)
+            })
+            .unzip();
 
         let machine = if is_machine {
             move_
@@ -214,8 +234,11 @@ impl Fetchable for ModelMove {
             name,
             power,
             accuracy,
+            effect_chance,
             type_,
             damage_class,
+            effect,
+            short_effect,
             machine,
         })
     }
@@ -234,8 +257,9 @@ impl Fetchable for ModelMove {
     }
 }
 
-#[derive(EnumString, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(EnumString, Debug, PartialEq, PartialOrd, Eq, Ord, Display)]
 #[strum(ascii_case_insensitive)]
+#[strum(serialize_all = "lowercase")]
 pub(crate) enum ModelDamageClass {
     Physical,
     Special,

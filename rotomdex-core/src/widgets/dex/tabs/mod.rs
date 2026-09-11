@@ -94,11 +94,11 @@ impl TabsWidgetState {
             DexKeyCode::Char('l') | DexKeyCode::Right => TabAction::Right,
             DexKeyCode::Enter => TabAction::Enter,
             DexKeyCode::Escape | DexKeyCode::CapsLock => TabAction::Escape,
-            DexKeyCode::Char('d') => {
+            DexKeyCode::Char('c') => {
                 self.selected_tab.prev();
                 return InnerActionResult::Nothing;
             }
-            DexKeyCode::Char('f') => {
+            DexKeyCode::Char('v') => {
                 self.selected_tab.next();
                 return InnerActionResult::Nothing;
             }

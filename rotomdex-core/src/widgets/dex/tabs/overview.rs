@@ -62,7 +62,7 @@ fn name_span<'a>(species: &'a ModelSpecies, variant: &'a ModelVariant) -> Vec<Sp
     // charizard-mega-x#0006
     vec![
         Span::raw(&variant.name),
-        Span::styled(format!("#{:04} ", species.national_dex), Color::DarkGray),
+        Span::styled(format!("#{:04}  ", species.national_dex), Color::DarkGray),
     ]
 }
 
@@ -76,38 +76,12 @@ fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {
         type_spans.push(Span::raw("/"));
         type_spans.push(Span::styled(secondary.to_string(), secondary.tui_color()));
     }
-    type_spans.push(Span::raw(" "));
+    type_spans.push(Span::raw("  "));
     type_spans
 }
+
 fn effectiveness_span(variant: &ModelVariant) -> Vec<Span<'_>> {
-    let ModelTypeEffectiveness {
-        four,
-        two,
-        half,
-        quarter,
-        zero,
-    } = variant.types.def_effectiveness();
-
-    let mut spans = vec![];
-
-    let mut push_spans = |symbol: &'static str, types: Cow<'static, [ModelType]>| {
-        if !types.is_empty() {
-            spans.push(Span::raw(symbol).bold());
-            for type_ in types.iter() {
-                let span = Span::styled(type_.initial(), type_.tui_color());
-                spans.push(span);
-            }
-            spans.push(Span::raw(" "));
-        }
-    };
-
-    push_spans("4", four);
-    push_spans("2", two);
-    push_spans("½", half);
-    push_spans("¼", quarter);
-    push_spans("0", zero);
-
-    spans
+    variant.types.def_effectiveness().into_spans()
 }
 
 fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> Rect {

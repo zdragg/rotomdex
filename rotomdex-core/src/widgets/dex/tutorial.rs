@@ -18,8 +18,8 @@ impl<'a> TutorialWidget<'a> {
 const COMMANDS: [&'static str; 9] = [
     " /          close ",
     " :          search ",
-    " ;'         variants ",
-    " df         tabs ",
+    " df         variants ",
+    " vc         tabs ",
     " g          animate ",
     " hjkl ←↓↑→  navigate ",
     " .          versions ",

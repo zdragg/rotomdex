@@ -79,7 +79,7 @@ fn setup_logs(log_dir: PathBuf) -> Result<WorkerGuard> {
     Ok(guard)
 }
 
-const FRAMES_PER_SECOND: f32 = 30.0;
+const FRAMES_PER_SECOND: f32 = 33.3;
 async fn run(cache_dir: PathBuf, resources: Option<resources::ResourcePaths>) -> Result<()> {
     let mut core = if let Some(resources) = resources {
         RotomDexCore::new_offline(resources.resource_path())

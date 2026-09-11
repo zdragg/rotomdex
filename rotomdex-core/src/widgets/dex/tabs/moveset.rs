@@ -1,13 +1,15 @@
 use crate::InnerActionResult;
 use crate::model::{ModelDamageClass, ModelMoveLearnMethod, ModelVariant, ModelVersionMove};
+use crate::widgets::RenderBlockExt;
 use crate::widgets::common::Cursor;
 use crate::widgets::dex::tabs::TabAction;
 use itertools::Itertools;
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, HorizontalAlignment, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::layout::{Constraint, HorizontalAlignment, Layout, Margin, Rect};
+use ratatui::macros::constraints;
+use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, ToLine, ToSpan};
-use ratatui::widgets::{Block, List, ListState, StatefulWidget, Widget};
+use ratatui::widgets::{Block, Clear, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap};
 
 pub(super) struct MovesetTabWidget<'a> {
     variant: Option<&'a ModelVariant>,
@@ -41,8 +43,9 @@ impl<'a> Widget for MovesetTabWidget<'a> {
 
         let center_idx = self.state.horizontal_cursor.get(bucket_cnt).unwrap();
         let (method, moves) = nonempty_buckets[center_idx];
+        let moves: Vec<_> = moves.into_iter().sorted_unstable().collect();
         render_center(
-            moves,
+            &moves[..],
             method,
             &mut self.state.vertical_cursor.list_state(moves.len()),
             areas[1],
@@ -56,17 +59,25 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         }
 
         let left_idx = (center_idx + bucket_cnt - 1) % bucket_cnt;
-        let (method, moves) = nonempty_buckets[left_idx];
-        render_left(moves, method.to_line(), areas[0], buf);
+        let (left_method, left_moves) = nonempty_buckets[left_idx];
+        let left_moves: Vec<_> = left_moves.into_iter().sorted_unstable().collect();
+        render_left(&left_moves[..], left_method.to_line(), areas[0], buf);
 
         let right_idx = (center_idx + 1) % bucket_cnt;
-        let (method, moves) = nonempty_buckets[right_idx];
-        render_right(moves, method.to_line(), areas[2], buf);
+        let (right_method, right_moves) = nonempty_buckets[right_idx];
+        let right_moves: Vec<_> = right_moves.into_iter().sorted_unstable().collect();
+        render_right(&right_moves[..], right_method.to_line(), areas[2], buf);
+
+        // Render details overlaid on everything else if enabled
+        if self.state.move_detail_mode {
+            let selected_move = &moves[self.state.vertical_cursor.get(moves.len()).unwrap()];
+            render_details(selected_move, area, buf);
+        }
     }
 }
 
 fn render_center(
-    moves: &[ModelVersionMove],
+    moves: &[&ModelVersionMove],
     method: ModelMoveLearnMethod,
     state: &mut ListState,
     area: Rect,
@@ -76,14 +87,13 @@ fn render_center(
     let item_width = area.width.saturating_sub(4) as usize;
     let moves = moves
         .into_iter()
-        .sorted_unstable()
         .map(|move_| move_line(move_, item_width, method).alignment(HorizontalAlignment::Center));
     let list = List::new(moves).highlight_symbol(">").block(block).scroll_padding(1);
 
     StatefulWidget::render(list, area, buf, state);
 }
 
-fn render_left(moves: &[ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
+fn render_left(moves: &[&ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().style(Color::DarkGray).title(title);
     let list = List::new(
         moves
@@ -95,7 +105,7 @@ fn render_left(moves: &[ModelVersionMove], title: Line, area: Rect, buf: &mut Bu
     Widget::render(list, area, buf);
 }
 
-fn render_right(moves: &[ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
+fn render_right(moves: &[&ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().style(Color::DarkGray).title(title);
     let list = List::new(
         moves
@@ -172,6 +182,50 @@ fn merge_spans<'a>(
     Line::from(spans)
 }
 
+fn render_details(move_: &ModelVersionMove, area: Rect, buf: &mut Buffer) {
+    let area = area.inner(Margin::new(1, 1));
+    Clear.render(area, buf);
+    let area = Block::bordered()
+        .padding(Padding::symmetric(3, 1))
+        .render_inner(area, buf);
+
+    let Some(move_) = move_.resource.as_loaded() else {
+        Span::styled(format!("loading {}...", move_.name), Color::DarkGray).render(area, buf);
+        return;
+    };
+
+    let [name_area, info_area, _, text_area] = area.layout(&Layout::vertical(constraints![==1, ==1, ==1, *=1]));
+
+    let name_style = Style::from(move_.type_.tui_color());
+    let name_style = match move_.damage_class {
+        ModelDamageClass::Physical => name_style.bold(),
+        ModelDamageClass::Special => name_style.italic(),
+        ModelDamageClass::Status => name_style.underlined(),
+    };
+    let name_span = Span::styled(move_.name.clone(), name_style);
+
+    let damage_class_span = Span::styled(format!(" ({}) ", move_.damage_class), Color::DarkGray);
+
+    let effectiveness_spans = move_.type_.atk_effectiveness().into_spans();
+
+    Line::from_iter(itertools::chain!([name_span], [damage_class_span], effectiveness_spans)).render(name_area, buf);
+
+    let power = move_.power.map_or("bp: N/A".into(), |x| format!("bp: {x}"));
+    let acc = move_.accuracy.map_or("acc: N/A".into(), |x| format!("acc: {x}%"));
+    let chance = move_
+        .effect_chance
+        .map_or("effect: N/A".into(), |x| format!("effect: {x}%"));
+    let info_span = Span::raw(format!("{power} {acc} {chance}"));
+    info_span.render(info_area, buf);
+
+    if let Some(text) = move_.short_effect.as_ref().or(move_.effect.as_ref()) {
+        Paragraph::new(text.as_str())
+            .gray()
+            .wrap(Wrap { trim: true })
+            .render(text_area, buf);
+    }
+}
+
 #[derive(Default)]
 pub(super) struct MovesetTabWidgetState {
     horizontal_cursor: Cursor,
@@ -182,19 +236,26 @@ pub(super) struct MovesetTabWidgetState {
 
 impl MovesetTabWidgetState {
     pub(super) fn handle_action(&mut self, action: TabAction) -> InnerActionResult {
-        match action {
-            TabAction::Right => {
-                self.horizontal_cursor.next();
-                self.vertical_cursor.reset();
+        if !self.move_detail_mode {
+            match action {
+                TabAction::Right => {
+                    self.horizontal_cursor.next();
+                    self.vertical_cursor.reset();
+                }
+                TabAction::Left => {
+                    self.horizontal_cursor.prev();
+                    self.vertical_cursor.reset();
+                }
+                TabAction::Down => self.vertical_cursor.next(),
+                TabAction::Up => self.vertical_cursor.prev(),
+                TabAction::Enter => self.move_detail_mode = !self.move_detail_mode,
+                _ => {}
             }
-            TabAction::Left => {
-                self.horizontal_cursor.prev();
-                self.vertical_cursor.reset();
+        } else {
+            match action {
+                TabAction::Enter | TabAction::Escape => self.move_detail_mode = !self.move_detail_mode,
+                _ => {}
             }
-            TabAction::Down => self.vertical_cursor.next(),
-            TabAction::Up => self.vertical_cursor.prev(),
-            TabAction::Enter => self.move_detail_mode = !self.move_detail_mode,
-            _ => {}
         }
         InnerActionResult::Nothing
     }

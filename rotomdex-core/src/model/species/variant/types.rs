@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use crate::{Generation, ModelContext};
 use color_eyre::eyre::{Result, eyre};
 use colorgrad::{GradientBuilder, LinearGradient};
+use ratatui::{style::Stylize, text::Span};
 use rustemon::model::pokemon::{PokemonType, PokemonTypePast};
 use strum::{Display, EnumCount, EnumIter, EnumString, IntoEnumIterator};
 
@@ -125,6 +126,37 @@ impl ModelTypeEffectiveness {
             quarter: quarter.into(),
             zero: zero.into(),
         }
+    }
+
+    pub(crate) fn into_spans(self) -> Vec<Span<'static>> {
+        let Self {
+            four,
+            two,
+            half,
+            quarter,
+            zero,
+        } = self;
+
+        let mut spans = vec![];
+
+        let mut push_spans = |symbol: &'static str, types: Cow<'static, [ModelType]>| {
+            if !types.is_empty() {
+                spans.push(Span::raw(symbol).bold());
+                for type_ in types.iter() {
+                    let span = Span::styled(type_.initial(), type_.tui_color());
+                    spans.push(span);
+                }
+                spans.push(Span::raw(" "));
+            }
+        };
+
+        push_spans("4", four);
+        push_spans("2", two);
+        push_spans("½", half);
+        push_spans("¼", quarter);
+        push_spans("0", zero);
+
+        spans
     }
 }
 

@@ -7,7 +7,7 @@ use ratatui::{
 };
 use strum::{EnumCount, VariantArray};
 
-use crate::{InnerActionResult, DexKeyCode, Version, VersionGroup, widgets::Cursor};
+use crate::{DexKeyCode, InnerActionResult, Version, VersionGroup, widgets::Cursor};
 
 #[derive(Default)]
 pub struct VersionState {

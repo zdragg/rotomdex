@@ -124,8 +124,8 @@ impl DexState {
 
         match key_code {
             DexKeyCode::Char('g') => self.sprite_state.toggle_animation(),
-            DexKeyCode::Char('\'') => self.variant_cursor.next(),
-            DexKeyCode::Char(';') => self.variant_cursor.prev(),
+            DexKeyCode::Char('f') => self.variant_cursor.next(),
+            DexKeyCode::Char('d') => self.variant_cursor.prev(),
             _ => return self.tabs_state.handle_key(key_code),
         };
         InnerActionResult::Nothing
