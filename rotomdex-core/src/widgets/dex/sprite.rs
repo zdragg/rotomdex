@@ -73,16 +73,7 @@ fn aarrggbb_to_color(color: u32) -> (u8, Color) {
     let g = (color >> 8) as u8;
     let b = color as u8;
 
-    let (r, g, b) = saturate(r, g, b, 1.25);
     (a, Color::Rgb(r, g, b))
-}
-
-fn saturate(r: u8, g: u8, b: u8, amount: f32) -> (u8, u8, u8) {
-    let gray = 0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32;
-
-    let adjust = |channel: u8| (gray + (channel as f32 - gray) * amount).round().clamp(0.0, 255.0) as u8;
-
-    (adjust(r), adjust(g), adjust(b))
 }
 
 #[derive(PartialEq, Eq, Hash)]

@@ -1,13 +1,12 @@
-use std::borrow::Cow;
 use std::cell::Cell;
 
 use crate::InnerActionResult;
-use crate::model::{ModelEvolutionDetail, ModelSpecies, ModelType, ModelTypeEffectiveness, ModelVariant};
+use crate::model::{ModelEvolutionDetail, ModelSpecies, ModelVariant};
 use crate::widgets::dex::tabs::TabAction;
 use crate::widgets::{Cursor, RenderBlockExt};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::{Color, Stylize};
+use ratatui::style::Color;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, Paragraph, StatefulWidget, Widget, Wrap};
 
