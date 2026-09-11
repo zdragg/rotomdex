@@ -1,6 +1,7 @@
 use colorgrad::{BasisGradient, Gradient, GradientBuilder};
 use ratatui::{
-    layout::{Constraint, Flex, Layout},
+    layout::{Flex, Layout},
+    macros::{constraint, constraints},
     widgets::{Bar, BarChart, Widget},
 };
 
@@ -50,9 +51,7 @@ impl Widget for StatsWidget<'_> {
         }
 
         let chart_width = BAR_COUNT * bar_width + GAP_COUNT * bar_gap;
-        let [chart_area] = Layout::horizontal([Constraint::Length(chart_width)])
-            .flex(Flex::Center)
-            .areas(area);
+        let chart_area = area.centered_horizontally(constraint!(==chart_width));
 
         let bars = vec![
             get_bar(variant.stats.hp, "HP"),

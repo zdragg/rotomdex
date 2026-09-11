@@ -1,5 +1,6 @@
 use crate::model::{ModelSpecies, ModelVariant, Resource};
-use ratatui::layout::{Constraint, Layout};
+use ratatui::layout::Layout;
+use ratatui::macros::constraints;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -49,11 +50,9 @@ impl Widget for VariantSelectorWidget<'_> {
         next_span.append(&mut get_variant_spans(&variants[next_idx], false));
         let next_line = Line::from(next_span);
 
-        let [prev_area, selected_area, next_area] = area.layout(&Layout::horizontal([
-            Constraint::Fill(1),
-            Constraint::Length(selected_line.width() as u16),
-            Constraint::Fill(1),
-        ]));
+        let [prev_area, selected_area, next_area] = area.layout(&Layout::horizontal(
+            constraints![*=1, ==selected_line.width() as u16, *=1],
+        ));
 
         prev_line.right_aligned().render(prev_area, buf);
         selected_line.centered().render(selected_area, buf);

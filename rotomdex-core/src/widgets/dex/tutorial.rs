@@ -1,6 +1,7 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Alignment, Constraint, Layout, Rect},
+    layout::{Alignment, Layout, Rect},
+    macros::constraints,
     text::Line,
     widgets::{Block, Clear, Paragraph, Widget},
 };
@@ -50,8 +51,8 @@ impl<'a> Widget for TutorialWidget<'a> {
             return;
         }
 
-        let [_, area] = Layout::vertical([Constraint::Fill(1), Constraint::Length(HEIGHT)]).areas(area);
-        let [_, area] = Layout::horizontal([Constraint::Fill(1), Constraint::Length(WIDTH)]).areas(area);
+        let [_, area] = Layout::vertical(constraints![*=1, ==HEIGHT]).areas(area);
+        let [_, area] = Layout::horizontal(constraints![*=1, ==WIDTH]).areas(area);
 
         let commands = COMMANDS.into_iter().map(Line::from).collect::<Vec<_>>();
 

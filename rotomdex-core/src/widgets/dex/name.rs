@@ -1,9 +1,10 @@
 use colorgrad::{Gradient, LinearGradient};
 use ratatui::buffer::Buffer;
+use ratatui::macros::{constraint, constraints};
 use ratatui::style::Color;
 use ratatui::widgets::BlockExt;
 use ratatui::{
-    layout::{Constraint, Flex, Layout, Rect},
+    layout::{Flex, Layout, Rect},
     text::Line,
     widgets::Widget,
 };
@@ -31,7 +32,7 @@ impl Widget for NameWidget<'_> {
         let line = Line::from(name.as_str());
 
         let Some((area, pixel_size)) = calculate_size(area, name.len()) else {
-            let [area] = Layout::vertical([Constraint::Length(1)]).flex(Flex::Center).areas(area);
+            let area = area.centered_vertically(constraint!(==1));
             line.centered().render(area, buf);
             return;
         };
@@ -88,12 +89,7 @@ fn calculate_size(area: Rect, char_count: usize) -> Option<(Rect, PixelSize)> {
     };
 
     let text_width = glyph_width * char_count;
-    let [area] = Layout::horizontal([Constraint::Length(text_width)])
-        .flex(Flex::Center)
-        .areas(area);
-    let [area] = Layout::vertical([Constraint::Length(glyph_height)])
-        .flex(Flex::Center)
-        .areas(area);
+    let area = area.centered(constraint!(==text_width), constraint!(==glyph_height));
 
     Some((area, pixel_size))
 }

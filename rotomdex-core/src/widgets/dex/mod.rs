@@ -21,9 +21,10 @@ use crate::{
     },
 };
 use crate::{InnerActionResult, Version};
+use ratatui::macros::constraints;
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Layout, Rect},
     style::Color,
     widgets::{Block, Widget},
 };
@@ -59,21 +60,15 @@ impl Widget for DexWidget<'_> {
 
         // Block + bottom text / search widget render
         let block = Block::bordered().border_style(species.map_or(Color::DarkGray, |species| species.color));
-        let [_area, bottom_text_area] = area.layout(&Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]));
+        let [_area, bottom_text_area] = area.layout(&Layout::vertical(constraints![*=1, ==1]));
         let outer = area;
         let area = block.inner(outer);
         block.render(outer, buf);
         SearchWidget::new(&self.state.search_state).render(bottom_text_area, buf);
 
-        let [left_area, right_area] = Layout::horizontal([Constraint::Percentage(35), Constraint::Fill(1)])
-            .spacing(1)
-            .areas(area);
-        let [sprite_area, stats_area] = Layout::vertical([Constraint::Percentage(70), Constraint::Fill(1)])
-            .spacing(1)
-            .areas(left_area);
-        let [name_area, variants_area, tab_area] =
-            Layout::vertical([Constraint::Percentage(20), Constraint::Length(2), Constraint::Fill(1)])
-                .areas(right_area);
+        let [left_area, right_area] = Layout::horizontal(constraints![==35%, *=1]).spacing(1).areas(area);
+        let [sprite_area, stats_area] = Layout::vertical(constraints![==70%, *=1]).spacing(1).areas(left_area);
+        let [name_area, variants_area, tab_area] = Layout::vertical(constraints![==20%, ==2, *=1]).areas(right_area);
 
         SpriteWidget::new(variant, self.elapsed, &self.state.sprite_state).render(sprite_area, buf);
         StatsWidget::new(species, variant).render(stats_area, buf);

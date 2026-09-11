@@ -3,9 +3,8 @@ use crate::model::{ModelDamageClass, ModelMoveLearnMethod, ModelVariant, ModelVe
 use crate::widgets::RenderBlockExt;
 use crate::widgets::common::Cursor;
 use crate::widgets::dex::tabs::TabAction;
-use itertools::Itertools;
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, HorizontalAlignment, Layout, Margin, Rect};
+use ratatui::layout::{HorizontalAlignment, Layout, Margin, Rect};
 use ratatui::macros::constraints;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, ToLine, ToSpan};
@@ -24,11 +23,7 @@ impl<'a> MovesetTabWidget<'a> {
 
 impl<'a> Widget for MovesetTabWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let areas: [Rect; 3] = area.layout(&Layout::horizontal([
-            Constraint::Fill(1),
-            Constraint::Fill(4),
-            Constraint::Fill(1),
-        ]));
+        let areas: [Rect; 3] = area.layout(&Layout::horizontal(constraints![*=1, *=4, *=1]));
 
         let Some(variant) = self.variant else {
             areas.into_iter().for_each(|area| Block::bordered().render(area, buf));

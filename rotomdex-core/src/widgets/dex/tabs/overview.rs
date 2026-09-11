@@ -5,7 +5,8 @@ use crate::model::{ModelEvolutionDetail, ModelSpecies, ModelVariant};
 use crate::widgets::dex::tabs::TabAction;
 use crate::widgets::{Cursor, RenderBlockExt};
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::layout::{Layout, Rect};
+use ratatui::macros::constraints;
 use ratatui::style::Color;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, Paragraph, StatefulWidget, Widget, Wrap};
@@ -39,7 +40,7 @@ impl<'a> Widget for OverviewTabWidget<'a> {
             return;
         };
 
-        let [first_line, area] = area.layout(&Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]));
+        let [first_line, area] = area.layout(&Layout::vertical(constraints![==1, *=1]));
         render_basic(species, variant, first_line, buf);
 
         let evo_area = render_flavor_text(species, area, buf);
@@ -93,8 +94,7 @@ fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> R
 
     let line_count = flavor.line_count(area.width - 1);
 
-    let [this_area, rest_area] =
-        area.layout(&Layout::vertical([Constraint::Length(line_count as u16), Constraint::Fill(1)]).spacing(1));
+    let [this_area, rest_area] = area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
 
     let this_area = Block::default().borders(Borders::LEFT).render_inner(this_area, buf);
     flavor.render(this_area, buf);
@@ -126,7 +126,7 @@ fn render_evolutions(
         return;
     }
 
-    let [tree_area, detail_area] = area.layout(&Layout::horizontal([Constraint::Percentage(40), Constraint::Fill(1)]));
+    let [tree_area, detail_area] = area.layout(&Layout::horizontal(constraints![==40%, *=1]));
 
     let selected = cursor.get(views.len()).unwrap();
     let mut lines = Vec::with_capacity(views.len());

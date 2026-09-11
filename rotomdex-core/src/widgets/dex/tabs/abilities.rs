@@ -3,7 +3,8 @@ use crate::model::{ModelAbility, ModelVariant, Resource};
 use crate::widgets::dex::tabs::TabAction;
 use crate::widgets::{Cursor, RenderBlockExt};
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::layout::{Layout, Rect};
+use ratatui::macros::constraints;
 use ratatui::style::Color;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Widget, Wrap};
@@ -61,8 +62,7 @@ fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, are
     if let Some(flavor_text) = &ability.flavor_text {
         let text = Paragraph::new(flavor_text.as_str()).wrap(Wrap { trim: true });
         let line_count = text.line_count(area.width);
-        let [this_area, rest_area] =
-            area.layout(&Layout::vertical([Constraint::Length(line_count as u16), Constraint::Fill(1)]).spacing(1));
+        let [this_area, rest_area] = area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
         text.render(this_area, buf);
         return rest_area;
     } else {

@@ -1,6 +1,7 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Alignment, Constraint, Layout, Rect},
+    layout::{Alignment, Layout, Rect},
+    macros::constraints,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Clear, HighlightSpacing, List, ListItem, StatefulWidget, Widget},
@@ -79,13 +80,15 @@ impl<'a> VersionWidget<'a> {
     }
 }
 
+const WIDTH: u16 = 16;
+
 impl<'a> Widget for VersionWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if !self.state.enabled {
             return;
         }
 
-        let [area, _] = area.layout(&Layout::horizontal([Constraint::Length(16), Constraint::Fill(1)]));
+        let [area, _] = area.layout(&Layout::horizontal(constraints![==WIDTH, *=1]));
 
         let selected_group = self.state.selected_group();
         let items = VersionGroup::VARIANTS.iter().enumerate().map(|(group_idx, group)| {
