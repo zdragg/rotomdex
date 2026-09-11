@@ -19,7 +19,7 @@ itertools = "0.15.0"
 konst = { version = "0.4.3", default-features = false, features = ["iter"] }
 lru = "0.18.4"
 rapidhash = "4.5.1"
-ratatui = { version = "0.30.2", default-features = false, features = ["std", "layout-cache", "unstable-rendered-line-info"] }
+ratatui = { version = "0.30.2", default-features = false, features = ["std", "macros", "layout-cache", "unstable-rendered-line-info"] }
 reqwest = { version = "0.12.28", default-features = false, features = [
   "json",
   "rustls-tls-native-roots"

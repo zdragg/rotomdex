@@ -63,7 +63,14 @@ impl ModelMoves {
             let move_is_ready = move_.resource.poll(cx).is_ready();
             has_ready | move_is_ready
         });
-        if has_ready { Poll::Ready(()) } else { Poll::Pending }
+        if has_ready {
+            for bucket in &mut self.moves {
+                bucket.sort_unstable();
+            }
+            Poll::Ready(())
+        } else {
+            Poll::Pending
+        }
     }
 
     pub(crate) fn get_all_nonempty(&self) -> Vec<(ModelMoveLearnMethod, &[ModelVersionMove])> {

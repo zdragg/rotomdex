@@ -43,9 +43,8 @@ impl<'a> Widget for MovesetTabWidget<'a> {
 
         let center_idx = self.state.horizontal_cursor.get(bucket_cnt).unwrap();
         let (method, moves) = nonempty_buckets[center_idx];
-        let moves: Vec<_> = moves.into_iter().sorted_unstable().collect();
         render_center(
-            &moves[..],
+            moves,
             method,
             &mut self.state.vertical_cursor.list_state(moves.len()),
             areas[1],
@@ -60,13 +59,11 @@ impl<'a> Widget for MovesetTabWidget<'a> {
 
         let left_idx = (center_idx + bucket_cnt - 1) % bucket_cnt;
         let (left_method, left_moves) = nonempty_buckets[left_idx];
-        let left_moves: Vec<_> = left_moves.into_iter().sorted_unstable().collect();
-        render_left(&left_moves[..], left_method.to_line(), areas[0], buf);
+        render_left(left_moves, left_method.to_line(), areas[0], buf);
 
         let right_idx = (center_idx + 1) % bucket_cnt;
         let (right_method, right_moves) = nonempty_buckets[right_idx];
-        let right_moves: Vec<_> = right_moves.into_iter().sorted_unstable().collect();
-        render_right(&right_moves[..], right_method.to_line(), areas[2], buf);
+        render_right(right_moves, right_method.to_line(), areas[2], buf);
 
         // Render details overlaid on everything else if enabled
         if self.state.move_detail_mode {
@@ -77,7 +74,7 @@ impl<'a> Widget for MovesetTabWidget<'a> {
 }
 
 fn render_center(
-    moves: &[&ModelVersionMove],
+    moves: &[ModelVersionMove],
     method: ModelMoveLearnMethod,
     state: &mut ListState,
     area: Rect,
@@ -93,7 +90,7 @@ fn render_center(
     StatefulWidget::render(list, area, buf, state);
 }
 
-fn render_left(moves: &[&ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
+fn render_left(moves: &[ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().style(Color::DarkGray).title(title);
     let list = List::new(
         moves
@@ -105,7 +102,7 @@ fn render_left(moves: &[&ModelVersionMove], title: Line, area: Rect, buf: &mut B
     Widget::render(list, area, buf);
 }
 
-fn render_right(moves: &[&ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
+fn render_right(moves: &[ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().style(Color::DarkGray).title(title);
     let list = List::new(
         moves

@@ -29,7 +29,6 @@ impl ModelPokemon {
     pub(crate) async fn poll(&mut self) {
         std::future::poll_fn(|cx| self.species.poll(cx)).await;
     }
-
 }
 
 pub(crate) trait Fetchable: Sized + 'static {
@@ -71,7 +70,6 @@ impl<T: Fetchable> Resource<T> {
             future: Box::pin(future),
         }
     }
-
 
     pub(crate) fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         let result = match self {
@@ -118,6 +116,14 @@ impl<T: Fetchable> Resource<T> {
             Self::Failed(_) => None,
         }
     }
+
+    pub(crate) fn as_loaded_without_undefer(&self) -> Option<&T> {
+        if let Self::Loaded(inner) = self {
+            Some(inner)
+        } else {
+            None
+        }
+    }
 }
 
 impl<T: fmt::Debug + Fetchable> fmt::Debug for Resource<T> {
@@ -133,7 +139,7 @@ impl<T: fmt::Debug + Fetchable> fmt::Debug for Resource<T> {
 
 impl<T: PartialEq + Fetchable> PartialEq for Resource<T> {
     fn eq(&self, other: &Self) -> bool {
-        match (self.as_loaded(), other.as_loaded()) {
+        match (self.as_loaded_without_undefer(), other.as_loaded_without_undefer()) {
             (Some(me), Some(other)) => me == other,
             (None, None) => true,
             _ => false,
@@ -144,7 +150,7 @@ impl<T: PartialEq + Fetchable> PartialEq for Resource<T> {
 /// Mark all unloaded resources as greater. When sorting, these go to the back.
 impl<T: PartialOrd + Fetchable> PartialOrd for Resource<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self.as_loaded(), other.as_loaded()) {
+        match (self.as_loaded_without_undefer(), other.as_loaded_without_undefer()) {
             (Some(me), Some(other)) => me.partial_cmp(&other),
             (Some(_me), None) => Some(Ordering::Less),
             (None, Some(_other)) => Some(Ordering::Greater),
@@ -158,7 +164,7 @@ impl<T: Eq + Fetchable> Eq for Resource<T> {}
 /// Mark all unloaded resources as greater. When sorting, these go to the back.
 impl<T: Ord + Fetchable> Ord for Resource<T> {
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self.as_loaded(), other.as_loaded()) {
+        match (self.as_loaded_without_undefer(), other.as_loaded_without_undefer()) {
             (Some(me), Some(other)) => me.cmp(&other),
             (Some(_me), None) => Ordering::Less,
             (None, Some(_other)) => Ordering::Greater,
