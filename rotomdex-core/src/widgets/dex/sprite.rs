@@ -92,7 +92,7 @@ impl Default for SpriteWidgetState {
     fn default() -> Self {
         Self {
             prefer_animation: true,
-            cache: RefCell::new(LruCache::new(NonZeroUsize::new(128).unwrap())),
+            cache: RefCell::new(LruCache::new(NonZeroUsize::new(256).unwrap())),
         }
     }
 }
