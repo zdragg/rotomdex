@@ -16,6 +16,7 @@ pub(crate) struct ModelMachine {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum ModelMachineType {
+    Hidden,
     Machine,
     Record,
 }
@@ -25,6 +26,7 @@ impl Display for ModelMachineType {
         match self {
             Self::Machine => write!(f, "tm"),
             Self::Record => write!(f, "tr"),
+            Self::Hidden => write!(f, "hm"),
         }
     }
 }
@@ -37,6 +39,8 @@ impl Fetchable for ModelMachine {
             (ModelMachineType::Machine, rest.parse::<u32>()?)
         } else if let Some(rest) = machine.item.name.strip_prefix("tr") {
             (ModelMachineType::Record, rest.parse::<u32>()?)
+        } else if let Some(rest) = machine.item.name.strip_prefix("hm") {
+            (ModelMachineType::Hidden, rest.parse::<u32>()?)
         } else {
             return Err(eyre!("Machine id cannot be parsed"));
         };
