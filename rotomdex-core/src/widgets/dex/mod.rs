@@ -8,12 +8,12 @@ mod variant;
 mod versions;
 
 use crate::model::Resource;
-use crate::widgets::Cursor;
 use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
 use crate::widgets::dex::sprite::SpriteWidgetState;
 use crate::widgets::dex::tabs::TabsWidgetState;
 use crate::widgets::dex::tutorial::{TutorialWidget, TutorialWidgetState};
 use crate::widgets::dex::versions::{VersionState, VersionWidget};
+use crate::widgets::{Cursor, RenderBlockExt};
 use crate::{
     DexKeyCode,
     model::ModelPokemon,
@@ -23,7 +23,6 @@ use crate::{
 };
 use crate::{InnerActionResult, Version};
 use ratatui::macros::constraints;
-use ratatui::text::ToLine;
 use ratatui::{
     buffer::Buffer,
     layout::{Layout, Rect},
@@ -53,11 +52,6 @@ impl<'a> DexWidget<'a> {
 
 impl Widget for DexWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        if let Resource::Failed(error) = &self.pkmn.species {
-            error.to_line().render(area, buf);
-            return;
-        }
-
         let species = self.pkmn.species.as_loaded();
 
         let variant_idx = species.and_then(|species| self.state.variant_cursor.get(species.variants_cnt()));
@@ -67,12 +61,18 @@ impl Widget for DexWidget<'_> {
             .and_then(|variant| variant.as_loaded());
 
         // Block + bottom text / search widget render
-        let block = Block::bordered().border_style(species.map_or(Color::DarkGray, |species| species.color));
         let [_area, bottom_text_area] = area.layout(&Layout::vertical(constraints![*=1, ==1]));
-        let outer = area;
-        let area = block.inner(outer);
-        block.render(outer, buf);
-        SearchWidget::new(&self.state.search_state).render(bottom_text_area, buf);
+
+        let block = Block::bordered().border_style(species.map_or(Color::DarkGray, |species| species.color));
+        let area = block.render_inner(area, buf);
+
+        let displayed_error = if let Resource::Failed(error) = &self.pkmn.species {
+            Some(error.to_string())
+        } else {
+            None
+        };
+
+        SearchWidget::new(&self.state.search_state, displayed_error).render(bottom_text_area, buf); // Overlay the search widget on top of the block
 
         let [left_area, right_area] = Layout::horizontal(constraints![==35%, *=1]).spacing(1).areas(area);
         let [sprite_area, stats_area] = Layout::vertical(constraints![==70%, *=1]).spacing(1).areas(left_area);

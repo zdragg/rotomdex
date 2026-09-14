@@ -43,7 +43,7 @@ impl OfflineProvider {
             .results
             .into_iter()
             .find(|entry| entry.name == identifier)
-            .with_context(|| format!("{identifier} not found in {endpoint}"))?;
+            .with_context(|| format!("pokémon \"{identifier}\" not found"))?; // This path can only be reached from Pokemon search for now
 
         Ok(self.path.join(entry.url.trim_matches('/')).join("index.json"))
     }

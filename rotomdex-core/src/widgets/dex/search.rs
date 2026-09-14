@@ -7,11 +7,12 @@ use crate::widgets::dex::InnerActionResult;
 
 pub(crate) struct SearchWidget<'a> {
     state: &'a SearchWidgetState,
+    displayed_error: Option<String>,
 }
 
 impl<'a> SearchWidget<'a> {
-    pub(crate) fn new(state: &'a SearchWidgetState) -> Self {
-        Self { state }
+    pub(crate) fn new(state: &'a SearchWidgetState, displayed_error: Option<String>) -> Self {
+        Self { state, displayed_error }
     }
 }
 
@@ -66,12 +67,13 @@ impl SearchWidgetState {
 
 impl<'a> Widget for SearchWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let text = "Type / to see keybinds • Exit with Ctrl-C";
-
         let span = if self.state.searching {
             Span::raw(format!(" :{} ", self.state.input.as_str()))
+        } else if let Some(error) = self.displayed_error {
+            Span::styled(format!(" {} ", error), Color::Red)
         } else {
-            Span::raw(format!(" {} ", text)).style(Color::DarkGray)
+            const TEXT: &str = "Type / to see keybinds • Exit with Ctrl-C";
+            Span::styled(format!(" {} ", TEXT), Color::DarkGray)
         };
 
         Line::from(span).centered().render(area, buf);

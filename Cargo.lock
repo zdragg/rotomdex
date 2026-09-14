@@ -2868,7 +2868,7 @@ dependencies = [
 [[package]]
 name = "rustemon"
 version = "4.6.0"
-source = "git+https://github.com/zdragg/rustemon?branch=main#b7f6638d004ed8e9fac3dbdac597a996de772722"
+source = "git+https://github.com/zdragg/rustemon?branch=main#9acd7f4883e09a578e3c685d35bcf87c7eca0026"
 dependencies = [
  "http-cache-reqwest",
  "reqwest",
@@ -3313,7 +3313,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

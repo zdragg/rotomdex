@@ -7,7 +7,7 @@ pub(crate) use variant::*;
 
 use std::task::{Context, Poll};
 
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{Result, eyre};
 use ratatui::style::Color;
 use tracing::Span;
 
@@ -28,7 +28,11 @@ pub(crate) struct ModelSpecies {
 impl Fetchable for ModelSpecies {
     type Request = String;
     async fn fetch(request: Self::Request, ctx: ModelContext) -> Result<Self> {
-        let species = rustemon::pokemon::pokemon_species::get_by_name(&request, &ctx.pkmn_client).await?;
+        let species_result = rustemon::pokemon::pokemon_species::get_by_name(&request, &ctx.pkmn_client).await;
+        if let Err(rustemon::error::Error::NotFound) = species_result {
+            return Err(eyre!("pokémon \"{request}\" not found"));
+        }
+        let species = species_result?;
 
         let national_dex = species.id as u32;
 
