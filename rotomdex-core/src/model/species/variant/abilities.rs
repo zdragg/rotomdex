@@ -72,7 +72,7 @@ impl ModelAbilities {
             }
         }
 
-        let slots = slots.map(|maybe_api| maybe_api.map(|api| Resource::<ModelAbility>::fetch(api, &ctx)));
+        let slots = slots.map(|maybe_api| maybe_api.map(|api| Resource::<ModelAbility>::fetch(api, ctx)));
 
         let res = match slots {
             [None, None, None] => {

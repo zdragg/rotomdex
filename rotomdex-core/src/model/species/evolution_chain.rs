@@ -53,7 +53,7 @@ impl ModelChainLink {
             evolves_to: link
                 .evolves_to
                 .into_iter()
-                .map(|link| ModelChainLink::new(link, &ctx))
+                .map(|link| ModelChainLink::new(link, ctx))
                 .collect::<Result<Vec<_>>>()?,
         })
     }
@@ -65,16 +65,10 @@ impl ModelChainLink {
             last_in_depth,
         };
         let mut vec = vec![view];
-        vec.extend(
-            self.evolves_to
-                .iter()
-                .enumerate()
-                .map(|(i, link)| {
-                    let last_in_depth = i + 1 == self.evolves_to.len();
-                    link.get_view_with_child(depth + 1, last_in_depth)
-                })
-                .flatten(),
-        );
+        vec.extend(self.evolves_to.iter().enumerate().flat_map(|(i, link)| {
+            let last_in_depth = i + 1 == self.evolves_to.len();
+            link.get_view_with_child(depth + 1, last_in_depth)
+        }));
         vec
     }
 }

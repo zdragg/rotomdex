@@ -42,7 +42,7 @@ impl ModelMoves {
 
                 let is_machine = learn_method == ModelMoveLearnMethod::Machine;
 
-                let resource = Resource::<ModelMove>::fetch((m.move_.clone(), is_machine), &ctx);
+                let resource = Resource::<ModelMove>::fetch((m.move_.clone(), is_machine), ctx);
                 let move_model = ModelVersionMove {
                     name: m.move_.name.clone(),
                     level_learned_at: move_version.level_learned_at as u32,
@@ -251,13 +251,13 @@ impl Fetchable for ModelMove {
     }
 
     fn poll(&mut self, cx: &mut std::task::Context<'_>) -> Poll<()> {
-        let mut result = Poll::Pending;
-        if let Some(machine) = &mut self.machine {
-            if machine.poll(cx).is_ready() {
-                result = Poll::Ready(());
-            }
+        if let Some(machine) = &mut self.machine
+            && machine.poll(cx).is_ready()
+        {
+            Poll::Ready(())
+        } else {
+            Poll::Pending
         }
-        result
     }
     fn fetch_span(request: &Self::Request) -> tracing::Span {
         tracing::info_span!("fetch_move", move_ = %request.0.name)

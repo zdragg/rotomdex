@@ -7,6 +7,7 @@ mod tutorial;
 mod variant;
 mod versions;
 
+use crate::model::Resource;
 use crate::widgets::Cursor;
 use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
 use crate::widgets::dex::sprite::SpriteWidgetState;
@@ -22,6 +23,7 @@ use crate::{
 };
 use crate::{InnerActionResult, Version};
 use ratatui::macros::constraints;
+use ratatui::text::ToLine;
 use ratatui::{
     buffer::Buffer,
     layout::{Layout, Rect},
@@ -51,7 +53,13 @@ impl<'a> DexWidget<'a> {
 
 impl Widget for DexWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        if let Resource::Failed(error) = &self.pkmn.species {
+            error.to_line().render(area, buf);
+            return;
+        }
+
         let species = self.pkmn.species.as_loaded();
+
         let variant_idx = species.and_then(|species| self.state.variant_cursor.get(species.variants_cnt()));
         let variant = species
             .zip(variant_idx)

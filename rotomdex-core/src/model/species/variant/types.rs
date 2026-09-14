@@ -73,14 +73,14 @@ impl ModelTypes {
 
         let mut counter = [4u32; ModelType::COUNT];
 
-        prim.def_0x().into_iter().for_each(|t| counter[*t as usize] = 0);
-        secd.def_0x().into_iter().for_each(|t| counter[*t as usize] = 0);
+        prim.def_0x().iter().for_each(|t| counter[*t as usize] = 0);
+        secd.def_0x().iter().for_each(|t| counter[*t as usize] = 0);
 
-        prim.def_2x().into_iter().for_each(|t| counter[*t as usize] <<= 1);
-        secd.def_2x().into_iter().for_each(|t| counter[*t as usize] <<= 1);
+        prim.def_2x().iter().for_each(|t| counter[*t as usize] <<= 1);
+        secd.def_2x().iter().for_each(|t| counter[*t as usize] <<= 1);
 
-        prim.def_halfx().into_iter().for_each(|t| counter[*t as usize] >>= 1);
-        secd.def_halfx().into_iter().for_each(|t| counter[*t as usize] >>= 1);
+        prim.def_halfx().iter().for_each(|t| counter[*t as usize] >>= 1);
+        secd.def_halfx().iter().for_each(|t| counter[*t as usize] >>= 1);
 
         let [mut four, mut two, mut half, mut quarter, mut zero] = std::array::from_fn(|_| vec![]);
 

@@ -67,11 +67,12 @@ impl Fetchable for ModelSpecies {
         {
             return Poll::Ready(());
         }
-        if let Some(evolution_chain) = &mut self.evolution_chain {
-            if evolution_chain.poll(cx).is_ready() {
-                return Poll::Ready(());
-            }
+        if let Some(evolution_chain) = &mut self.evolution_chain
+            && evolution_chain.poll(cx).is_ready()
+        {
+            return Poll::Ready(());
         }
+
         Poll::Pending
     }
 
@@ -80,7 +81,7 @@ impl Fetchable for ModelSpecies {
     }
 }
 
-fn color<'a>(name: &'a str) -> Color {
+fn color(name: &str) -> Color {
     match name {
         "black" => Color::Black,
         "blue" => Color::Blue,

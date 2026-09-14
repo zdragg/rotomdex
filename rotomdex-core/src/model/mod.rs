@@ -151,7 +151,7 @@ impl<T: PartialEq + Fetchable> PartialEq for Resource<T> {
 impl<T: PartialOrd + Fetchable> PartialOrd for Resource<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self.as_loaded_without_undefer(), other.as_loaded_without_undefer()) {
-            (Some(me), Some(other)) => me.partial_cmp(&other),
+            (Some(me), Some(other)) => me.partial_cmp(other),
             (Some(_me), None) => Some(Ordering::Less),
             (None, Some(_other)) => Some(Ordering::Greater),
             (None, None) => Some(Ordering::Equal),
@@ -165,7 +165,7 @@ impl<T: Eq + Fetchable> Eq for Resource<T> {}
 impl<T: Ord + Fetchable> Ord for Resource<T> {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self.as_loaded_without_undefer(), other.as_loaded_without_undefer()) {
-            (Some(me), Some(other)) => me.cmp(&other),
+            (Some(me), Some(other)) => me.cmp(other),
             (Some(_me), None) => Ordering::Less,
             (None, Some(_other)) => Ordering::Greater,
             (None, None) => Ordering::Equal,
