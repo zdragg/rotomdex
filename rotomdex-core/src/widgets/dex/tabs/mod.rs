@@ -37,9 +37,6 @@ impl<'a> TabsWidget<'a> {
 
 impl Widget for TabsWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        if matches!(self.variant, None) {
-            return;
-        }
         let [tab_area, content_area] = area.layout(&Layout::vertical(constraints![==1, *=1]).spacing(1));
 
         Tabs::new(DexTab::iter().map(|e| e.to_string()))
@@ -105,11 +102,10 @@ impl TabsWidgetState {
             _ => return InnerActionResult::Nothing,
         };
 
-        let result = match DexTab::VARIANTS[self.selected_tab.get(DexTab::COUNT).unwrap()] {
+        match DexTab::VARIANTS[self.selected_tab.get(DexTab::COUNT).unwrap()] {
             DexTab::Overview => self.overview_state.handle_action(tab_action),
             DexTab::Abilities => self.abilities_state.handle_action(tab_action),
             DexTab::Moveset => self.moveset_state.handle_action(tab_action),
-        };
-        result
+        }
     }
 }

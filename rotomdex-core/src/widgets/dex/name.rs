@@ -1,13 +1,9 @@
 use colorgrad::{Gradient, LinearGradient};
 use ratatui::buffer::Buffer;
-use ratatui::macros::{constraint, constraints};
+use ratatui::macros::constraint;
 use ratatui::style::Color;
 use ratatui::widgets::BlockExt;
-use ratatui::{
-    layout::{Flex, Layout, Rect},
-    text::Line,
-    widgets::Widget,
-};
+use ratatui::{layout::Rect, text::Line, widgets::Widget};
 use tui_big_text::{BigText, PixelSize};
 
 use crate::model::{ModelSpecies, ModelVariant};

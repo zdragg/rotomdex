@@ -74,6 +74,12 @@ impl RotomDexCore {
     }
 }
 
+impl Default for RotomDexCore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Widget for &RotomDexCore {
     fn render(self, area: Rect, buf: &mut Buffer) {
         DexWidget::new(&self.pkmn, &self.dex_state, self.timer.elapsed(), self.ctx.version).render(area, buf);

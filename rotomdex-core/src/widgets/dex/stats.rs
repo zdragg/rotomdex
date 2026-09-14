@@ -1,7 +1,6 @@
 use colorgrad::{BasisGradient, Gradient, GradientBuilder};
 use ratatui::{
-    layout::{Flex, Layout},
-    macros::{constraint, constraints},
+    macros::constraint,
     widgets::{Bar, BarChart, Widget},
 };
 

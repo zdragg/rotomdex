@@ -53,7 +53,7 @@ impl SearchWidgetState {
 
     /// Remove one character.
     pub(crate) fn backspace(&mut self) {
-        if let None = self.input.pop() {
+        if self.input.pop().is_none() {
             self.searching = false;
         };
     }

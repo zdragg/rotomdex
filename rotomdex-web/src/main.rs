@@ -156,31 +156,6 @@ fn fit_canvas_to_viewport(canvas: &HtmlCanvasElement, cell_size: (i32, i32)) -> 
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn terminal_canvas_size_uses_smallest_grid_above_minimum() {
-        let cell_size = (18, 40);
-
-        for viewport_size in [(1920.0, 1080.0), (1440.0, 900.0), (390.0, 844.0), (3440.0, 1440.0)] {
-            for device_pixel_ratio in [1.0_f64, 1.25, 1.5, 2.0, 3.0] {
-                let (width, height) = terminal_canvas_size(cell_size, device_pixel_ratio, viewport_size);
-                let atlas_scale = device_pixel_ratio.round().max(1.0);
-                let physical_cell_width = f64::from(cell_size.0) * atlas_scale;
-                let physical_cell_height = f64::from(cell_size.1) * atlas_scale;
-                let cols = (f64::from(width) * device_pixel_ratio / physical_cell_width).floor() as u32;
-                let rows = (f64::from(height) * device_pixel_ratio / physical_cell_height).floor() as u32;
-
-                assert!(cols >= MIN_TERMINAL_COLS);
-                assert!(rows >= MIN_TERMINAL_ROWS);
-                assert!(cols == MIN_TERMINAL_COLS || rows == MIN_TERMINAL_ROWS);
-            }
-        }
-    }
-}
-
 fn install_key_handler(core: Rc<RefCell<RotomDexCore>>) -> Result<()> {
     let window = window().ok_or_else(|| eyre!("unable to access the browser window"))?;
     let redirect_window = window.clone();
@@ -211,10 +186,9 @@ fn install_key_handler(core: Rc<RefCell<RotomDexCore>>) -> Result<()> {
         if matches!(
             core.borrow_mut().handle_key(map_modifiers(&event), key_code),
             ActionResult::Exit
-        ) {
-            if let Err(error) = redirect_window.location().set_href(EXIT_URL) {
-                tracing::error!(?error, "unable to redirect to project page");
-            }
+        ) && let Err(error) = redirect_window.location().set_href(EXIT_URL)
+        {
+            tracing::error!(?error, "unable to redirect to project page");
         }
     });
 
@@ -249,4 +223,29 @@ fn map_modifiers(event: &KeyboardEvent) -> DexKeyModifiers {
     modifiers.set(DexKeyModifiers::ALT, event.alt_key());
     modifiers.set(DexKeyModifiers::META, event.meta_key());
     modifiers
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terminal_canvas_size_uses_smallest_grid_above_minimum() {
+        let cell_size = (18, 40);
+
+        for viewport_size in [(1920.0, 1080.0), (1440.0, 900.0), (390.0, 844.0), (3440.0, 1440.0)] {
+            for device_pixel_ratio in [1.0_f64, 1.25, 1.5, 2.0, 3.0] {
+                let (width, height) = terminal_canvas_size(cell_size, device_pixel_ratio, viewport_size);
+                let atlas_scale = device_pixel_ratio.round().max(1.0);
+                let physical_cell_width = f64::from(cell_size.0) * atlas_scale;
+                let physical_cell_height = f64::from(cell_size.1) * atlas_scale;
+                let cols = (f64::from(width) * device_pixel_ratio / physical_cell_width).floor() as u32;
+                let rows = (f64::from(height) * device_pixel_ratio / physical_cell_height).floor() as u32;
+
+                assert!(cols >= MIN_TERMINAL_COLS);
+                assert!(rows >= MIN_TERMINAL_ROWS);
+                assert!(cols == MIN_TERMINAL_COLS || rows == MIN_TERMINAL_ROWS);
+            }
+        }
+    }
 }

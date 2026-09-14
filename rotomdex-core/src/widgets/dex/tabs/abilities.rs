@@ -24,6 +24,7 @@ impl<'a> Widget for AbilitiesTabWidget<'a> {
         let Some(variant) = self.variant else {
             return;
         };
+
         let [first, second, hidden] = variant.abilities.get();
 
         let area = render_ability(first, false, area, buf);
@@ -47,11 +48,11 @@ fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, are
 
     let block_title = if is_hidden {
         Line::from(vec![
-            Span::raw(format!("── {}", &ability.name)),
+            Span::raw(format!("── {}", ability.name)),
             Span::styled(" (hidden) ", Color::DarkGray),
         ])
     } else {
-        Line::raw(format!("── {} ", &ability.name))
+        Line::raw(format!("── {} ", ability.name))
     };
 
     let area = Block::default()
@@ -64,9 +65,9 @@ fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, are
         let line_count = text.line_count(area.width);
         let [this_area, rest_area] = area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
         text.render(this_area, buf);
-        return rest_area;
+        rest_area
     } else {
-        return area;
+        area
     }
 }
 

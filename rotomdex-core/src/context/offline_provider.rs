@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use async_trait::async_trait;
 use http::Extensions;
 use reqwest::{Request, Response};
@@ -54,16 +54,15 @@ impl Middleware for OfflineProvider {
     async fn handle(&self, req: Request, _extensions: &mut Extensions, _next: Next<'_>) -> Result<Response, Error> {
         let url = req.url().as_str();
 
-        let path = if url.starts_with("https://pokeapi.co/") || url.starts_with("/") {
-            Some(self.api_path(&req).await?)
+        let path = if url.starts_with("https://pokeapi.co/") {
+            self.api_path(&req).await?
         } else if let Some(rest) = url.strip_prefix("https://raw.githubusercontent.com/PokeAPI/sprites/master/") {
-            Some(self.path.join(rest))
+            self.path.join(rest)
         } else if let Some(rest) = url.strip_prefix("https://raw.githubusercontent.com/PokeAPI/cries/main/") {
-            Some(self.path.join(rest))
+            self.path.join(rest)
         } else {
-            None
-        }
-        .context("invalid url, cannot map to offline path")?;
+            return Err(anyhow!("invalid url, cannot map to offline path").into());
+        };
 
         let bytes = async_fs::read(&path).await.context("failed to read local file")?;
 
