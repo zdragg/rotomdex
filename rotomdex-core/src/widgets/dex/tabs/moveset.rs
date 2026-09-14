@@ -50,15 +50,15 @@ impl<'a> Widget for MovesetTabWidget<'a> {
             Block::bordered().style(Color::DarkGray).render(areas[0], buf);
             Block::bordered().style(Color::DarkGray).render(areas[2], buf);
             return;
+        } else {
+            let left_idx = (center_idx + bucket_cnt - 1) % bucket_cnt;
+            let (left_method, left_moves) = nonempty_buckets[left_idx];
+            render_left(left_moves, left_method.to_line(), areas[0], buf);
+
+            let right_idx = (center_idx + 1) % bucket_cnt;
+            let (right_method, right_moves) = nonempty_buckets[right_idx];
+            render_right(right_moves, right_method.to_line(), areas[2], buf);
         }
-
-        let left_idx = (center_idx + bucket_cnt - 1) % bucket_cnt;
-        let (left_method, left_moves) = nonempty_buckets[left_idx];
-        render_left(left_moves, left_method.to_line(), areas[0], buf);
-
-        let right_idx = (center_idx + 1) % bucket_cnt;
-        let (right_method, right_moves) = nonempty_buckets[right_idx];
-        render_right(right_moves, right_method.to_line(), areas[2], buf);
 
         // Render details overlaid on everything else if enabled
         if self.state.move_detail_mode {
