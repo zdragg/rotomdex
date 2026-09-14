@@ -37,6 +37,10 @@ impl<'a> TabsWidget<'a> {
 
 impl Widget for TabsWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        if self.variant.is_none() {
+            return;
+        }
+
         let [tab_area, content_area] = area.layout(&Layout::vertical(constraints![==1, *=1]).spacing(1));
 
         Tabs::new(DexTab::iter().map(|e| e.to_string()))
