@@ -82,7 +82,7 @@ impl ModelTypes {
         prim.def_halfx().iter().for_each(|t| counter[*t as usize] >>= 1);
         secd.def_halfx().iter().for_each(|t| counter[*t as usize] >>= 1);
 
-        let [mut four, mut two, mut half, mut quarter, mut zero] = std::array::from_fn(|_| vec![]);
+        let [mut four, mut two, mut half, mut quarter, mut zero] = [const { vec![] }; 5];
 
         for (num, type_) in counter.iter().zip(ModelType::iter()) {
             match num {

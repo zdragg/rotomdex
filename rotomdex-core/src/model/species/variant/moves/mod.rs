@@ -23,7 +23,7 @@ pub(crate) struct ModelMoves {
 
 impl ModelMoves {
     pub(crate) fn new(moves: Vec<PokemonMove>, ctx: &ModelContext) -> Result<Self> {
-        let mut move_baskets = std::array::from_fn(|_| Vec::new());
+        let mut move_baskets = [const { vec![] }; ModelMoveLearnMethod::COUNT];
         for m in moves {
             for move_version in &m.version_group_details {
                 let Ok(version) = move_version.version_group.name.parse::<VersionGroup>() else {
