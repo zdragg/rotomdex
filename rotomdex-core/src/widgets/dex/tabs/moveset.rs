@@ -6,8 +6,8 @@ use crate::widgets::dex::tabs::TabAction;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{HorizontalAlignment, Layout, Margin, Rect};
 use ratatui::macros::constraints;
-use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::text::{Line, Span, ToLine, ToSpan};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span, ToLine};
 use ratatui::widgets::{Block, Clear, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap};
 
 pub(super) struct MovesetTabWidget<'a> {
@@ -130,10 +130,10 @@ fn move_line(move_: &ModelVersionMove, width: usize, method: ModelMoveLearnMetho
     };
 
     let left = match method {
-        ModelMoveLearnMethod::LevelUp => Span::raw(format!("lv{}", level_learned_at)),
+        ModelMoveLearnMethod::LevelUp => Span::raw(format!(" lv{}", level_learned_at)),
         ModelMoveLearnMethod::Machine => {
             if let Some(machine) = move_.machine.as_ref().and_then(|resource| resource.as_loaded()) {
-                machine.to_span()
+                Span::raw(format!(" {}", machine))
             } else {
                 Span::default()
             }
@@ -224,12 +224,12 @@ fn render_details(move_: &ModelVersionMove, area: Rect, buf: &mut Buffer) {
     let info_span = Span::raw(format!("{power} {acc} {chance}"));
     info_span.render(info_area, buf);
 
+    let mut lines = vec![];
+
     if let Some(text) = move_.short_effect.as_ref().or(move_.effect.as_ref()) {
-        Paragraph::new(text.as_str())
-            .gray()
-            .wrap(Wrap { trim: true })
-            .render(text_area, buf);
+        lines.push(Line::styled(text.as_str(), Color::White));
     }
+    Paragraph::new(lines).wrap(Wrap { trim: true }).render(text_area, buf);
 }
 
 #[derive(Default)]
