@@ -141,7 +141,7 @@ impl ModelTypeEffectiveness {
 
         let mut push_spans = |symbol: &'static str, types: Cow<'static, [ModelType]>| {
             if !types.is_empty() {
-                spans.push(Span::raw(symbol).bold());
+                spans.push(Span::raw(symbol));
                 for type_ in types.iter() {
                     let span = Span::styled(type_.initial(), type_.tui_color());
                     spans.push(span);

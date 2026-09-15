@@ -1,5 +1,5 @@
 use crate::InnerActionResult;
-use crate::model::{ModelAbility, ModelVariant, Resource};
+use crate::model::{ModelAbility, ModelSpecies, ModelVariant, Resource};
 use crate::widgets::RenderBlockExt;
 use crate::widgets::dex::tabs::TabAction;
 use ratatui::buffer::Buffer;
@@ -10,12 +10,13 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Widget, Wrap};
 
 pub(super) struct AbilitiesTabWidget<'a> {
+    species: Option<&'a ModelSpecies>,
     variant: Option<&'a ModelVariant>,
 }
 
 impl<'a> AbilitiesTabWidget<'a> {
-    pub(super) fn new(variant: Option<&'a ModelVariant>) -> Self {
-        Self { variant }
+    pub(super) fn new(species: Option<&'a ModelSpecies>, variant: Option<&'a ModelVariant>) -> Self {
+        Self { species, variant }
     }
 }
 
@@ -27,13 +28,21 @@ impl<'a> Widget for AbilitiesTabWidget<'a> {
 
         let [first, second, hidden] = variant.abilities.get();
 
-        let area = render_ability(first, false, area, buf);
-        let area = render_ability(second, false, area, buf);
-        let _ = render_ability(hidden, true, area, buf);
+        let area = render_ability(self.species, first, false, area, buf);
+        let area = render_ability(self.species, second, false, area, buf);
+        let _ = render_ability(self.species, hidden, true, area, buf);
     }
 }
 
-fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, area: Rect, buf: &mut Buffer) -> Rect {
+fn render_ability(
+    species: Option<&ModelSpecies>,
+    ability: Option<&Resource<ModelAbility>>,
+    is_hidden: bool,
+    area: Rect,
+    buf: &mut Buffer,
+) -> Rect {
+    let color = species.map_or(Color::Reset, |species| species.color);
+
     let Some(ability) = ability else {
         return area;
     };
@@ -41,18 +50,23 @@ fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, are
     let Some(ability) = ability.as_loaded() else {
         let rest_area = Block::default()
             .borders(Borders::TOP)
-            .title(Line::raw("── loading "))
+            .title(Line::from(vec![Span::raw("── loading ")]))
             .render_inner(area, buf);
         return rest_area;
     };
 
     let block_title = if is_hidden {
         Line::from(vec![
-            Span::raw(format!("── {}", ability.name)),
+            Span::raw("── "),
+            Span::styled(&ability.name, color),
             Span::styled(" (hidden) ", Color::DarkGray),
         ])
     } else {
-        Line::raw(format!("── {} ", ability.name))
+        Line::from(vec![
+            Span::raw("── "),
+            Span::styled(&ability.name, color),
+            Span::raw(" "),
+        ])
     };
 
     let area = Block::default()
@@ -61,7 +75,9 @@ fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, are
         .render_inner(area, buf);
 
     if let Some(flavor_text) = &ability.flavor_text {
-        let text = Paragraph::new(flavor_text.as_str()).wrap(Wrap { trim: true });
+        let text = Paragraph::new(flavor_text.as_str())
+            .style(Color::White)
+            .wrap(Wrap { trim: true });
         let line_count = text.line_count(area.width);
         let [this_area, rest_area] = area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
         text.render(this_area, buf);

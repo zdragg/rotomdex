@@ -87,7 +87,7 @@ impl Fetchable for ModelSpecies {
 
 fn color(name: &str) -> Color {
     match name {
-        "black" => Color::Black,
+        "black" => Color::Gray,
         "blue" => Color::Blue,
         "brown" => Color::Yellow,
         "gray" => Color::Gray,
@@ -95,7 +95,7 @@ fn color(name: &str) -> Color {
         "pink" => Color::LightMagenta,
         "purple" => Color::Magenta,
         "red" => Color::Red,
-        "white" => Color::Gray,
+        "white" => Color::White,
         "yellow" => Color::Yellow,
         _ => unreachable!(),
     }

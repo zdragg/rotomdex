@@ -96,7 +96,10 @@ fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> R
 
     let [this_area, rest_area] = area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
 
-    let this_area = Block::default().borders(Borders::LEFT).render_inner(this_area, buf);
+    let this_area = Block::default()
+        .borders(Borders::LEFT)
+        .style(species.color)
+        .render_inner(this_area, buf);
     flavor.render(this_area, buf);
 
     rest_area
@@ -122,7 +125,7 @@ fn render_evolutions(
     let views = chain.get_views();
 
     if views.len() <= 1 {
-        Line::styled("No evolutions!", Color::Yellow).render(area, buf);
+        Line::styled("No evolutions!", species.color).render(area, buf);
         return;
     }
 
@@ -154,7 +157,7 @@ fn render_evolutions(
             Span::raw(view.species_name)
         };
         let name = if view.species_name == species.name {
-            name.style(Color::Yellow)
+            name.style(species.color)
         } else {
             name
         };

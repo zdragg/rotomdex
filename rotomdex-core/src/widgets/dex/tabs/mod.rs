@@ -10,7 +10,7 @@ use crate::widgets::dex::tabs::overview::{OverviewTabWidget, OverviewTabWidgetSt
 use crate::{DexKeyCode, InnerActionResult};
 use ratatui::layout::Layout;
 use ratatui::macros::constraints;
-use ratatui::style::Style;
+use ratatui::style::{Color, Style};
 use ratatui::widgets::Tabs;
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 use strum::{Display, EnumCount, EnumIter, IntoEnumIterator, VariantArray};
@@ -43,8 +43,11 @@ impl Widget for TabsWidget<'_> {
 
         let [tab_area, content_area] = area.layout(&Layout::vertical(constraints![==1, *=1]).spacing(1));
 
+        let selected_color = self.species.map_or(Color::Reset, |species| species.color);
         Tabs::new(DexTab::iter().map(|e| e.to_string()))
-            .highlight_style(Style::default().black().on_white().bold())
+            .divider(" ")
+            .style(Color::DarkGray)
+            .highlight_style(Style::default().bold().patch(selected_color))
             .select(self.state.selected_tab.get(DexTab::COUNT))
             .render(tab_area, buf);
 
@@ -52,8 +55,10 @@ impl Widget for TabsWidget<'_> {
             DexTab::Overview => {
                 OverviewTabWidget::new(self.species, self.variant, &self.state.overview_state).render(content_area, buf)
             }
-            DexTab::Abilities => AbilitiesTabWidget::new(self.variant).render(content_area, buf),
-            DexTab::Moveset => MovesetTabWidget::new(self.variant, &self.state.moveset_state).render(content_area, buf),
+            DexTab::Abilities => AbilitiesTabWidget::new(self.species, self.variant).render(content_area, buf),
+            DexTab::Moveset => {
+                MovesetTabWidget::new(self.variant, self.species, &self.state.moveset_state).render(content_area, buf)
+            }
         };
     }
 }

@@ -68,12 +68,16 @@ impl SearchWidgetState {
 impl<'a> Widget for SearchWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let span = if self.state.searching {
-            Span::raw(format!(" :{} ", self.state.input.as_str()))
+            vec![Span::styled(format!(" :{} ", self.state.input.as_str()), Color::Reset)]
         } else if let Some(error) = self.displayed_error {
-            Span::styled(format!(" {} ", error), Color::Red)
+            vec![Span::styled(format!(" {} ", error), Color::Red)]
         } else {
-            const TEXT: &str = "Type / to see keybinds • Exit with Ctrl-C";
-            Span::styled(format!(" {} ", TEXT), Color::DarkGray)
+            vec![
+                Span::raw(" /"),
+                Span::styled(":keybinds ", Color::DarkGray),
+                Span::raw("Ctrl+C"),
+                Span::styled(":exit ", Color::DarkGray),
+            ]
         };
 
         Line::from(span).centered().render(area, buf);

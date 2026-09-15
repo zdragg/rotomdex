@@ -1,17 +1,17 @@
+mod keybinds;
 mod name;
 mod search;
 mod sprite;
 mod stats;
 mod tabs;
-mod tutorial;
 mod variant;
 mod versions;
 
 use crate::model::Resource;
+use crate::widgets::dex::keybinds::{TutorialWidget, TutorialWidgetState};
 use crate::widgets::dex::search::{SearchWidget, SearchWidgetState};
 use crate::widgets::dex::sprite::SpriteWidgetState;
 use crate::widgets::dex::tabs::TabsWidgetState;
-use crate::widgets::dex::tutorial::{TutorialWidget, TutorialWidgetState};
 use crate::widgets::dex::versions::{VersionState, VersionWidget};
 use crate::widgets::{Cursor, RenderBlockExt};
 use crate::{
@@ -83,7 +83,7 @@ impl Widget for DexWidget<'_> {
         NameWidget::new(species, variant).render(name_area, buf);
         VariantSelectorWidget::new(species, variant_idx).render(variants_area, buf);
         TabsWidget::new(species, variant, &self.state.tabs_state).render(tab_area, buf);
-        TutorialWidget::new(&self.state.tutorial_state).render(area, buf);
+        TutorialWidget::new(species, &self.state.tutorial_state).render(area, buf);
         VersionWidget::new(self.version, &self.state.version_state).render(stats_area, buf);
     }
 }

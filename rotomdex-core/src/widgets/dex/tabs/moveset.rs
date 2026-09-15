@@ -1,5 +1,5 @@
 use crate::InnerActionResult;
-use crate::model::{ModelDamageClass, ModelMoveLearnMethod, ModelVariant, ModelVersionMove};
+use crate::model::{ModelDamageClass, ModelMoveLearnMethod, ModelSpecies, ModelVariant, ModelVersionMove};
 use crate::widgets::RenderBlockExt;
 use crate::widgets::common::Cursor;
 use crate::widgets::dex::tabs::TabAction;
@@ -11,13 +11,22 @@ use ratatui::text::{Line, Span, ToLine, ToSpan};
 use ratatui::widgets::{Block, Clear, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap};
 
 pub(super) struct MovesetTabWidget<'a> {
+    species: Option<&'a ModelSpecies>,
     variant: Option<&'a ModelVariant>,
     state: &'a MovesetTabWidgetState,
 }
 
 impl<'a> MovesetTabWidget<'a> {
-    pub(super) fn new(variant: Option<&'a ModelVariant>, state: &'a MovesetTabWidgetState) -> Self {
-        Self { variant, state }
+    pub(super) fn new(
+        variant: Option<&'a ModelVariant>,
+        species: Option<&'a ModelSpecies>,
+        state: &'a MovesetTabWidgetState,
+    ) -> Self {
+        Self {
+            variant,
+            species,
+            state,
+        }
     }
 }
 
@@ -39,6 +48,7 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         let center_idx = self.state.horizontal_cursor.get(bucket_cnt).unwrap();
         let (method, moves) = nonempty_buckets[center_idx];
         render_center(
+            self.species,
             moves,
             method,
             &mut self.state.vertical_cursor.list_state(moves.len()),
@@ -53,11 +63,11 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         } else {
             let left_idx = (center_idx + bucket_cnt - 1) % bucket_cnt;
             let (left_method, left_moves) = nonempty_buckets[left_idx];
-            render_left(left_moves, left_method.to_line(), areas[0], buf);
+            render_left(left_moves, left_method, areas[0], buf);
 
             let right_idx = (center_idx + 1) % bucket_cnt;
             let (right_method, right_moves) = nonempty_buckets[right_idx];
-            render_right(right_moves, right_method.to_line(), areas[2], buf);
+            render_right(right_moves, right_method, areas[2], buf);
         }
 
         // Render details overlaid on everything else if enabled
@@ -69,13 +79,17 @@ impl<'a> Widget for MovesetTabWidget<'a> {
 }
 
 fn render_center(
+    species: Option<&ModelSpecies>,
     moves: &[ModelVersionMove],
     method: ModelMoveLearnMethod,
     state: &mut ListState,
     area: Rect,
     buf: &mut Buffer,
 ) {
-    let block = Block::bordered().title(method.to_line());
+    let block = Block::bordered().title(Span::styled(
+        format!(" {} ", method.to_string()),
+        species.map_or(Color::Reset, |species| species.color),
+    ));
     let item_width = area.width.saturating_sub(4) as usize;
     let moves = moves
         .iter()
@@ -85,8 +99,8 @@ fn render_center(
     StatefulWidget::render(list, area, buf, state);
 }
 
-fn render_left(moves: &[ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
-    let block = Block::bordered().style(Color::DarkGray).title(title);
+fn render_left(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: Rect, buf: &mut Buffer) {
+    let block = Block::bordered().style(Color::DarkGray).title(method.to_line());
     let list = List::new(
         moves
             .iter()
@@ -97,8 +111,8 @@ fn render_left(moves: &[ModelVersionMove], title: Line, area: Rect, buf: &mut Bu
     Widget::render(list, area, buf);
 }
 
-fn render_right(moves: &[ModelVersionMove], title: Line, area: Rect, buf: &mut Buffer) {
-    let block = Block::bordered().style(Color::DarkGray).title(title);
+fn render_right(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: Rect, buf: &mut Buffer) {
+    let block = Block::bordered().style(Color::DarkGray).title(method.to_line());
     let list = List::new(
         moves
             .iter()
