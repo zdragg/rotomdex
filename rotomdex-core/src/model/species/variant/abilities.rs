@@ -138,8 +138,6 @@ impl ModelAbilities {
 pub(crate) struct ModelAbility {
     pub(crate) name: String,
     pub(crate) flavor_text: Option<String>,
-    pub(crate) short_desc: Option<String>,
-    pub(crate) long_desc: Option<String>,
 }
 
 impl Fetchable for ModelAbility {
@@ -163,18 +161,10 @@ impl Fetchable for ModelAbility {
             })
             .next();
 
-        let (short_desc, long_desc) = ability
-            .effect_entries
-            .into_iter()
-            .find(|effect| effect.language.name == "en")
-            .map(|effect| (effect.short_effect, effect.effect))
-            .unzip();
 
         Ok(Self {
             name,
             flavor_text,
-            short_desc,
-            long_desc,
         })
     }
 

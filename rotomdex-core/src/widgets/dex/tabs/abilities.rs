@@ -1,7 +1,7 @@
 use crate::InnerActionResult;
 use crate::model::{ModelAbility, ModelVariant, Resource};
+use crate::widgets::RenderBlockExt;
 use crate::widgets::dex::tabs::TabAction;
-use crate::widgets::{Cursor, RenderBlockExt};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Layout, Rect};
 use ratatui::macros::constraints;
@@ -72,12 +72,10 @@ fn render_ability(ability: Option<&Resource<ModelAbility>>, is_hidden: bool, are
 }
 
 #[derive(Default)]
-pub(super) struct AbilitiesTabWidgetState {
-    cursor: Cursor,
-}
+pub(super) struct AbilitiesTabWidgetState {}
 
 impl AbilitiesTabWidgetState {
-    pub(super) fn handle_action(&mut self, action: TabAction) -> InnerActionResult {
+    pub(super) fn handle_action(&mut self, _action: TabAction) -> InnerActionResult {
         InnerActionResult::Nothing
     }
 }
