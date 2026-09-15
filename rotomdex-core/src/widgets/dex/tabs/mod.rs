@@ -60,11 +60,8 @@ impl Widget for TabsWidget<'_> {
 
 #[derive(EnumCount, VariantArray, Display, EnumIter)]
 pub(crate) enum DexTab {
-    #[strum(to_string = "Ovw.")]
     Overview,
-    #[strum(to_string = "Abil.")]
     Abilities,
-    #[strum(to_string = "Moves")]
     Moveset,
 }
 
