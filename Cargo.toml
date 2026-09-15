@@ -3,6 +3,9 @@ resolver = "3"
 members = ["rotomdex-core", "rotomdex-term", "rotomdex-web"]
 default-members = ["rotomdex-term"]
 
+[workspace.package]
+repository = "https://github.com/zdragg/rotomdex"
+
 [profile.dev]
 debug = 0
 
@@ -15,3 +18,8 @@ lto = "fat"
 codegen-units = 1
 panic = "abort"
 strip = "symbols"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
