@@ -1,10 +1,34 @@
-# RotomDex
+![rotom-heat](assets/rotom-heat-v0.1.0.gif)
 
-*Pokedéx in your terminal.*
+# `rotomdex`
 
-## Offline Mode
-downloads data from [rotomdex-data](https://github.com/zdragg/rotomdex-data)
+`rotomdex` is a Pokédex built for the terminal.
+
+## Installation
+
+> [!TIP]
+> Try out a fully-featured version [on the web](https://zdragg.github.io/rotomdex)!
+
+TODO
+
+## Usage
+
+```bash
+# Run in online mode
+rotomdex
+
+# Download assets required for offline mode
+rotomdex --download
+
+# Run in offline mode
+rotomdex --offline
 ```
-cargo run -- --download # shallow clone (requires internet, obviously)
-cargo run -- --offline  # use the downloaded data offline
-```
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first
+to discuss what you would like to change.
+
+## License
+
+[AGPL-3.0-or-later](https://choosealicense.com/licenses/agpl-3.0/)
