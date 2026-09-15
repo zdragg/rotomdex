@@ -2,11 +2,11 @@ use std::borrow::Cow;
 
 use ratatui::{
     buffer::Buffer,
-    layout::{Alignment, Layout, Rect},
+    layout::{Layout, Rect},
     macros::constraints,
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph, Widget},
+    widgets::{Block, BorderType, Clear, Paragraph, Widget},
 };
 
 use crate::model::ModelSpecies;
@@ -88,7 +88,12 @@ impl<'a> Widget for TutorialWidget<'a> {
 
         Clear.render(area, buf);
         Paragraph::new(commands)
-            .block(Block::bordered().title("Keybinds").title_alignment(Alignment::Right))
+            .block(
+                Block::bordered()
+                    .border_type(BorderType::Rounded)
+                    .border_style(color)
+                    .title(" Keybinds "),
+            )
             .render(area, buf);
     }
 }

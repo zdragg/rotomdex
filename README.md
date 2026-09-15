@@ -8,6 +8,7 @@
 - Demand-driven asynchronous asset fetching
 - Hotswappable versions
 - Offline mode
+- Designed for 80x24
 
 ## Installation
 

@@ -1,14 +1,14 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Alignment, Layout, Rect},
+    layout::{Layout, Rect},
     macros::constraints,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Clear, HighlightSpacing, List, ListItem, StatefulWidget, Widget},
+    widgets::{Block, BorderType, Clear, HighlightSpacing, List, ListItem, StatefulWidget, Widget},
 };
 use strum::{EnumCount, VariantArray};
 
-use crate::{DexKeyCode, InnerActionResult, Version, VersionGroup, widgets::Cursor};
+use crate::{DexKeyCode, InnerActionResult, Version, VersionGroup, model::ModelSpecies, widgets::Cursor};
 
 #[derive(Default)]
 pub struct VersionState {
@@ -70,13 +70,18 @@ impl VersionState {
 }
 
 pub struct VersionWidget<'a> {
+    species: Option<&'a ModelSpecies>,
     version: Version,
     state: &'a VersionState,
 }
 
 impl<'a> VersionWidget<'a> {
-    pub(crate) fn new(version: Version, state: &'a VersionState) -> Self {
-        Self { version, state }
+    pub(crate) fn new(species: Option<&'a ModelSpecies>, version: Version, state: &'a VersionState) -> Self {
+        Self {
+            species,
+            version,
+            state,
+        }
     }
 }
 
@@ -87,6 +92,8 @@ impl<'a> Widget for VersionWidget<'a> {
         if !self.state.enabled {
             return;
         }
+
+        let color = self.species.map_or(Color::DarkGray, |species| species.color);
 
         let [area, _] = area.layout(&Layout::horizontal(constraints![==WIDTH, *=1]));
 
@@ -115,7 +122,12 @@ impl<'a> Widget for VersionWidget<'a> {
         });
 
         let list = List::new(items)
-            .block(Block::bordered().title("Versions").title_alignment(Alignment::Left))
+            .block(
+                Block::bordered()
+                    .border_type(BorderType::Rounded)
+                    .border_style(color)
+                    .title("Versions"),
+            )
             .highlight_symbol("> ")
             .scroll_padding(1)
             .highlight_spacing(HighlightSpacing::Always);
