@@ -4,6 +4,11 @@
 
 `rotomdex` is a Pokédex built for the terminal.
 
+## Features
+- Demand-driven asynchronous asset fetching
+- Hotswappable versions
+- Offline mode
+
 ## Installation
 
 > [!TIP]
@@ -32,3 +37,9 @@ to discuss what you would like to change.
 ## License
 
 [AGPL-3.0-or-later](https://choosealicense.com/licenses/agpl-3.0/)
+
+## Credits
+
+[PokéAPI](https://pokeapi.co/)
+
+[Ratatui](https://ratatui.rs/)
