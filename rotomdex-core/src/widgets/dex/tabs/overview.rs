@@ -122,15 +122,15 @@ fn render_evolutions(
     let views = chain.get_views();
 
     if views.len() <= 1 {
-        Line::styled("Only child!", Color::Yellow).render(area, buf);
+        Line::styled("No evolutions!", Color::Yellow).render(area, buf);
         return;
     }
-
-    let [tree_area, detail_area] = area.layout(&Layout::horizontal(constraints![==40%, *=1]));
 
     let selected = cursor.get(views.len()).unwrap();
     let mut lines = Vec::with_capacity(views.len());
     let mut ancestor_prefix = Vec::new();
+
+    let mut max_width = 0usize;
 
     for (index, view) in views.iter().enumerate() {
         if selected == index && state.needs_new_name.get() {
@@ -158,13 +158,21 @@ fn render_evolutions(
         } else {
             name
         };
-        let line = Line::from(if selected == index {
-            vec![Span::raw(prefix), name, Span::raw(" <")]
-        } else {
-            vec![Span::raw(prefix), name]
-        });
+
+        let mut line = Line::from(vec![Span::raw(prefix), name]);
+
+        max_width = max_width.max(line.width()); // calculate max width WITHOUT the indicator
+
+        if selected == index {
+            line.push_span(Span::raw(" <"));
+        }
+
         lines.push(line);
     }
+
+    max_width += 3; // Account for indiactor space
+
+    let [tree_area, detail_area] = area.layout(&Layout::horizontal(constraints![==max_width as u16, *=1]).spacing(1));
 
     let list = List::new(lines).scroll_padding(1);
 
@@ -176,7 +184,9 @@ fn render_evolutions(
 fn render_evo_details(detail: &ModelEvolutionDetail, area: Rect, buf: &mut Buffer) {
     let reqs = detail.to_strings();
     if reqs.is_empty() {
-        Span::styled("No evolution found", Color::Red).render(area, buf);
+        Paragraph::new(Line::styled("No evolution to species found in version", Color::Red))
+            .wrap(Wrap { trim: true })
+            .render(area, buf);
         return;
     };
 
