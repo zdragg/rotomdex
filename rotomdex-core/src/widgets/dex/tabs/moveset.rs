@@ -8,7 +8,7 @@ use ratatui::layout::{HorizontalAlignment, Layout, Margin, Rect};
 use ratatui::macros::constraints;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, ToLine};
-use ratatui::widgets::{Block, Clear, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap};
+use ratatui::widgets::{Block, BorderType, Clear, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap};
 
 pub(super) struct MovesetTabWidget<'a> {
     species: Option<&'a ModelSpecies>,
@@ -34,8 +34,10 @@ impl<'a> Widget for MovesetTabWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let areas: [Rect; 3] = area.layout(&Layout::horizontal(constraints![*=1, *=4, *=1]));
 
-        let Some(variant) = self.variant else {
-            areas.into_iter().for_each(|area| Block::bordered().render(area, buf));
+        let Some((variant, species)) = self.variant.zip(self.species) else {
+            areas
+                .into_iter()
+                .for_each(|area| Block::bordered().border_type(BorderType::Rounded).render(area, buf));
             return;
         };
 
@@ -48,7 +50,7 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         let center_idx = self.state.horizontal_cursor.get(bucket_cnt).unwrap();
         let (method, moves) = nonempty_buckets[center_idx];
         render_center(
-            self.species,
+            species,
             moves,
             method,
             &mut self.state.vertical_cursor.list_state(moves.len()),
@@ -73,23 +75,24 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         // Render details overlaid on everything else if enabled
         if self.state.move_detail_mode {
             let selected_move = &moves[self.state.vertical_cursor.get(moves.len()).unwrap()];
-            render_details(selected_move, area, buf);
+            render_details(species, selected_move, area, buf);
         }
     }
 }
 
 fn render_center(
-    species: Option<&ModelSpecies>,
+    species: &ModelSpecies,
     moves: &[ModelVersionMove],
     method: ModelMoveLearnMethod,
     state: &mut ListState,
     area: Rect,
     buf: &mut Buffer,
 ) {
-    let block = Block::bordered().title(Span::styled(
-        format!(" {} ", method),
-        species.map_or(Color::Reset, |species| species.color),
-    ));
+    let block = Block::bordered()
+        .title(Span::raw(format!(" {} ", method)))
+        .border_type(BorderType::Rounded)
+        .border_style(species.color);
+
     let item_width = area.width.saturating_sub(4) as usize;
     let moves = moves
         .iter()
@@ -100,7 +103,10 @@ fn render_center(
 }
 
 fn render_left(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: Rect, buf: &mut Buffer) {
-    let block = Block::bordered().style(Color::DarkGray).title(method.to_line());
+    let block = Block::bordered()
+        .border_type(BorderType::Rounded)
+        .style(Color::DarkGray)
+        .title(method.to_line());
     let list = List::new(
         moves
             .iter()
@@ -112,7 +118,10 @@ fn render_left(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: R
 }
 
 fn render_right(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: Rect, buf: &mut Buffer) {
-    let block = Block::bordered().style(Color::DarkGray).title(method.to_line());
+    let block = Block::bordered()
+        .border_type(BorderType::Rounded)
+        .style(Color::DarkGray)
+        .title(method.to_line());
     let list = List::new(
         moves
             .iter()
@@ -188,10 +197,12 @@ fn merge_spans<'a>(
     Line::from(spans)
 }
 
-fn render_details(move_: &ModelVersionMove, area: Rect, buf: &mut Buffer) {
+fn render_details(species: &ModelSpecies, move_: &ModelVersionMove, area: Rect, buf: &mut Buffer) {
     let area = area.inner(Margin::new(1, 1));
     Clear.render(area, buf);
     let area = Block::bordered()
+        .border_type(BorderType::Rounded)
+        .border_style(species.color)
         .padding(Padding::symmetric(3, 1))
         .render_inner(area, buf);
 

@@ -23,6 +23,7 @@ use crate::{
 };
 use crate::{InnerActionResult, Version};
 use ratatui::macros::constraints;
+use ratatui::widgets::BorderType;
 use ratatui::{
     buffer::Buffer,
     layout::{Layout, Rect},
@@ -63,7 +64,9 @@ impl Widget for DexWidget<'_> {
         // Block + bottom text / search widget render
         let [_area, bottom_text_area] = area.layout(&Layout::vertical(constraints![*=1, ==1]));
 
-        let block = Block::bordered().border_style(species.map_or(Color::DarkGray, |species| species.color));
+        let block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .border_style(species.map_or(Color::DarkGray, |species| species.color));
         let area = block.render_inner(area, buf);
 
         let displayed_error = if let Resource::Failed(error) = &self.pkmn.species {
