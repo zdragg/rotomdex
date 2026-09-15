@@ -137,13 +137,14 @@ impl RotomDexCore {
 
         match action_result {
             InnerActionResult::Nothing => (),
-            InnerActionResult::NewPokemon(name) => {
-                if name == "q" {
-                    return ActionResult::Exit;
+            InnerActionResult::NewPokemon(name) => match name.as_str() {
+                "q" => return ActionResult::Exit,
+                "" => return ActionResult::Nothing,
+                _ => {
+                    self.pkmn_name = name;
+                    self.refresh();
                 }
-                self.pkmn_name = name;
-                self.refresh();
-            }
+            },
             InnerActionResult::NewVersion(version) => {
                 self.ctx.version = version;
                 self.refresh();

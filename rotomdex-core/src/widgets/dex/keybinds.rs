@@ -82,7 +82,7 @@ impl<'a> Widget for TutorialWidget<'a> {
 
         let commands = KEYBIND_SPANS
             .into_iter()
-            .zip(DESCRIPTION_SPANS.into_iter())
+            .zip(DESCRIPTION_SPANS)
             .map(|(key, desc)| Line::from(vec![key.style(color), desc]))
             .collect::<Vec<_>>();
 

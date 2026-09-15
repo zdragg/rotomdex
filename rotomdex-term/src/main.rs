@@ -112,6 +112,10 @@ fn map_event(event: Event) -> Option<(DexKeyModifiers, DexKeyCode)> {
         return None;
     };
 
+    if event.is_release() {
+        return None;
+    }
+
     let key_code = match event.code {
         KeyCode::Char(ch) => DexKeyCode::Char(ch),
         KeyCode::Backspace => DexKeyCode::Backspace,

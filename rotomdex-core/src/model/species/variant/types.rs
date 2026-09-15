@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use crate::{Generation, ModelContext};
 use color_eyre::eyre::{Result, eyre};
 use colorgrad::{GradientBuilder, LinearGradient};
-use ratatui::{style::Stylize, text::Span};
+use ratatui::text::Span;
 use rustemon::model::pokemon::{PokemonType, PokemonTypePast};
 use strum::{Display, EnumCount, EnumIter, EnumString, IntoEnumIterator};
 

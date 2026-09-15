@@ -87,7 +87,7 @@ fn render_center(
     buf: &mut Buffer,
 ) {
     let block = Block::bordered().title(Span::styled(
-        format!(" {} ", method.to_string()),
+        format!(" {} ", method),
         species.map_or(Color::Reset, |species| species.color),
     ));
     let item_width = area.width.saturating_sub(4) as usize;

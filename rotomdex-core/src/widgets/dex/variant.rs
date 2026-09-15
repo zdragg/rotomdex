@@ -31,7 +31,7 @@ impl Widget for VariantSelectorWidget<'_> {
         };
 
         if variants.len() == 1 {
-            Line::from(get_variant_spans(&species, selected, true))
+            Line::from(get_variant_spans(species, selected, true))
                 .centered()
                 .render(area, buf);
             return;
@@ -40,14 +40,14 @@ impl Widget for VariantSelectorWidget<'_> {
         let prev_idx = (cursor + variants.len() - 1) % variants.len();
         let next_idx = (cursor + 1) % variants.len();
 
-        let mut prev_span = get_variant_spans(&species, &variants[prev_idx], false);
+        let mut prev_span = get_variant_spans(species, &variants[prev_idx], false);
         prev_span.push(Span::styled(" <- ", Color::DarkGray));
         let prev_line = Line::from(prev_span);
 
-        let selected_line = Line::from(get_variant_spans(&species, selected, true));
+        let selected_line = Line::from(get_variant_spans(species, selected, true));
 
         let mut next_span = vec![Span::styled(" -> ", Color::DarkGray)];
-        next_span.append(&mut get_variant_spans(&species, &variants[next_idx], false));
+        next_span.append(&mut get_variant_spans(species, &variants[next_idx], false));
         let next_line = Line::from(next_span);
 
         let [prev_area, selected_area, next_area] = area.layout(&Layout::horizontal(
