@@ -22,22 +22,14 @@ const MIN_TERMINAL_ROWS: u32 = 25;
 const EXIT_URL: &str = "https://github.com/zdragg/rotomdex";
 
 fn main() -> Result<()> {
-    setup_logs()?;
-    run()
-}
-
-fn setup_logs() -> Result<()> {
     tracing_subscriber::fmt()
-        .fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
-        .with_max_level(tracing::Level::INFO)
-        .with_target(false)
         .with_ansi(false)
         .without_time()
         .with_writer(MakeWebConsoleWriter::new())
         .try_init()
         .map_err(|err| eyre!(err))?;
 
-    Ok(())
+    run()
 }
 
 fn run() -> Result<()> {

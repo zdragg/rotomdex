@@ -2,9 +2,8 @@
 name = "rotomdex-web"
 version = "0.1.0"
 edition = "2024"
-repository.workspace = true
-authors.workspace = true
 description.workspace = true
+repository.workspace = true
 
 [package.metadata.dist]
 dist = false
@@ -21,5 +20,5 @@ futures = "0.3.34"
 ratzilla = "0.3.1"
 rotomdex-core = { path = "../rotomdex-core" }
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["tracing-log"] }
+tracing-subscriber = "0.3.23"
 tracing-web = "0.1.3"

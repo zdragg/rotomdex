@@ -1,19 +1,21 @@
 #![forbid(unsafe_code)]
 
-use std::{fs, path::PathBuf, time::Duration};
+use std::{
+    fs, io,
+    num::NonZeroU32,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex, atomic::AtomicBool},
+    time::Duration,
+};
 
 use clap::Parser;
 use color_eyre::eyre::{Result, eyre};
 use crossterm::event::{Event, EventStream, KeyCode};
 use etcetera::{AppStrategy, AppStrategyArgs};
+use gix::remote::fetch::Shallow;
 use ratatui::prelude::Widget;
 use rotomdex_core::{ActionResult, DexKeyCode, DexKeyModifiers, RotomDexCore};
 use tokio_stream::StreamExt;
-use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::fmt::time::ChronoLocal;
-
-mod resources;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -37,54 +39,74 @@ async fn main() -> Result<()> {
         app_name: "rotomdex".to_string(),
     })?;
 
-    let data_dir = strategy.data_dir();
-    let resources = resources::ResourcePaths::new(data_dir);
+    let resource_git_repo_dir = strategy.in_data_dir("resource");
+
     if cli.download {
-        resources.download()?;
+        download_repo(&resource_git_repo_dir)?;
         return Ok(());
     }
 
-    let _log_guard = setup_logs(strategy.data_dir())?;
-    tracing::info!("──────── session started ────────");
+    fs::create_dir_all(strategy.data_dir())?;
+    let log = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(strategy.in_data_dir("app.log"))?;
+    tracing_subscriber::fmt()
+        .with_ansi(false)
+        .with_writer(Mutex::new(log))
+        .try_init()
+        .map_err(|err| eyre!(err))?;
 
-    if cli.offline {
-        resources.validate()?;
-    }
+    let config = if cli.offline {
+        PathConfig::Offline(resource_git_repo_dir)
+    } else {
+        PathConfig::Cache(strategy.cache_dir())
+    };
 
-    let result = run(strategy.cache_dir(), cli.offline.then_some(resources)).await;
+    let result = run(config).await;
 
     ratatui::restore();
     result
 }
 
-fn setup_logs(log_dir: PathBuf) -> Result<WorkerGuard> {
-    fs::create_dir_all(&log_dir)?;
+enum PathConfig {
+    Cache(PathBuf),
+    Offline(PathBuf),
+}
 
-    let appender = tracing_appender::rolling::never(log_dir, "app.log");
+const URL: &str = "https://github.com/zdragg/rotomdex-data.git";
 
-    let (writer, guard) = tracing_appender::non_blocking(appender);
+fn download_repo(repo_path: &Path) -> Result<()> {
+    let should_interrupt = AtomicBool::new(false);
+    let root = prodash::tree::Root::new();
+    let mut progress = root.add_child("downloading offline resources");
 
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let renderer = prodash::render::line::render(
+        io::stdout(),
+        Arc::downgrade(&root),
+        prodash::render::line::Options {
+            throughput: true,
+            ..Default::default()
+        }
+        .auto_configure(prodash::render::line::StreamKind::Stderr),
+    );
 
-    tracing_subscriber::fmt()
-        .fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
-        .with_ansi(false)
-        .with_env_filter(filter)
-        .with_writer(writer)
-        .with_target(false)
-        .with_timer(ChronoLocal::new("[%H:%M:%S%.3f]".to_owned()))
-        .try_init()
-        .map_err(|err| eyre!(err))?;
+    let (mut checkout, _outcome) = gix::prepare_clone(URL, repo_path)?
+        .with_shallow(Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap()))
+        .fetch_then_checkout(&mut progress, &should_interrupt)?;
 
-    Ok(guard)
+    checkout.main_worktree(&mut progress, &should_interrupt)?;
+
+    renderer.shutdown_and_wait();
+
+    Ok(())
 }
 
 const FRAMES_PER_SECOND: f32 = 33.3;
-async fn run(cache_dir: PathBuf, resources: Option<resources::ResourcePaths>) -> Result<()> {
-    let mut core = if let Some(resources) = resources {
-        RotomDexCore::new_offline(resources.resource_path())
-    } else {
-        RotomDexCore::new_cached(cache_dir)
+async fn run(config: PathConfig) -> Result<()> {
+    let mut core = match config {
+        PathConfig::Cache(cache_dir) => RotomDexCore::new_cached(cache_dir),
+        PathConfig::Offline(resource_path) => RotomDexCore::new_offline(resource_path),
     };
     let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
     let mut terminal = ratatui::init();

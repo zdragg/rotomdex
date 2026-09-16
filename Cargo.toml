@@ -4,22 +4,21 @@ members = ["rotomdex-core", "rotomdex-term", "rotomdex-web"]
 default-members = ["rotomdex-term"]
 
 [workspace.package]
+description = "A Pokédex built for the terminal"
 repository = "https://github.com/zdragg/rotomdex"
-authors = ["drag (@zdragg)"]
-description = "The Pokédex built for the terminal"
 
 [profile.dev]
 debug = 0
 
 [profile.dev.package."*"]
-opt-level = 3 # chafa is very intensive
+opt-level = 3  # chafa is very intensive
 
 [profile.release]
 opt-level = 3
-lto = "fat"
-codegen-units = 1
-panic = "abort"
 strip = "symbols"
+lto = "fat"
+panic = "abort"
+codegen-units = 1
 
 # The profile that 'dist' will build with
 [profile.dist]
