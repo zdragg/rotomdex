@@ -2,7 +2,7 @@
 
 # `rotomdex`
 
-`rotomdex` is a Pokédex built for the terminal.
+`rotomdex` is the Pokédex built for the terminal.
 
 ## Features
 - Demand-driven asynchronous asset fetching

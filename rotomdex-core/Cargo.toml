@@ -3,6 +3,8 @@ name = "rotomdex-core"
 version = "0.1.0"
 edition = "2024"
 repository.workspace = true
+authors.workspace = true
+description.workspace = true
 
 [dependencies]
 anyhow = "1.0.104"

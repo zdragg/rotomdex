@@ -5,6 +5,8 @@ default-members = ["rotomdex-term"]
 
 [workspace.package]
 repository = "https://github.com/zdragg/rotomdex"
+authors = ["drag (@zdragg)"]
+description = "The Pokédex built for the terminal"
 
 [profile.dev]
 debug = 0

@@ -3,6 +3,17 @@ name = "rotomdex-web"
 version = "0.1.0"
 edition = "2024"
 repository.workspace = true
+authors.workspace = true
+description.workspace = true
+
+[package.metadata.dist]
+dist = false
+
+[package.metadata.wix]
+upgrade-guid = "B85E83C3-A25F-4736-8C41-5F947A13048B"
+path-guid = "72DCF918-7FE5-4BD4-AEA8-757E77748062"
+license = false
+eula = false
 
 [dependencies]
 color-eyre = "0.6.5"

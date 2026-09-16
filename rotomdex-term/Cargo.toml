@@ -3,6 +3,18 @@ name = "rotomdex-term"
 version = "0.1.0"
 edition = "2024"
 repository.workspace = true
+authors.workspace = true
+description.workspace = true
+
+[[bin]]
+name = "rotomdex"
+path = "src/main.rs"
+
+[package.metadata.wix]
+upgrade-guid = "ECDABE41-EE95-4D8C-B432-CFAD2A23CB03"
+path-guid = "FA7779B8-F60D-4FB2-A088-77D7E1CFD558"
+license = false
+eula = false
 
 [dependencies]
 clap = { version = "4.6.0", features = ["derive"] }
