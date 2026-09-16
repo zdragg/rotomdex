@@ -1,18 +1,12 @@
 #![forbid(unsafe_code)]
+mod sync;
 
-use std::{
-    fs, io,
-    num::NonZeroU32,
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex, atomic::AtomicBool},
-    time::Duration,
-};
+use std::{fs, path::PathBuf, sync::Mutex, time::Duration};
 
 use clap::Parser;
 use color_eyre::eyre::{Result, eyre};
 use crossterm::event::{Event, EventStream, KeyCode};
 use etcetera::{AppStrategy, AppStrategyArgs};
-use gix::remote::fetch::Shallow;
 use ratatui::prelude::Widget;
 use rotomdex_core::{ActionResult, DexKeyCode, DexKeyModifiers, RotomDexCore};
 use tokio_stream::StreamExt;
@@ -42,7 +36,7 @@ async fn main() -> Result<()> {
     let resource_git_repo_dir = strategy.in_data_dir("resource");
 
     if cli.download {
-        download_repo(&resource_git_repo_dir)?;
+        sync::download_repo(&resource_git_repo_dir)?;
         return Ok(());
     }
 
@@ -72,34 +66,6 @@ async fn main() -> Result<()> {
 enum PathConfig {
     Cache(PathBuf),
     Offline(PathBuf),
-}
-
-const URL: &str = "https://github.com/zdragg/rotomdex-data.git";
-
-fn download_repo(repo_path: &Path) -> Result<()> {
-    let should_interrupt = AtomicBool::new(false);
-    let root = prodash::tree::Root::new();
-    let mut progress = root.add_child("downloading offline resources");
-
-    let renderer = prodash::render::line::render(
-        io::stdout(),
-        Arc::downgrade(&root),
-        prodash::render::line::Options {
-            throughput: true,
-            ..Default::default()
-        }
-        .auto_configure(prodash::render::line::StreamKind::Stderr),
-    );
-
-    let (mut checkout, _outcome) = gix::prepare_clone(URL, repo_path)?
-        .with_shallow(Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap()))
-        .fetch_then_checkout(&mut progress, &should_interrupt)?;
-
-    checkout.main_worktree(&mut progress, &should_interrupt)?;
-
-    renderer.shutdown_and_wait();
-
-    Ok(())
 }
 
 const FRAMES_PER_SECOND: f32 = 33.3;
