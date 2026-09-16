@@ -1,6 +1,7 @@
 name: Clippy check
 
 on:
+  workflow_dispatch:
   push:
     branches: ['**']
 

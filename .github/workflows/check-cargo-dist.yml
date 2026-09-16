@@ -1,6 +1,7 @@
 name: Dist plan
 
 on:
+  workflow_dispatch:
   push:
     branches: ['**']
 
