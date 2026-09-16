@@ -1,14 +1,10 @@
 [package]
-name = "rotomdex-term"
+name = "rotomdex"
 version = "0.1.0"
 edition = "2024"
 repository.workspace = true
 authors.workspace = true
 description.workspace = true
-
-[[bin]]
-name = "rotomdex"
-path = "src/main.rs"
 
 [package.metadata.wix]
 upgrade-guid = "ECDABE41-EE95-4D8C-B432-CFAD2A23CB03"

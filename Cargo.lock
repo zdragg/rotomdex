@@ -2774,6 +2774,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "rotomdex"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "crossterm",
+ "etcetera",
+ "git2",
+ "indicatif",
+ "ratatui",
+ "rotomdex-core",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "rotomdex-core"
 version = "0.1.0"
 dependencies = [
@@ -2804,25 +2823,6 @@ dependencies = [
  "tracing",
  "tui-big-text",
  "web-time",
-]
-
-[[package]]
-name = "rotomdex-term"
-version = "0.1.0"
-dependencies = [
- "clap",
- "color-eyre",
- "crossterm",
- "etcetera",
- "git2",
- "indicatif",
- "ratatui",
- "rotomdex-core",
- "tokio",
- "tokio-stream",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
 ]
 
 [[package]]
