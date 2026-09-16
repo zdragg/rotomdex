@@ -1,6 +1,8 @@
 name: Dist plan
 
-on: push
+on:
+  push:
+    branches: ['**']
 
 permissions:
   contents: read

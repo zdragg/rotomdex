@@ -18,20 +18,23 @@ eula = false
 [dependencies]
 clap = { version = "4.6.0", features = ["derive"] }
 color-eyre = "0.6.5"
-crossterm = { version = "0.29.0", default-features = false, features = ["event-stream"] }
+crossterm = { version = "0.29.0", default-features = false, features = [
+  "event-stream"
+] }
 etcetera = "0.11.0"
-gix = {
-  version = "0.87.1",
-  default-features = false,
-  features = [
-    "auto-chain-error",
-    "blocking-http-transport-reqwest-rust-tls",
-    "max-performance",
-    "sha1",
-    "worktree-mutation",
-  ]
-}
-prodash = { version = "31.0.0", default-features = false, features = ["progress-tree", "render-line", "render-line-autoconfigure", "render-line-crossterm"] }
+gix = { version = "0.87.1", default-features = false, features = [
+  "auto-chain-error",
+  "blocking-http-transport-reqwest-rust-tls",
+  "max-performance",
+  "sha1",
+  "worktree-mutation",
+] }
+prodash = { version = "31.0.0", default-features = false, features = [
+  "progress-tree",
+  "render-line",
+  "render-line-autoconfigure",
+  "render-line-crossterm"
+] }
 ratatui = "0.30.2"
 rotomdex-core = { path = "../rotomdex-core" }
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
