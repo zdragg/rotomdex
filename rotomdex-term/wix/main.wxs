@@ -69,7 +69,7 @@
 
         <Package Id='*'
             Keywords='Installer'
-            Description='The Pokédex built for the terminal'
+            Description='A Pokédex built for the terminal'
             Manufacturer='drag (@zdragg)'
             InstallerVersion='450'
             Languages='1033'
