@@ -16,7 +16,9 @@
 > [!TIP]
 > Try out a fully-featured version [on the web](https://zdragg.github.io/rotomdex)!
 
-On MacOS/Linux:
+For people who aren't SMELLY NERDS: [click here to download exe](https://github.com/zdragg/rotomdex/releases/latest/download/rotomdex-x86_64-pc-windows-msvc.msi)
+
+Otherwise, on MacOS/Linux:
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/zdragg/rotomdex/releases/latest/download/rotomdex-installer.sh | sh
 ```
@@ -26,7 +28,7 @@ On Windows:
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/zdragg/rotomdex/releases/latest/download/rotomdex-installer.ps1 | iex"
 ```
 
-or download from [Releases](https://github.com/zdragg/rotomdex/releases/latest/).
+or download binaries from [Releases](https://github.com/zdragg/rotomdex/releases/latest/).
 
 If you want to install from the repository, install `git` and [rustup](https://rustup.rs/), then run:
 ```sh
