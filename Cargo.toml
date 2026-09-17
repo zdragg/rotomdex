@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["rotomdex-core", "rotomdex-term", "rotomdex-web"]
+members = ["rotomdex-core", "rotomdex-term"]
 default-members = ["rotomdex-term"]
 
 [workspace.package]
@@ -16,11 +16,10 @@ opt-level = 3  # chafa is very intensive
 [profile.release]
 opt-level = 3
 strip = "symbols"
-lto = "fat"
+lto = "thin"
 panic = "abort"
 codegen-units = 1
 
 # The profile that 'dist' will build with
 [profile.dist]
 inherits = "release"
-lto = "thin"
