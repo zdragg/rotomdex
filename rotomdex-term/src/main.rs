@@ -34,6 +34,7 @@ async fn main() -> Result<()> {
     })?;
 
     let resource_git_repo_dir = strategy.in_data_dir("resource");
+    let config_path = strategy.in_config_dir("config.toml");
 
     if cli.download {
         sync::download_repo(&resource_git_repo_dir)?;
@@ -57,7 +58,7 @@ async fn main() -> Result<()> {
         PathConfig::Cache(strategy.cache_dir())
     };
 
-    let result = run(config).await;
+    let result = run(config, config_path).await;
 
     ratatui::restore();
     result
@@ -69,10 +70,10 @@ enum PathConfig {
 }
 
 const FRAMES_PER_SECOND: f32 = 33.3;
-async fn run(config: PathConfig) -> Result<()> {
+async fn run(config: PathConfig, config_path: PathBuf) -> Result<()> {
     let mut core = match config {
-        PathConfig::Cache(cache_dir) => RotomDexCore::new_cached(cache_dir),
-        PathConfig::Offline(resource_path) => RotomDexCore::new_offline(resource_path),
+        PathConfig::Cache(cache_dir) => RotomDexCore::new_cached(cache_dir, config_path),
+        PathConfig::Offline(resource_path) => RotomDexCore::new_offline(resource_path, config_path),
     };
     let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
     let mut terminal = ratatui::init();

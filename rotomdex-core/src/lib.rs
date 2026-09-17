@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+#[cfg(not(target_arch = "wasm32"))]
+mod config;
 mod context;
 mod model;
 mod versions;
@@ -25,6 +27,9 @@ pub struct RotomDexCore {
 
     pub(crate) dex_state: DexState,
     timer: web_time::Instant,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    config_path: Option<PathBuf>,
 }
 
 impl RotomDexCore {
@@ -37,6 +42,9 @@ impl RotomDexCore {
 
             dex_state: DexState::default(),
             timer: web_time::Instant::now(),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            config_path: None,
         }
     }
 
@@ -46,18 +54,30 @@ impl RotomDexCore {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn new_cached(cache_dir: PathBuf) -> Self {
+    pub fn new_cached(cache_dir: PathBuf, config_path: PathBuf) -> Self {
         let ctx = ModelContext::new_cache(cache_dir);
-        Self::from_ctx(ctx)
+        Self::from_ctx(ctx).with_config(config_path)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     /// What should be under path:
     /// api/v2/pokemon-species/index.html
     /// sprites/pokemon/132.png
-    pub fn new_offline(resource_path: PathBuf) -> Self {
+    pub fn new_offline(resource_path: PathBuf, config_path: PathBuf) -> Self {
         let ctx = ModelContext::new_offline(resource_path);
-        Self::from_ctx(ctx)
+        Self::from_ctx(ctx).with_config(config_path)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn with_config(mut self, config_path: PathBuf) -> Self {
+        if let Some(version) = config::load_version(&config_path)
+            && version != self.ctx.version
+        {
+            self.ctx.version = version;
+            self.refresh();
+        }
+        self.config_path = Some(config_path);
+        self
     }
 
     fn refresh(&mut self) {
@@ -67,6 +87,16 @@ impl RotomDexCore {
 
     pub async fn poll_pkmn(&mut self) {
         self.pkmn.poll().await;
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn persist_version(&self) {
+        let Some(path) = self.config_path.as_deref() else {
+            return;
+        };
+        if let Err(error) = config::save_version(path, self.ctx.version) {
+            tracing::warn!(?error, path = %path.display(), "failed to persist config");
+        }
     }
 
     pub fn needs_continuous_render(&self) -> bool {
@@ -148,6 +178,8 @@ impl RotomDexCore {
             InnerActionResult::NewVersion(version) => {
                 self.ctx.version = version;
                 self.refresh();
+                #[cfg(not(target_arch = "wasm32"))]
+                self.persist_version();
             }
         }
 
