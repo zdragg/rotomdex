@@ -4,6 +4,8 @@
 
 `rotomdex` is a Pokédex built for the terminal.
 
+[![Discord badge](https://img.shields.io/discord/1549998327821762701?label=discord&logo=discord&color=5865f2&link=https://discord.gg/SnVUkY3Nzj)](https://discord.gg/SnVUkY3Nzj)
+
 ## Features
 
 - Demand-driven asynchronous asset fetching
