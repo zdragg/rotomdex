@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
     })?;
 
     let resource_git_repo_dir = strategy.in_data_dir("resource");
-    let config_path = strategy.in_config_dir("config.toml");
+    let config_path = strategy.in_config_dir("config.json");
 
     if cli.download {
         sync::download_repo(&resource_git_repo_dir)?;
