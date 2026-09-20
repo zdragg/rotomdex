@@ -1,11 +1,21 @@
 [workspace]
 resolver = "3"
-members = ["rotomdex-core", "rotomdex-term"]
+members = ["rotomdex-api", "rotomdex-core", "rotomdex-gif", "rotomdex-term"]
 default-members = ["rotomdex-term"]
 
 [workspace.package]
+version = "0.1.0"
+edition = "2024"
 description = "A Pokédex built for the terminal"
 repository = "https://github.com/zdragg/rotomdex"
+license = "AGPL-3.0-only"
+
+[workspace.dependencies]
+rotomdex-api = { path = "rotomdex-api/" }
+rotomdex-core = { path = "rotomdex-core/" }
+rotomdex-gif = { path = "rotomdex-gif/" }
+serde = { version = "1.0.229", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0.151", default-features = false, features = ["alloc"] }
 
 [profile.dev]
 debug = 0

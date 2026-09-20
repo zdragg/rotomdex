@@ -1,5 +1,4 @@
-use std::borrow::Cow;
-
+use alloc::{borrow::Cow, vec::Vec};
 use ratatui::{
     buffer::Buffer,
     layout::{Layout, Rect},
@@ -9,7 +8,7 @@ use ratatui::{
     widgets::{Block, BorderType, Clear, Paragraph, Widget},
 };
 
-use crate::model::ModelSpecies;
+use crate::data::ModelSpecies;
 
 pub(super) struct TutorialWidget<'a> {
     species: Option<&'a ModelSpecies>,

@@ -1,13 +1,14 @@
 [package]
 name = "rotomdex"
-version = "0.1.0"
+version.workspace = true
 # required by cargo-dist
 # tombi: lint.rules.unused-noqa.disabled = true
 # tombi: lint.rules.deprecated.disabled = true
 authors = ["drag (@zdragg)"]  # Kept for cargo-dist compatibility
-edition = "2024"
+edition.workspace = true
 description.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [package.metadata.wix]
 upgrade-guid = "ECDABE41-EE95-4D8C-B432-CFAD2A23CB03"
@@ -16,27 +17,35 @@ license = false
 eula = false
 
 [dependencies]
+anyhow = "1.0.104"
+async-lock = "3.4.2"
+async-trait = "0.1.92"
 clap = { version = "4.6.0", features = ["derive"] }
 color-eyre = "0.6.5"
-crossterm = { version = "0.29.0", default-features = false, features = [
-  "event-stream"
-] }
+crossterm = { version = "0.29.0", default-features = false, features = ["event-stream"] }
 etcetera = "0.11.0"
-gix = { version = "0.87.1", default-features = false, features = [
-  "auto-chain-error",
-  "blocking-http-transport-reqwest-rust-tls",
-  "max-performance",
-  "sha1",
-  "worktree-mutation",
-] }
-prodash = { version = "31.0.0", default-features = false, features = [
-  "progress-tree",
-  "render-line",
-  "render-line-autoconfigure",
-  "render-line-crossterm"
-] }
+gix = {
+  version = "0.87.1",
+  default-features = false,
+  features = [
+    "auto-chain-error",
+    "blocking-http-transport-reqwest-rust-tls",
+    "max-performance",
+    "sha1",
+    "worktree-mutation",
+  ]
+}
+http = "1.5.0"
+http-cache-reqwest = "0.16.0"
+prodash = { version = "31.0.0", default-features = false, features = ["progress-tree", "render-line", "render-line-autoconfigure", "render-line-crossterm"] }
 ratatui = "0.30.2"
-rotomdex-core = { path = "../rotomdex-core" }
+reqwest = { version = "0.12.28", default-features = false, features = ["json", "rustls-tls"] }
+reqwest-middleware = "0.4.2"
+rotomdex-core = { workspace = true, features = ["std"] }
+serde.workspace = true
+serde_json.workspace = true
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
 tokio-stream = "0.1.19"
 tracing-subscriber = "0.3.23"
+url = "2.5.8"
+url-macro = "0.2.5"

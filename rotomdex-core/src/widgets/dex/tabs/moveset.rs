@@ -1,14 +1,19 @@
-use crate::InnerActionResult;
-use crate::model::{ModelDamageClass, ModelMoveLearnMethod, ModelSpecies, ModelVariant, ModelVersionMove};
+use crate::data::{
+    ModelDamageClass, ModelMoveLearnMethod, ModelSpecies, ModelVariant, ModelVersionMove,
+};
 use crate::widgets::RenderBlockExt;
 use crate::widgets::common::Cursor;
 use crate::widgets::dex::tabs::TabAction;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{HorizontalAlignment, Layout, Margin, Rect};
 use ratatui::macros::constraints;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, ToLine};
-use ratatui::widgets::{Block, BorderType, Clear, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap};
+use ratatui::widgets::{
+    Block, BorderType, Clear, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap,
+};
 
 pub(super) struct MovesetTabWidget<'a> {
     species: Option<&'a ModelSpecies>,
@@ -34,14 +39,26 @@ impl<'a> Widget for MovesetTabWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let areas: [Rect; 3] = area.layout(&Layout::horizontal(constraints![*=1, *=4, *=1]));
 
-        let Some((variant, species)) = self.variant.zip(self.species) else {
-            areas
-                .into_iter()
-                .for_each(|area| Block::bordered().border_type(BorderType::Rounded).render(area, buf));
+        let items = self
+            .species
+            .zip(self.variant)
+            .and_then(|(species, variant)| {
+                variant
+                    .moves
+                    .as_loaded()
+                    .map(|moves| (moves, species.color))
+            });
+
+        let Some((moves, color)) = items else {
+            areas.into_iter().for_each(|area| {
+                Block::bordered()
+                    .border_type(BorderType::Rounded)
+                    .render(area, buf)
+            });
             return;
         };
 
-        let nonempty_buckets = variant.moves.get_all_nonempty();
+        let nonempty_buckets = moves.get_all_nonempty();
         if nonempty_buckets.is_empty() {
             return;
         }
@@ -50,7 +67,7 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         let center_idx = self.state.horizontal_cursor.get(bucket_cnt).unwrap();
         let (method, moves) = nonempty_buckets[center_idx];
         render_center(
-            species,
+            color,
             moves,
             method,
             &mut self.state.vertical_cursor.list_state(moves.len()),
@@ -59,8 +76,12 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         );
 
         if bucket_cnt == 1 {
-            Block::bordered().style(Color::DarkGray).render(areas[0], buf);
-            Block::bordered().style(Color::DarkGray).render(areas[2], buf);
+            Block::bordered()
+                .style(Color::DarkGray)
+                .render(areas[0], buf);
+            Block::bordered()
+                .style(Color::DarkGray)
+                .render(areas[2], buf);
             return;
         } else {
             let left_idx = (center_idx + bucket_cnt - 1) % bucket_cnt;
@@ -75,13 +96,13 @@ impl<'a> Widget for MovesetTabWidget<'a> {
         // Render details overlaid on everything else if enabled
         if self.state.move_detail_mode {
             let selected_move = &moves[self.state.vertical_cursor.get(moves.len()).unwrap()];
-            render_details(species, selected_move, area, buf);
+            render_details(color, selected_move, area, buf);
         }
     }
 }
 
 fn render_center(
-    species: &ModelSpecies,
+    color: Color,
     moves: &[ModelVersionMove],
     method: ModelMoveLearnMethod,
     state: &mut ListState,
@@ -91,18 +112,26 @@ fn render_center(
     let block = Block::bordered()
         .title(Span::raw(format!(" {} ", method)))
         .border_type(BorderType::Rounded)
-        .border_style(species.color);
+        .border_style(color);
 
     let item_width = area.width.saturating_sub(4) as usize;
     let moves = moves
         .iter()
         .map(|move_| move_line(move_, item_width, method).alignment(HorizontalAlignment::Center));
-    let list = List::new(moves).highlight_symbol(">").block(block).scroll_padding(1);
+    let list = List::new(moves)
+        .highlight_symbol(">")
+        .block(block)
+        .scroll_padding(1);
 
     StatefulWidget::render(list, area, buf, state);
 }
 
-fn render_left(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: Rect, buf: &mut Buffer) {
+fn render_left(
+    moves: &[ModelVersionMove],
+    method: ModelMoveLearnMethod,
+    area: Rect,
+    buf: &mut Buffer,
+) {
     let block = Block::bordered()
         .border_type(BorderType::Rounded)
         .style(Color::DarkGray)
@@ -117,7 +146,12 @@ fn render_left(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: R
     Widget::render(list, area, buf);
 }
 
-fn render_right(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: Rect, buf: &mut Buffer) {
+fn render_right(
+    moves: &[ModelVersionMove],
+    method: ModelMoveLearnMethod,
+    area: Rect,
+    buf: &mut Buffer,
+) {
     let block = Block::bordered()
         .border_type(BorderType::Rounded)
         .style(Color::DarkGray)
@@ -132,7 +166,11 @@ fn render_right(moves: &[ModelVersionMove], method: ModelMoveLearnMethod, area: 
     Widget::render(list, area, buf);
 }
 
-fn move_line(move_: &ModelVersionMove, width: usize, method: ModelMoveLearnMethod) -> Line<'_> {
+fn move_line<'a>(
+    move_: &'a ModelVersionMove,
+    width: usize,
+    method: ModelMoveLearnMethod,
+) -> Line<'a> {
     let level_learned_at = move_.level_learned_at;
     let Some(move_) = move_.resource.as_loaded() else {
         return short_move_line(move_);
@@ -141,7 +179,11 @@ fn move_line(move_: &ModelVersionMove, width: usize, method: ModelMoveLearnMetho
     let left = match method {
         ModelMoveLearnMethod::LevelUp => Span::raw(format!(" lv{}", level_learned_at)),
         ModelMoveLearnMethod::Machine => {
-            if let Some(machine) = move_.machine.as_ref().and_then(|resource| resource.as_loaded()) {
+            if let Some(machine) = move_
+                .machine
+                .as_ref()
+                .and_then(|resource| resource.as_loaded())
+            {
                 Span::raw(format!(" {}", machine))
             } else {
                 Span::default()
@@ -156,7 +198,10 @@ fn move_line(move_: &ModelVersionMove, width: usize, method: ModelMoveLearnMetho
         ModelDamageClass::Special => Modifier::ITALIC,
         ModelDamageClass::Status => Modifier::UNDERLINED,
     };
-    let center = Span::styled(move_.name.as_str(), Style::default().patch(color).patch(modifier));
+    let center = Span::styled(
+        move_.name.as_str(),
+        Style::default().patch(color).patch(modifier),
+    );
 
     let power = move_.power.map_or("_".to_string(), |x| x.to_string());
     let accuracy = move_.accuracy.map_or("_".to_string(), |x| x.to_string());
@@ -178,7 +223,12 @@ fn merge_spans<'a>(
     let left = left.into().spans;
     let center = center.into().spans;
     let right = right.into().spans;
-    let span_width = |spans: &[Span<'_>]| spans.iter().map(|span| span.content.chars().count()).sum::<usize>();
+    let span_width = |spans: &[Span<'_>]| {
+        spans
+            .iter()
+            .map(|span| span.content.chars().count())
+            .sum::<usize>()
+    };
 
     let left_width = span_width(&left);
     let center_width = span_width(&center);
@@ -197,12 +247,12 @@ fn merge_spans<'a>(
     Line::from(spans)
 }
 
-fn render_details(species: &ModelSpecies, move_: &ModelVersionMove, area: Rect, buf: &mut Buffer) {
+fn render_details(color: Color, move_: &ModelVersionMove, area: Rect, buf: &mut Buffer) {
     let area = area.inner(Margin::new(1, 1));
     Clear.render(area, buf);
     let area = Block::bordered()
         .border_type(BorderType::Rounded)
-        .border_style(species.color)
+        .border_style(color)
         .padding(Padding::symmetric(3, 1))
         .render_inner(area, buf);
 
@@ -211,7 +261,8 @@ fn render_details(species: &ModelSpecies, move_: &ModelVersionMove, area: Rect, 
         return;
     };
 
-    let [name_area, info_area, _, text_area] = area.layout(&Layout::vertical(constraints![==1, ==1, ==1, *=1]));
+    let [name_area, info_area, _, text_area] =
+        area.layout(&Layout::vertical(constraints![==1, ==1, ==1, *=1]));
 
     let name_style = Style::from(move_.type_.tui_color());
     let name_style = match move_.damage_class {
@@ -225,10 +276,17 @@ fn render_details(species: &ModelSpecies, move_: &ModelVersionMove, area: Rect, 
 
     let effectiveness_spans = move_.type_.atk_effectiveness().into_spans();
 
-    Line::from_iter(itertools::chain!([name_span], [damage_class_span], effectiveness_spans)).render(name_area, buf);
+    Line::from_iter(itertools::chain!(
+        [name_span],
+        [damage_class_span],
+        effectiveness_spans
+    ))
+    .render(name_area, buf);
 
     let power = move_.power.map_or("bp: N/A".into(), |x| format!("bp: {x}"));
-    let acc = move_.accuracy.map_or("acc: N/A".into(), |x| format!("acc: {x}%"));
+    let acc = move_
+        .accuracy
+        .map_or("acc: N/A".into(), |x| format!("acc: {x}%"));
     let chance = move_
         .effect_chance
         .map_or("effect: N/A".into(), |x| format!("effect: {x}%"));
@@ -240,7 +298,9 @@ fn render_details(species: &ModelSpecies, move_: &ModelVersionMove, area: Rect, 
     if let Some(text) = move_.short_effect.as_ref().or(move_.effect.as_ref()) {
         lines.push(Line::styled(text.as_str(), Color::White));
     }
-    Paragraph::new(lines).wrap(Wrap { trim: true }).render(text_area, buf);
+    Paragraph::new(lines)
+        .wrap(Wrap { trim: true })
+        .render(text_area, buf);
 }
 
 #[derive(Default)]
@@ -252,7 +312,7 @@ pub(super) struct MovesetTabWidgetState {
 }
 
 impl MovesetTabWidgetState {
-    pub(super) fn handle_action(&mut self, action: TabAction) -> InnerActionResult {
+    pub(super) fn handle_action(&mut self, action: TabAction) {
         if !self.move_detail_mode {
             match action {
                 TabAction::Right => {
@@ -270,10 +330,11 @@ impl MovesetTabWidgetState {
             }
         } else {
             match action {
-                TabAction::Enter | TabAction::Escape => self.move_detail_mode = !self.move_detail_mode,
+                TabAction::Enter | TabAction::Escape => {
+                    self.move_detail_mode = !self.move_detail_mode
+                }
                 _ => {}
             }
         }
-        InnerActionResult::Nothing
     }
 }

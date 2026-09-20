@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+
+mod client;
+mod session_rw;
 mod sync;
 
 use std::{fs, path::PathBuf, sync::Mutex, time::Duration};
@@ -8,8 +11,10 @@ use color_eyre::eyre::{Result, eyre};
 use crossterm::event::{Event, EventStream, KeyCode};
 use etcetera::{AppStrategy, AppStrategyArgs};
 use ratatui::prelude::Widget;
-use rotomdex_core::{ActionResult, DexKeyCode, DexKeyModifiers, RotomDexCore};
+use rotomdex_core::{Client, DexKeyCode, DexKeyModifiers, MaybeExit, RotomDexCore};
 use tokio_stream::StreamExt;
+
+use crate::client::{CachedClient, OfflineClient};
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -70,10 +75,14 @@ enum PathConfig {
 
 const FRAMES_PER_SECOND: f32 = 33.3;
 async fn run(config: PathConfig) -> Result<()> {
-    let mut core = match config {
-        PathConfig::Cache(cache_dir) => RotomDexCore::new_cached(cache_dir),
-        PathConfig::Offline(resource_path) => RotomDexCore::new_offline(resource_path),
+    let client = match config {
+        PathConfig::Cache(cache_dir) => Client::new(CachedClient::new(cache_dir)),
+        PathConfig::Offline(resource_path) => Client::new(OfflineClient::new(resource_path)),
     };
+    let session_rw = crate::session_rw::SessionRw::new();
+
+    let mut core = RotomDexCore::new(client, session_rw);
+
     let mut interval = tokio::time::interval(Duration::from_secs_f32(1.0 / FRAMES_PER_SECOND));
     let mut terminal = ratatui::init();
     let mut events = EventStream::new();
@@ -81,13 +90,13 @@ async fn run(config: PathConfig) -> Result<()> {
         tokio::select! {
             Some(Ok(event)) = events.next() => {
                 if let Some((modifiers, key_code)) = map_event(event)
-                    && matches!(core.handle_key(modifiers, key_code), ActionResult::Exit)
+                    && matches!(core.handle_key(modifiers, key_code), MaybeExit::Exit)
                 {
                     break;
                 }
             }
-            _ = core.poll_pkmn() => {}
-            _ = interval.tick(), if core.needs_continuous_render() => {}
+            _ = core.poll() => {}
+            _ = interval.tick(), if core.settings.animation_mode => {}
         }
 
         terminal.draw(|frame| core.render(frame.area(), frame.buffer_mut()))?;
@@ -116,5 +125,8 @@ fn map_event(event: Event) -> Option<(DexKeyModifiers, DexKeyCode)> {
         KeyCode::CapsLock => DexKeyCode::CapsLock,
         _ => return None,
     };
-    Some((DexKeyModifiers::from_bits_retain(event.modifiers.bits()), key_code))
+    Some((
+        DexKeyModifiers::from_bits_retain(event.modifiers.bits()),
+        key_code,
+    ))
 }

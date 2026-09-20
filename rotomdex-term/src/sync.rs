@@ -51,7 +51,9 @@ fn clone_repo(repo_path: &Path, progress: &mut Item, should_interrupt: &AtomicBo
 
 fn update_repo(repo_path: &Path, progress: &mut Item, should_interrupt: &AtomicBool) -> Result<()> {
     let repo = gix::open(repo_path).wrap_err("Failed to open offline resource repository")?;
-    let mut branch = repo.head_ref()?.ok_or_else(|| eyre!("Resource HEAD has no branch"))?;
+    let mut branch = repo
+        .head_ref()?
+        .ok_or_else(|| eyre!("Resource HEAD has no branch"))?;
     let upstream = branch
         .remote_ref_name(Direction::Fetch)
         .ok_or_else(|| eyre!("Resource branch has no upstream"))??;
@@ -87,7 +89,8 @@ fn checkout_files(
     let mut index = repo.index_from_tree(&tree.id)?;
     remove_obsolete_files(repo_path, &old_index, &index)?;
     prepare_index(repo_path, &old_index, &mut index)?;
-    let mut options = repo.checkout_options(gix::worktree::stack::state::attributes::Source::IdMapping)?;
+    let mut options =
+        repo.checkout_options(gix::worktree::stack::state::attributes::Source::IdMapping)?;
     options.overwrite_existing = true;
     let outcome = gix::worktree::state::checkout(
         &mut index,
@@ -124,8 +127,14 @@ fn remove_obsolete_files(repo_path: &Path, old_index: &State, index: &State) -> 
         let path = repo_path.join(gix::path::try_from_bstr(path)?);
         match fs::remove_file(&path) {
             Ok(()) => {}
-            Err(err) if matches!(err.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {}
-            Err(err) => return Err(err).wrap_err_with(|| format!("Failed to remove {}", path.display())),
+            Err(err)
+                if matches!(
+                    err.kind(),
+                    io::ErrorKind::NotFound | io::ErrorKind::NotADirectory
+                ) => {}
+            Err(err) => {
+                return Err(err).wrap_err_with(|| format!("Failed to remove {}", path.display()));
+            }
         }
         for dir in path.ancestors().skip(1) {
             if dir == repo_path || fs::remove_dir(dir).is_err() {
@@ -146,8 +155,9 @@ fn prepare_index(repo_path: &Path, old_index: &State, index: &mut State) -> Resu
         };
         // Forced checkout would recursively delete a blocking directory.
         if metadata.is_dir() {
-            fs::remove_dir(&path_on_disk)
-                .wrap_err_with(|| format!("Directory blocks resource file {}", path_on_disk.display()))?;
+            fs::remove_dir(&path_on_disk).wrap_err_with(|| {
+                format!("Directory blocks resource file {}", path_on_disk.display())
+            })?;
         } else if let Some(old) = old_index.entry_by_path(path)
             && entry.id == old.id
             && entry.mode == old.mode

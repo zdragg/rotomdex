@@ -1,0 +1,17 @@
+[package]
+name = "rotomdex-api"
+version.workspace = true
+edition.workspace = true
+description = "Library wrapping the awesome PokeAPI"
+license.workspace = true
+
+[dependencies]
+anyhow = { version = "1.0.104", default-features = false }
+async-trait = "0.1.92"
+relative-path = { version = "2.0.1", default-features = false, features = ["alloc"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror = { version = "2.0.19", default-features = false }
+
+[features]
+"std" = ["relative-path/std"]

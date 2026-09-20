@@ -6,7 +6,7 @@ use ratatui::widgets::BlockExt;
 use ratatui::{layout::Rect, text::Line, widgets::Widget};
 use tui_big_text::{BigText, PixelSize};
 
-use crate::model::{ModelSpecies, ModelVariant};
+use crate::data::{ModelSpecies, ModelVariant};
 
 pub(crate) struct NameWidget<'a> {
     species: Option<&'a ModelSpecies>,
@@ -14,7 +14,10 @@ pub(crate) struct NameWidget<'a> {
 }
 
 impl<'a> NameWidget<'a> {
-    pub(crate) fn new(species: Option<&'a ModelSpecies>, variant: Option<&'a ModelVariant>) -> Self {
+    pub(crate) fn new(
+        species: Option<&'a ModelSpecies>,
+        variant: Option<&'a ModelVariant>,
+    ) -> Self {
         Self { species, variant }
     }
 }
@@ -33,14 +36,19 @@ impl Widget for NameWidget<'_> {
             return;
         };
 
-        let big_text = BigText::builder().pixel_size(pixel_size).lines(&[line]).build();
+        let big_text = BigText::builder()
+            .pixel_size(pixel_size)
+            .lines(&[line])
+            .build();
 
         let text_area = big_text.block.inner_if_some(area);
 
         big_text.render(area, buf);
 
-        if let Some(variant) = self.variant {
-            paint_area(variant.types.gradient(), text_area, buf);
+        if let Some(variant) = self.variant
+            && let Some(types) = variant.types.as_loaded()
+        {
+            paint_area(types.gradient(), text_area, buf);
         }
     }
 }

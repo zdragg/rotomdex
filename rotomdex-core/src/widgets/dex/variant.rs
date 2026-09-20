@@ -1,4 +1,6 @@
-use crate::model::{ModelSpecies, ModelVariant, Resource};
+use crate::data::resource::AsyncResource;
+use crate::data::{ModelSpecies, ModelVariant};
+use alloc::vec::Vec;
 use ratatui::layout::Layout;
 use ratatui::macros::constraints;
 use ratatui::{
@@ -25,7 +27,7 @@ impl Widget for VariantSelectorWidget<'_> {
         let Some((species, cursor)) = self.species.zip(self.cursor) else {
             return;
         };
-        let variants = species.variants();
+        let variants = &species.variants;
         let Some(selected) = variants.get(cursor) else {
             return;
         };
@@ -62,11 +64,11 @@ impl Widget for VariantSelectorWidget<'_> {
 
 fn get_variant_spans<'a>(
     species: &'a ModelSpecies,
-    variant: &'a Resource<ModelVariant>,
+    variant: &'a AsyncResource<ModelVariant>,
     selected: bool,
 ) -> Vec<Span<'a>> {
     let mut spans = match variant {
-        Resource::Loaded(variant) => {
+        AsyncResource::Loaded(variant) => {
             if selected {
                 vec![Span::styled(
                     variant.get_variant_name().to_ascii_uppercase(),
@@ -76,11 +78,11 @@ fn get_variant_spans<'a>(
                 vec![Span::styled(variant.get_variant_name(), Color::DarkGray)]
             }
         }
-        Resource::Loading { deferred, .. } if deferred.get() => {
+        AsyncResource::Loading { deferred, .. } if deferred.get() => {
             vec![Span::raw("deferred").style(Color::DarkGray)]
         }
-        Resource::Loading { .. } => vec![Span::raw("loading").style(Color::DarkGray)],
-        Resource::Failed(_) => vec![Span::raw("failed: check log").style(Color::Red)],
+        AsyncResource::Loading { .. } => vec![Span::raw("loading").style(Color::DarkGray)],
+        AsyncResource::Failed(_) => vec![Span::raw("failed: check log").style(Color::Red)],
     };
 
     if selected {

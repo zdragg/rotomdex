@@ -1,13 +1,18 @@
 ![rotom-heat](assets/rotom-heat-v0.1.0.gif)
 
+<div align="center">
+
 # `rotomdex`
 
-`rotomdex` is a Pokédex built for the terminal.
+*A `#![no_std]` Pokédex built for the terminal.*
 
-[![Discord badge](https://img.shields.io/discord/1549998327821762701?label=discord&logo=discord&color=5865f2&link=https://discord.gg/SnVUkY3Nzj)](https://discord.gg/SnVUkY3Nzj)
+[![Discord badge](https://img.shields.io/discord/1549998327821762701?label=discord&logo=discord&color=5865f2&style=for-the-badge)](https://discord.gg/SnVUkY3Nzj)
+
+</div>
 
 ## Features
 
+- `#![no_std]` 
 - Demand-driven asynchronous asset fetching
 - Hotswappable versions
 - Offline mode
@@ -16,7 +21,7 @@
 ## Installation
 
 > [!TIP]
-> Try out a fully-featured version [on the web](https://zdragg.github.io/rotomdex)!
+> Try out a demo version [on the web](https://zdragg.github.io/rotomdex)!
 
 For people who aren't SMELLY NERDS: [click here to download exe](https://github.com/zdragg/rotomdex/releases/latest/download/rotomdex-x86_64-pc-windows-msvc.msi)
 
@@ -69,4 +74,10 @@ to discuss what you would like to change.
 
 [PokéAPI](https://pokeapi.co/)
 
-[Ratatui](https://ratatui.rs/)
+[ratatui/ratatui](https://github.com/ratatui/ratatui)
+
+[mlemesle/Rustemon](https://github.com/mlemesle/rustemon)
+
+[image-rs/image-gif](https://github.com/image-rs/image-gif)
+
+[image-rs/image](https://github.com/image-rs/image)

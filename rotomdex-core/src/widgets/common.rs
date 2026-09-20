@@ -1,5 +1,5 @@
-use std::cell::Cell;
-use std::ops::{Deref, DerefMut};
+use core::cell::Cell;
+use core::ops::{Deref, DerefMut};
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -29,7 +29,9 @@ impl Cursor {
     }
 
     pub(crate) fn get(&self, total: usize) -> Option<usize> {
-        self.selected.checked_rem_euclid(total as isize).map(|x| x as usize)
+        self.selected
+            .checked_rem_euclid(total as isize)
+            .map(|x| x as usize)
     }
 
     pub(crate) fn list_state(&self, total: usize) -> impl DerefMut<Target = ListState> {

@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use ratatui::{
     buffer::Buffer,
     layout::{Layout, Rect},
@@ -8,64 +9,66 @@ use ratatui::{
 };
 use strum::{EnumCount, VariantArray};
 
-use crate::{DexKeyCode, InnerActionResult, Version, VersionGroup, model::ModelSpecies, widgets::Cursor};
+use crate::{Command, DexKeyCode, Version, VersionGroup, data::ModelSpecies, widgets::Cursor};
 
 #[derive(Default)]
 pub struct VersionState {
     pub(super) enabled: bool,
-    cursor: Cursor,
-    horizontal: usize,
+    vertical: Cursor,
+    horizontal: Cursor,
 }
 
 impl VersionState {
-    pub(crate) fn toggle(&mut self, version: Version) {
+    pub(crate) fn toggle(&mut self, current_version: Version) {
         self.enabled = !self.enabled;
-        self.horizontal = 0;
 
         if self.enabled {
-            let group = version.version_group();
+            let group = current_version.version_group();
             let group_idx = VersionGroup::VARIANTS
                 .iter()
                 .position(|candidate| *candidate == group)
                 .unwrap();
-            self.cursor.select(group_idx as isize);
-            self.horizontal = group
+            self.vertical.select(group_idx as isize);
+            let member_idx = group
                 .versions()
                 .iter()
-                .position(|candidate| *candidate == version)
+                .position(|candidate| *candidate == current_version)
                 .unwrap();
+            self.horizontal.select(member_idx as isize);
         }
     }
 
-    pub(crate) fn handle_key(&mut self, key_code: DexKeyCode) -> InnerActionResult {
+    pub(crate) fn handle_key(&mut self, key_code: DexKeyCode, cmd: &mut Option<Command>) {
         match key_code {
             DexKeyCode::Char('j') | DexKeyCode::Down => {
-                self.cursor.next();
-                self.horizontal = 0;
+                self.vertical.next();
+                self.horizontal.reset();
             }
             DexKeyCode::Char('k') | DexKeyCode::Up => {
-                self.cursor.prev();
-                self.horizontal = 0;
+                self.vertical.prev();
+                self.horizontal.reset();
             }
             DexKeyCode::Char('h') | DexKeyCode::Left => {
-                let count = self.selected_versions().len();
-                self.horizontal = (self.horizontal + count - 1) % count;
+                self.horizontal.prev();
             }
             DexKeyCode::Char('l') | DexKeyCode::Right => {
-                self.horizontal = (self.horizontal + 1) % self.selected_versions().len();
+                self.horizontal.next();
             }
-            DexKeyCode::Enter => return InnerActionResult::NewVersion(self.selected_versions()[self.horizontal]),
+            DexKeyCode::Enter => *cmd = Some(Command::NewVersion(self.selected_member())),
             _ => {}
         }
-        InnerActionResult::Nothing
     }
 
     fn selected_group(&self) -> usize {
-        self.cursor.get(VersionGroup::COUNT).unwrap()
+        self.vertical.get(VersionGroup::COUNT).unwrap()
     }
 
     fn selected_versions(&self) -> Vec<Version> {
         VersionGroup::VARIANTS[self.selected_group()].versions()
+    }
+
+    fn selected_member(&self) -> Version {
+        self.selected_versions()[self.horizontal.get(self.selected_versions().len()).unwrap()]
     }
 }
 
@@ -76,7 +79,11 @@ pub struct VersionWidget<'a> {
 }
 
 impl<'a> VersionWidget<'a> {
-    pub(crate) fn new(species: Option<&'a ModelSpecies>, version: Version, state: &'a VersionState) -> Self {
+    pub(crate) fn new(
+        species: Option<&'a ModelSpecies>,
+        version: Version,
+        state: &'a VersionState,
+    ) -> Self {
         Self {
             species,
             version,
@@ -93,33 +100,45 @@ impl<'a> Widget for VersionWidget<'a> {
             return;
         }
 
-        let color = self.species.map_or(Color::DarkGray, |species| species.color);
+        let color = self
+            .species
+            .map_or(Color::DarkGray, |species| species.color);
 
         let [area, _] = area.layout(&Layout::horizontal(constraints![==WIDTH, *=1]));
 
         let selected_group = self.state.selected_group();
-        let items = VersionGroup::VARIANTS.iter().enumerate().map(|(group_idx, group)| {
-            let mut spans = Vec::new();
+        let items = VersionGroup::VARIANTS
+            .iter()
+            .enumerate()
+            .map(|(group_idx, group)| {
+                let mut spans = Vec::new();
 
-            for (version_idx, version) in group.versions().iter().enumerate() {
-                if version_idx != 0 {
-                    spans.push(Span::styled(" / ", Color::DarkGray));
+                for (version_idx, version) in group.versions().iter().enumerate() {
+                    if version_idx != 0 {
+                        spans.push(Span::styled(" / ", Color::DarkGray));
+                    }
+
+                    let [r, g, b] = version.color();
+                    let mut style = Style::default().fg(Color::Rgb(r, g, b));
+                    if group_idx == selected_group
+                        && version_idx
+                            == self
+                                .state
+                                .horizontal
+                                .get(self.state.selected_versions().len())
+                                .unwrap()
+                    {
+                        style = style.add_modifier(Modifier::REVERSED);
+                    }
+                    spans.push(Span::styled(version.abbreviation(), style));
+
+                    if *version == self.version {
+                        spans.push(Span::styled(" ✓", Color::Green));
+                    }
                 }
 
-                let [r, g, b] = version.color();
-                let mut style = Style::default().fg(Color::Rgb(r, g, b));
-                if group_idx == selected_group && version_idx == self.state.horizontal {
-                    style = style.add_modifier(Modifier::REVERSED);
-                }
-                spans.push(Span::styled(version.abbreviation(), style));
-
-                if *version == self.version {
-                    spans.push(Span::styled(" ✓", Color::Green));
-                }
-            }
-
-            ListItem::new(Line::from(spans))
-        });
+                ListItem::new(Line::from(spans))
+            });
 
         let list = List::new(items)
             .block(
@@ -133,6 +152,11 @@ impl<'a> Widget for VersionWidget<'a> {
             .highlight_spacing(HighlightSpacing::Always);
 
         Clear.render(area, buf);
-        StatefulWidget::render(list, area, buf, &mut self.state.cursor.list_state(VersionGroup::COUNT));
+        StatefulWidget::render(
+            list,
+            area,
+            buf,
+            &mut self.state.vertical.list_state(VersionGroup::COUNT),
+        );
     }
 }

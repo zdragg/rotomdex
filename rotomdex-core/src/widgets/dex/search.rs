@@ -1,9 +1,9 @@
+use alloc::string::String;
 use ratatui::prelude::{Color, Line};
 use ratatui::text::Span;
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
-use crate::DexKeyCode;
-use crate::widgets::dex::InnerActionResult;
+use crate::{Command, DexKeyCode};
 
 pub(crate) struct SearchWidget<'a> {
     state: &'a SearchWidgetState,
@@ -12,7 +12,10 @@ pub(crate) struct SearchWidget<'a> {
 
 impl<'a> SearchWidget<'a> {
     pub(crate) fn new(state: &'a SearchWidgetState, displayed_error: Option<String>) -> Self {
-        Self { state, displayed_error }
+        Self {
+            state,
+            displayed_error,
+        }
     }
 }
 
@@ -23,18 +26,17 @@ pub(crate) struct SearchWidgetState {
 }
 
 impl SearchWidgetState {
-    pub(crate) fn handle_key(&mut self, key_code: DexKeyCode) -> InnerActionResult {
+    pub(crate) fn handle_key(&mut self, key_code: DexKeyCode, cmd: &mut Option<Command>) {
         if !self.searching {
-            return InnerActionResult::Nothing;
+            return;
         }
         match key_code {
             DexKeyCode::Char(ch) => self.handle_input(ch),
             DexKeyCode::Backspace => self.backspace(),
             DexKeyCode::Escape | DexKeyCode::CapsLock => self.abort_search(),
-            DexKeyCode::Enter => return InnerActionResult::NewPokemon(self.take()),
-            _ => (),
+            DexKeyCode::Enter => *cmd = Some(Command::NewPokemon(self.take())),
+            _ => {}
         }
-        InnerActionResult::Nothing
     }
 
     pub(crate) fn start_search(&mut self) {
@@ -46,10 +48,10 @@ impl SearchWidgetState {
         self.input.clear();
     }
 
-    /// Extracts the stored String and resets.
+    /// Extract the stored String and reset.
     pub(crate) fn take(&mut self) -> String {
         self.searching = false;
-        std::mem::take(&mut self.input)
+        core::mem::take(&mut self.input)
     }
 
     /// Remove one character.
@@ -68,7 +70,10 @@ impl SearchWidgetState {
 impl<'a> Widget for SearchWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let span = if self.state.searching {
-            vec![Span::styled(format!(" :{} ", self.state.input.as_str()), Color::Reset)]
+            vec![Span::styled(
+                format!(" :{} ", self.state.input.as_str()),
+                Color::Reset,
+            )]
         } else if let Some(error) = self.displayed_error {
             vec![Span::styled(format!(" {} ", error), Color::Red)]
         } else {

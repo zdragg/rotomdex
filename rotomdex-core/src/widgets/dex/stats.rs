@@ -4,7 +4,7 @@ use ratatui::{
     widgets::{Bar, BarChart, Widget},
 };
 
-use crate::model::{ModelSpecies, ModelVariant};
+use crate::data::{ModelSpecies, ModelVariant};
 
 pub(crate) struct StatsWidget<'a> {
     species: Option<&'a ModelSpecies>,
@@ -12,7 +12,10 @@ pub(crate) struct StatsWidget<'a> {
 }
 
 impl<'a> StatsWidget<'a> {
-    pub(crate) fn new(species: Option<&'a ModelSpecies>, variant: Option<&'a ModelVariant>) -> Self {
+    pub(crate) fn new(
+        species: Option<&'a ModelSpecies>,
+        variant: Option<&'a ModelVariant>,
+    ) -> Self {
         Self { species, variant }
     }
 }
@@ -22,10 +25,15 @@ impl Widget for StatsWidget<'_> {
         let Some((variant, species)) = self.variant.zip(self.species) else {
             return;
         };
-        let highest = species.variants().iter().fold(0, |acc, variant| {
-            variant
-                .as_loaded()
-                .map_or(acc, |variant| acc.max(variant.stats.highest()))
+
+        let Some(stats) = variant.stats.as_loaded() else {
+            return;
+        };
+
+        let highest = species.variants.iter().fold(0, |acc, variant| {
+            variant.as_loaded().map_or(acc, |variant| {
+                acc.max(variant.stats.as_loaded().map_or(0, |stats| stats.highest()))
+            })
         });
 
         const BAR_COUNT: u16 = 6;
@@ -38,7 +46,8 @@ impl Widget for StatsWidget<'_> {
 
         let total_ratio = u32::from(BAR_COUNT * BAR_TO_GAP_RATIO + GAP_COUNT);
         let width = u32::from(area.width);
-        let mut bar_width = ((width * u32::from(BAR_TO_GAP_RATIO) + total_ratio / 2) / total_ratio).max(1) as u16;
+        let mut bar_width =
+            ((width * u32::from(BAR_TO_GAP_RATIO) + total_ratio / 2) / total_ratio).max(1) as u16;
         let mut bar_gap = ((width + total_ratio / 2) / total_ratio) as u16;
 
         if BAR_COUNT * bar_width + GAP_COUNT * bar_gap > area.width {
@@ -53,12 +62,12 @@ impl Widget for StatsWidget<'_> {
         let chart_area = area.centered_horizontally(constraint!(==chart_width));
 
         let bars = vec![
-            get_bar(variant.stats.hp, "HP"),
-            get_bar(variant.stats.atk, "Atk"),
-            get_bar(variant.stats.def, "Def"),
-            get_bar(variant.stats.spa, "SpA"),
-            get_bar(variant.stats.spd, "SpD"),
-            get_bar(variant.stats.spe, "Spe"),
+            get_bar(stats.hp, "HP"),
+            get_bar(stats.atk, "Atk"),
+            get_bar(stats.def, "Def"),
+            get_bar(stats.spa, "SpA"),
+            get_bar(stats.spd, "SpD"),
+            get_bar(stats.spe, "Spe"),
         ];
 
         BarChart::vertical(bars)
@@ -72,7 +81,9 @@ impl Widget for StatsWidget<'_> {
 fn get_bar(stat: u32, stat_name: &str) -> Bar<'_> {
     let ratio = (stat as f64 / 180f64).clamp(0.0, 1.0);
     let grad: BasisGradient = GradientBuilder::new()
-        .html_colors(&["#f34444", "#ff7f0f", "#ffdd57", "#a0e515", "#23cd5e", "#00c2b8"])
+        .html_colors(&[
+            "#f34444", "#ff7f0f", "#ffdd57", "#a0e515", "#23cd5e", "#00c2b8",
+        ])
         .mode(colorgrad::BlendMode::Oklab)
         .build()
         .unwrap();

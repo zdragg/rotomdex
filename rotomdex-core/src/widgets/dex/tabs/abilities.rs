@@ -1,5 +1,5 @@
-use crate::InnerActionResult;
-use crate::model::{ModelAbility, ModelSpecies, ModelVariant, Resource};
+use crate::data::resource::AsyncResource;
+use crate::data::{ModelAbility, ModelSpecies, ModelVariant};
 use crate::widgets::RenderBlockExt;
 use crate::widgets::dex::tabs::TabAction;
 use ratatui::buffer::Buffer;
@@ -15,7 +15,10 @@ pub(super) struct AbilitiesTabWidget<'a> {
 }
 
 impl<'a> AbilitiesTabWidget<'a> {
-    pub(super) fn new(species: Option<&'a ModelSpecies>, variant: Option<&'a ModelVariant>) -> Self {
+    pub(super) fn new(
+        species: Option<&'a ModelSpecies>,
+        variant: Option<&'a ModelVariant>,
+    ) -> Self {
         Self { species, variant }
     }
 }
@@ -26,7 +29,11 @@ impl<'a> Widget for AbilitiesTabWidget<'a> {
             return;
         };
 
-        let [first, second, hidden] = variant.abilities.get();
+        let Some(abilities) = variant.abilities.as_loaded() else {
+            return;
+        };
+
+        let [first, second, hidden] = abilities.get();
 
         let area = render_ability(self.species, first, false, area, buf);
         let area = render_ability(self.species, second, false, area, buf);
@@ -36,7 +43,7 @@ impl<'a> Widget for AbilitiesTabWidget<'a> {
 
 fn render_ability(
     species: Option<&ModelSpecies>,
-    ability: Option<&Resource<ModelAbility>>,
+    ability: Option<&AsyncResource<ModelAbility>>,
     is_hidden: bool,
     area: Rect,
     buf: &mut Buffer,
@@ -79,7 +86,8 @@ fn render_ability(
             .style(Color::White)
             .wrap(Wrap { trim: true });
         let line_count = text.line_count(area.width);
-        let [this_area, rest_area] = area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
+        let [this_area, rest_area] =
+            area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
         text.render(this_area, buf);
         rest_area
     } else {
@@ -91,7 +99,5 @@ fn render_ability(
 pub(super) struct AbilitiesTabWidgetState {}
 
 impl AbilitiesTabWidgetState {
-    pub(super) fn handle_action(&mut self, _action: TabAction) -> InnerActionResult {
-        InnerActionResult::Nothing
-    }
+    pub(super) fn handle_action(&mut self, _action: TabAction) {}
 }

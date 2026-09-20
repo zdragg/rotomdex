@@ -2,12 +2,13 @@ mod abilities;
 mod moveset;
 mod overview;
 
-use crate::model::{ModelSpecies, ModelVariant};
+use crate::data::{ModelSpecies, ModelVariant};
 use crate::widgets::dex::Cursor;
 use crate::widgets::dex::tabs::abilities::{AbilitiesTabWidget, AbilitiesTabWidgetState};
 use crate::widgets::dex::tabs::moveset::{MovesetTabWidget, MovesetTabWidgetState};
 use crate::widgets::dex::tabs::overview::{OverviewTabWidget, OverviewTabWidgetState};
-use crate::{DexKeyCode, InnerActionResult};
+use crate::{Command, DexKeyCode};
+use alloc::string::ToString;
 use ratatui::layout::Layout;
 use ratatui::macros::constraints;
 use ratatui::style::{Color, Style};
@@ -41,7 +42,8 @@ impl Widget for TabsWidget<'_> {
             return;
         }
 
-        let [tab_area, content_area] = area.layout(&Layout::vertical(constraints![==1, *=1]).spacing(1));
+        let [tab_area, content_area] =
+            area.layout(&Layout::vertical(constraints![==1, *=1]).spacing(1));
 
         let selected_color = self.species.map_or(Color::Reset, |species| species.color);
         Tabs::new(DexTab::iter().map(|e| e.to_string()))
@@ -53,11 +55,15 @@ impl Widget for TabsWidget<'_> {
 
         match DexTab::VARIANTS[self.state.selected_tab.get(DexTab::COUNT).unwrap()] {
             DexTab::Overview => {
-                OverviewTabWidget::new(self.species, self.variant, &self.state.overview_state).render(content_area, buf)
+                OverviewTabWidget::new(self.species, self.variant, &self.state.overview_state)
+                    .render(content_area, buf)
             }
-            DexTab::Abilities => AbilitiesTabWidget::new(self.species, self.variant).render(content_area, buf),
+            DexTab::Abilities => {
+                AbilitiesTabWidget::new(self.species, self.variant).render(content_area, buf)
+            }
             DexTab::Moveset => {
-                MovesetTabWidget::new(self.variant, self.species, &self.state.moveset_state).render(content_area, buf)
+                MovesetTabWidget::new(self.variant, self.species, &self.state.moveset_state)
+                    .render(content_area, buf)
             }
         };
     }
@@ -89,7 +95,7 @@ enum TabAction {
 }
 
 impl TabsWidgetState {
-    pub(super) fn handle_key(&mut self, key_code: DexKeyCode) -> InnerActionResult {
+    pub(super) fn handle_key(&mut self, key_code: DexKeyCode, cmd: &mut Option<Command>) {
         let tab_action = match key_code {
             DexKeyCode::Char('h') | DexKeyCode::Left => TabAction::Left,
             DexKeyCode::Char('j') | DexKeyCode::Down => TabAction::Down,
@@ -99,17 +105,19 @@ impl TabsWidgetState {
             DexKeyCode::Escape | DexKeyCode::CapsLock => TabAction::Escape,
             DexKeyCode::Char('c') => {
                 self.selected_tab.prev();
-                return InnerActionResult::Nothing;
+                return;
             }
             DexKeyCode::Char('v') => {
                 self.selected_tab.next();
-                return InnerActionResult::Nothing;
+                return;
             }
-            _ => return InnerActionResult::Nothing,
+            _ => {
+                return;
+            }
         };
 
         match DexTab::VARIANTS[self.selected_tab.get(DexTab::COUNT).unwrap()] {
-            DexTab::Overview => self.overview_state.handle_action(tab_action),
+            DexTab::Overview => self.overview_state.handle_action(tab_action, cmd),
             DexTab::Abilities => self.abilities_state.handle_action(tab_action),
             DexTab::Moveset => self.moveset_state.handle_action(tab_action),
         }

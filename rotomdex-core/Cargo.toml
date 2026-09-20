@@ -1,48 +1,31 @@
 [package]
 name = "rotomdex-core"
-version = "0.1.0"
-edition = "2024"
-description.workspace = true
-repository.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
-anyhow = "1.0.104"
-async-lock = "3.4.2"
 async-trait = "0.1.92"
 bitflags = "2.13.1"
 chafa-syms-rs = "0.1.1"
 color-eyre = "0.6.5"
 colorgrad = "0.8.0"
 csscolorparser = { version = "0.8.4", default-features = false }
+embassy-time = "0.5.1"
 futures = { version = "0.3.34", default-features = false, features = ["alloc"] }
-http = "1.5.0"
-image = { version = "0.25.10", default-features = false, features = [
-  "gif",
-  "png"
-] }
 itertools = "0.15.0"
 konst = { version = "0.4.3", default-features = false, features = ["iter"] }
 lru = "0.18.4"
+minipng = { version = "1.0.0", features = ["adler"] }
 rapidhash = "4.5.1"
-ratatui = { version = "0.30.2", default-features = false, features = [
-  "layout-cache",
-  "macros",
-  "std",
-  "unstable-rendered-line-info"
-] }
-reqwest = { version = "0.12.28", default-features = false, features = [
-  "json",
-  "rustls-tls"
-] }
-reqwest-middleware = "0.4.2"
-rustemon = { git = "https://github.com/zdragg/rustemon", branch = "main", default-features = false }
-strum = { version = "0.28.0", features = ["derive"] }
+ratatui = { version = "0.30.2", default-features = false, features = ["layout-cache", "macros", "unstable-rendered-line-info"] }
+relative-path = { version = "2.0.1", default-features = false }
+rotomdex-api.workspace = true
+rotomdex-gif.workspace = true
+serde.workspace = true
+strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 tracing = "0.1.44"
 tui-big-text = "0.8.8"
-web-time = "1.1.0"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-async-fs = "2.2.0"
-http-cache-reqwest = "0.16.0"
-serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
+[features]
+std = ["relative-path/std", "rotomdex-api/std", "embassy-time/std"]

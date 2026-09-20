@@ -1,88 +1,71 @@
 #![forbid(unsafe_code)]
+#![no_std]
 
-mod context;
-mod model;
-mod versions;
+#[macro_use]
+extern crate alloc;
+
+mod data;
+mod settings;
+
+use alloc::{
+    boxed::Box,
+    string::{String, ToString},
+};
+use embassy_time::Instant;
+pub use rotomdex_api::client::Client;
+pub use settings::*;
+mod traits;
+pub use traits::*;
 mod widgets;
 
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
-pub use versions::*;
-
-#[cfg(not(target_arch = "wasm32"))]
-use std::path::PathBuf;
 
 use crate::{
-    context::ModelContext,
-    model::ModelPokemon,
-    widgets::{DexState, DexWidget},
+    data::DataStore,
+    widgets::{DexWidget, DexWidgetState},
 };
 
 pub struct RotomDexCore {
-    ctx: ModelContext,
+    data: DataStore,
+    dex_state: DexWidgetState,
+    timer: Instant,
 
+    session_rw: Box<dyn SessionRw>,
     pkmn_name: String,
-    pkmn: ModelPokemon,
-
-    pub(crate) dex_state: DexState,
-    timer: web_time::Instant,
+    pub settings: Settings,
 }
 
 impl RotomDexCore {
-    fn from_ctx(ctx: ModelContext) -> Self {
+    pub fn new(client: Client, session_rw: impl SessionRw + 'static) -> Self {
+        let Session {
+            pkmn_name,
+            settings,
+        } = session_rw.read();
         Self {
-            pkmn_name: "rotom".into(),
-            pkmn: ModelPokemon::new("rotom", ctx.clone()),
+            data: DataStore::new(client, &pkmn_name, settings),
+            dex_state: DexWidgetState::default(),
+            timer: Instant::now(),
 
-            ctx,
-
-            dex_state: DexState::default(),
-            timer: web_time::Instant::now(),
+            session_rw: Box::new(session_rw),
+            pkmn_name,
+            settings,
         }
     }
 
-    pub fn new() -> Self {
-        let ctx = ModelContext::new();
-        Self::from_ctx(ctx)
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn new_cached(cache_dir: PathBuf) -> Self {
-        let ctx = ModelContext::new_cache(cache_dir);
-        Self::from_ctx(ctx)
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    /// What should be under path:
-    /// api/v2/pokemon-species/index.html
-    /// sprites/pokemon/132.png
-    pub fn new_offline(resource_path: PathBuf) -> Self {
-        let ctx = ModelContext::new_offline(resource_path);
-        Self::from_ctx(ctx)
-    }
-
-    fn refresh(&mut self) {
-        self.dex_state.reset();
-        self.pkmn = ModelPokemon::new(self.pkmn_name.clone(), self.ctx.clone());
-    }
-
-    pub async fn poll_pkmn(&mut self) {
-        self.pkmn.poll().await;
-    }
-
-    pub fn needs_continuous_render(&self) -> bool {
-        self.dex_state.sprite_state.prefer_animation
-    }
-}
-
-impl Default for RotomDexCore {
-    fn default() -> Self {
-        Self::new()
+    pub async fn poll(&mut self) {
+        self.data.poll().await;
     }
 }
 
 impl Widget for &RotomDexCore {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        DexWidget::new(&self.pkmn, &self.dex_state, self.timer.elapsed(), self.ctx.version).render(area, buf);
+        DexWidget::new(
+            &self.data,
+            &self.dex_state,
+            self.settings,
+            self.timer.elapsed(),
+        )
+        .render(area, buf);
     }
 }
 
@@ -111,46 +94,76 @@ bitflags::bitflags! {
     }
 }
 
-pub enum ActionResult {
-    Nothing,
+pub enum MaybeExit {
+    DontExit,
     Exit,
 }
 
-#[derive(PartialEq, Eq)]
-enum InnerActionResult {
-    Nothing,
+pub enum Command {
     NewPokemon(String),
     NewVersion(Version),
+    AnimationMode(bool),
 }
 
 impl RotomDexCore {
-    pub fn handle_key(&mut self, modifiers: DexKeyModifiers, key_code: DexKeyCode) -> ActionResult {
-        if modifiers.contains(DexKeyModifiers::CONTROL) {
-            return if matches!(key_code, DexKeyCode::Char('c' | 'C')) {
-                ActionResult::Exit
-            } else {
-                ActionResult::Nothing
-            };
+    pub fn handle_key(&mut self, modifiers: DexKeyModifiers, key_code: DexKeyCode) -> MaybeExit {
+        if modifiers.contains(DexKeyModifiers::CONTROL)
+            && matches!(key_code, DexKeyCode::Char('c' | 'C'))
+        {
+            return self.exit();
+        };
+
+        if key_code == DexKeyCode::Char('g') {
+            self.settings.animation_mode = !self.settings.animation_mode;
+            return MaybeExit::DontExit;
         }
 
-        let action_result = self.dex_state.handle_key(key_code, self.ctx.version);
+        let mut maybe_cmd = None;
 
-        match action_result {
-            InnerActionResult::Nothing => (),
-            InnerActionResult::NewPokemon(name) => match name.as_str() {
-                "q" => return ActionResult::Exit,
-                "" => return ActionResult::Nothing,
-                _ => {
-                    self.pkmn_name = name;
-                    self.refresh();
+        self.dex_state
+            .handle_key(key_code, self.settings, &mut maybe_cmd);
+
+        if let Some(cmd) = maybe_cmd {
+            match cmd {
+                Command::NewPokemon(name) => match name.as_str() {
+                    "q" => return self.exit(),
+                    "" => {}
+                    _ => {
+                        self.pkmn_name = name;
+                        self.data.new_resource(&self.pkmn_name, self.settings);
+                    }
+                },
+                Command::NewVersion(version) => {
+                    self.settings.version = version;
+                    self.data.new_resource(&self.pkmn_name, self.settings);
                 }
-            },
-            InnerActionResult::NewVersion(version) => {
-                self.ctx.version = version;
-                self.refresh();
+                Command::AnimationMode(b) => self.settings.animation_mode = b,
             }
         }
 
-        ActionResult::Nothing
+        MaybeExit::DontExit
+    }
+
+    fn exit(&mut self) -> MaybeExit {
+        self.session_rw.write(Session {
+            pkmn_name: self.pkmn_name.clone(),
+            settings: self.settings,
+        });
+        MaybeExit::Exit
+    }
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct Session {
+    pkmn_name: String,
+    settings: Settings,
+}
+
+impl Default for Session {
+    fn default() -> Self {
+        Self {
+            pkmn_name: "rotom".to_string(),
+            settings: Settings::default(),
+        }
     }
 }

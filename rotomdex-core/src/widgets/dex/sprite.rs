@@ -1,25 +1,36 @@
-use std::{cell::RefCell, char, num::NonZeroUsize, rc::Rc, time::Duration};
+use core::{cell::RefCell, char, num::NonZeroUsize};
 
+use alloc::rc::Rc;
 use chafa_syms_rs::{Canvas, CanvasConfig, CanvasMode, CellOut, PixelType};
-use image::RgbaImage;
+use embassy_time::Duration;
 use lru::LruCache;
 use rapidhash::v3::rapidhash_v3;
 use ratatui::{prelude::*, widgets::Widget};
 
-use crate::model::ModelVariant;
+use crate::data::{ModelVariant, RgbaImage};
 
 pub(crate) struct SpriteWidget<'a> {
     variant: Option<&'a ModelVariant>,
     elapsed: Duration,
 
+    animation_mode: bool,
+
     state: &'a SpriteWidgetState,
 }
 
 impl<'a> SpriteWidget<'a> {
-    pub(crate) fn new(variant: Option<&'a ModelVariant>, elapsed: Duration, state: &'a SpriteWidgetState) -> Self {
+    pub(crate) fn new(
+        variant: Option<&'a ModelVariant>,
+        elapsed: Duration,
+
+        animation_mode: bool,
+
+        state: &'a SpriteWidgetState,
+    ) -> Self {
         Self {
             variant,
             elapsed,
+            animation_mode,
             state,
         }
     }
@@ -38,7 +49,7 @@ impl Widget for SpriteWidget<'_> {
             (area.height - side_height) / 2,
         ));
 
-        let selected = if self.state.prefer_animation {
+        let selected = if self.animation_mode {
             sprite.animated().map(|anim| anim.frame_at(self.elapsed))
         } else {
             sprite.image()
@@ -47,7 +58,9 @@ impl Widget for SpriteWidget<'_> {
             return;
         };
 
-        let cells = self.state.render_with_cache(sprite, area.width, area.height);
+        let cells = self
+            .state
+            .render_with_cache(sprite, area.width, area.height);
 
         for (idx, source) in cells.iter().enumerate() {
             let (fg_alpha, fg_color) = aarrggbb_to_color(source.fg);
@@ -58,7 +71,10 @@ impl Widget for SpriteWidget<'_> {
             if let Some(target) = buf.cell_mut((x, y)) {
                 match (fg_alpha < 128, bg_alpha < 128) {
                     (true, true) => target.set_char(' '),
-                    (true, false) => target.set_char(ch).set_fg(bg_color).set_style(Modifier::REVERSED),
+                    (true, false) => target
+                        .set_char(ch)
+                        .set_fg(bg_color)
+                        .set_style(Modifier::REVERSED),
                     (false, true) => target.set_char(ch).set_fg(fg_color),
                     (false, false) => target.set_char(ch).set_fg(fg_color).set_bg(bg_color),
                 };
@@ -84,25 +100,24 @@ struct CacheKey {
 }
 
 pub(crate) struct SpriteWidgetState {
-    pub(crate) prefer_animation: bool,
     cache: RefCell<LruCache<CacheKey, Rc<[CellOut]>>>,
 }
 
 impl Default for SpriteWidgetState {
     fn default() -> Self {
         Self {
-            prefer_animation: true,
             cache: RefCell::new(LruCache::new(NonZeroUsize::new(256).unwrap())),
         }
     }
 }
 
 impl SpriteWidgetState {
-    pub(super) fn toggle_animation(&mut self) {
-        self.prefer_animation = !self.prefer_animation;
-    }
-
-    fn render_with_cache(&self, image: &RgbaImage, target_width: u16, target_height: u16) -> Rc<[CellOut]> {
+    fn render_with_cache(
+        &self,
+        image: &RgbaImage,
+        target_width: u16,
+        target_height: u16,
+    ) -> Rc<[CellOut]> {
         let key = CacheKey {
             image_hash: rapidhash_v3(image.as_raw()),
             target_width,
@@ -113,14 +128,15 @@ impl SpriteWidgetState {
             return cells;
         }
 
-        let cfg = CanvasConfig::new(target_width as usize, target_height as usize).mode(CanvasMode::Truecolor);
+        let cfg = CanvasConfig::new(target_width as usize, target_height as usize)
+            .mode(CanvasMode::Truecolor);
         let mut canvas = Canvas::new(cfg);
         canvas.draw_all_pixels(
             PixelType::Rgba8,
             image.as_raw(),
-            image.width() as usize,
-            image.height() as usize,
-            image.width() as usize * 4,
+            image.width(),
+            image.height(),
+            image.width() * 4,
         );
 
         let cells: Rc<[CellOut]> = Rc::from(canvas.cells());

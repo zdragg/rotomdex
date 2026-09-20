@@ -1,9 +1,12 @@
-use std::cell::Cell;
+use core::cell::Cell;
 
-use crate::InnerActionResult;
-use crate::model::{ModelEvolutionDetail, ModelSpecies, ModelVariant};
+use crate::Command;
+use crate::data::{ModelEvolutionDetail, ModelSpecies, ModelVariant};
 use crate::widgets::dex::tabs::TabAction;
 use crate::widgets::{Cursor, RenderBlockExt};
+use alloc::borrow::ToOwned;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Layout, Rect};
 use ratatui::macros::constraints;
@@ -45,7 +48,13 @@ impl<'a> Widget for OverviewTabWidget<'a> {
 
         let evo_area = render_flavor_text(species, area, buf);
 
-        render_evolutions(species, &self.state.evolution_cursor, self.state, evo_area, buf);
+        render_evolutions(
+            species,
+            &self.state.evolution_cursor,
+            self.state,
+            evo_area,
+            buf,
+        );
     }
 }
 
@@ -67,12 +76,16 @@ fn name_span<'a>(species: &'a ModelSpecies, variant: &'a ModelVariant) -> Vec<Sp
 }
 
 fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {
+    let Some(types) = variant.types.as_loaded() else {
+        return vec![];
+    };
+
     // Fire/Dragon
     let mut type_spans = vec![Span::styled(
-        variant.types.primary.to_string(),
-        variant.types.primary.tui_color(),
+        types.primary.to_string(),
+        types.primary.tui_color(),
     )];
-    if let Some(secondary) = &variant.types.secondary {
+    if let Some(secondary) = &types.secondary {
         type_spans.push(Span::raw("/"));
         type_spans.push(Span::styled(secondary.to_string(), secondary.tui_color()));
     }
@@ -81,12 +94,17 @@ fn types_span(variant: &ModelVariant) -> Vec<Span<'_>> {
 }
 
 fn effectiveness_span(variant: &ModelVariant) -> Vec<Span<'_>> {
-    variant.types.def_effectiveness().into_spans()
+    let Some(types) = variant.types.as_loaded() else {
+        return vec![];
+    };
+    types.def_effectiveness().into_spans()
 }
 
 fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> Rect {
-    let flavor = if let Some(flavor_text) = &species.flavor_text {
-        Paragraph::new(flavor_text.text.as_str()).style(Color::Gray)
+    let flavor = if let Some(flavor_text) = &species.flavor_text.as_loaded()
+        && let Some(text) = &flavor_text.text
+    {
+        Paragraph::new(text.as_str()).style(Color::Gray)
     } else {
         Paragraph::new("Missing flavor text!").style(Color::Red)
     }
@@ -94,7 +112,8 @@ fn render_flavor_text(species: &ModelSpecies, area: Rect, buf: &mut Buffer) -> R
 
     let line_count = flavor.line_count(area.width - 1);
 
-    let [this_area, rest_area] = area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
+    let [this_area, rest_area] =
+        area.layout(&Layout::vertical(constraints![==line_count as u16, *=1]).spacing(1));
 
     let this_area = Block::default()
         .borders(Borders::LEFT)
@@ -147,7 +166,11 @@ fn render_evolutions(
             prefix.push_str(if *continues { "│  " } else { "   " });
         }
         if view.depth > 0 {
-            prefix.push_str(if view.last_in_depth { "└─ " } else { "├─ " });
+            prefix.push_str(if view.last_in_depth {
+                "└─ "
+            } else {
+                "├─ "
+            });
         }
         ancestor_prefix.push(!view.last_in_depth);
 
@@ -175,7 +198,8 @@ fn render_evolutions(
 
     max_width += 3; // Account for indiactor space
 
-    let [tree_area, detail_area] = area.layout(&Layout::horizontal(constraints![==max_width as u16, *=1]).spacing(1));
+    let [tree_area, detail_area] =
+        area.layout(&Layout::horizontal(constraints![==max_width as u16, *=1]).spacing(1));
 
     let list = List::new(lines).scroll_padding(1);
 
@@ -187,9 +211,12 @@ fn render_evolutions(
 fn render_evo_details(detail: &ModelEvolutionDetail, area: Rect, buf: &mut Buffer) {
     let reqs = detail.to_strings();
     if reqs.is_empty() {
-        Paragraph::new(Line::styled("No evolution to species found in version", Color::Red))
-            .wrap(Wrap { trim: true })
-            .render(area, buf);
+        Paragraph::new(Line::styled(
+            "No evolution to species found in version",
+            Color::Red,
+        ))
+        .wrap(Wrap { trim: true })
+        .render(area, buf);
         return;
     };
 
@@ -210,7 +237,7 @@ pub(super) struct OverviewTabWidgetState {
 }
 
 impl OverviewTabWidgetState {
-    pub(super) fn handle_action(&mut self, action: TabAction) -> InnerActionResult {
+    pub(super) fn handle_action(&mut self, action: TabAction, cmd: &mut Option<Command>) {
         match action {
             TabAction::Down => {
                 self.evolution_cursor.next();
@@ -223,11 +250,10 @@ impl OverviewTabWidgetState {
             TabAction::Enter => {
                 let name = self.selected_pkmn_name.take();
                 if !name.is_empty() {
-                    return InnerActionResult::NewPokemon(name);
+                    *cmd = Some(Command::NewPokemon(name));
                 }
             }
             _ => {}
         }
-        InnerActionResult::Nothing
     }
 }
