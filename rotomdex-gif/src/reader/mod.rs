@@ -7,7 +7,7 @@ use core::num::NonZeroU64;
 
 use embedded_io::BufRead;
 
-use crate::common::{Block, Frame};
+use crate::common::{Block, GifFrame};
 use crate::{AnyExtension, Extension, Repeat};
 
 mod converter;
@@ -284,7 +284,7 @@ pub struct Decoder<R: BufRead<Error: Send + Sync + 'static>> {
     memory_limit: MemoryLimit,
     bg_color: Option<u8>,
     repeat: Repeat,
-    current_frame: Frame<'static>,
+    current_frame: GifFrame<'static>,
     current_frame_data_type: FrameDataType,
     app_extension_state: AppExtensionState,
     /// XMP metadata bytes.
@@ -323,7 +323,7 @@ where
             pixel_converter: PixelConverter::new(options.color_output),
             memory_limit: options.memory_limit.clone(),
             repeat: Repeat::default(),
-            current_frame: Frame::default(),
+            current_frame: GifFrame::default(),
             current_frame_data_type: FrameDataType::Pixels,
             app_extension_state: AppExtensionState::None,
             xmp_metadata: None,
@@ -450,7 +450,7 @@ where
     }
 
     /// Returns the next frame info
-    pub fn next_frame_info(&mut self) -> Result<Option<&Frame<'static>>, DecodingError> {
+    pub fn next_frame_info(&mut self) -> Result<Option<&GifFrame<'static>>, DecodingError> {
         loop {
             match self.decoder.decode_next(&mut OutputBuffer::None)? {
                 Some(Decoded::FrameMetadata(frame_data_type)) => {
@@ -473,7 +473,7 @@ where
     /// Query information about the frame previously advanced with [`Self::next_frame_info`].
     ///
     /// Returns `None` past the end of file.
-    pub fn current_frame_info(&self) -> Option<&Frame<'static>> {
+    pub fn current_frame_info(&self) -> Option<&GifFrame<'static>> {
         if self.decoder.at_eof {
             None
         } else {
@@ -487,7 +487,7 @@ where
     /// Deinterlaces the result.
     ///
     /// You can also call `.into_iter()` on the decoder to use it as a regular iterator.
-    pub fn read_next_frame(&mut self) -> Result<Option<&Frame<'static>>, DecodingError> {
+    pub fn read_next_frame(&mut self) -> Result<Option<&GifFrame<'static>>, DecodingError> {
         if self.next_frame_info()?.is_some() {
             match self.current_frame_data_type {
                 FrameDataType::Pixels => {
@@ -525,7 +525,7 @@ where
     }
 
     /// This is private for iterator's use
-    fn take_current_frame(&mut self) -> Option<Frame<'static>> {
+    fn take_current_frame(&mut self) -> Option<GifFrame<'static>> {
         if self.current_frame.buffer.is_empty() {
             return None;
         }
@@ -660,7 +660,7 @@ where
 }
 
 impl<R: BufRead<Error: Send + Sync + 'static>> IntoIterator for Decoder<R> {
-    type Item = Result<Frame<'static>, DecodingError>;
+    type Item = Result<GifFrame<'static>, DecodingError>;
     type IntoIter = DecoderIter<R>;
 
     #[inline]
@@ -690,7 +690,7 @@ impl<R: BufRead<Error: Send + Sync + 'static>> DecoderIter<R> {
 impl<R: BufRead<Error: Send + Sync + 'static>> FusedIterator for DecoderIter<R> {}
 
 impl<R: BufRead<Error: Send + Sync + 'static>> Iterator for DecoderIter<R> {
-    type Item = Result<Frame<'static>, DecodingError>;
+    type Item = Result<GifFrame<'static>, DecodingError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.ended {

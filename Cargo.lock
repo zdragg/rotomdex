@@ -3831,6 +3831,7 @@ dependencies = [
 name = "rotomdex-gif"
 version = "0.1.0"
 dependencies = [
+ "embassy-time",
  "embedded-io",
  "weezl",
 ]

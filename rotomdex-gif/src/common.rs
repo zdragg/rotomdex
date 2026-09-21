@@ -1,6 +1,10 @@
 use alloc::borrow::Cow;
 use alloc::vec::Vec;
 
+/// Convenience trait used to mark all readers accepted by decoders.
+pub trait GifRead: embedded_io::BufRead<Error: Sync + Send + 'static> {}
+impl<R: embedded_io::BufRead<Error: Sync + Send + 'static>> GifRead for R {}
+
 /// Disposal method
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
@@ -131,7 +135,7 @@ impl Extension {
 
 /// A GIF frame
 #[derive(Debug, Clone)]
-pub struct Frame<'a> {
+pub struct GifFrame<'a> {
     /// Frame delay in units of 10 ms.
     pub delay: u16,
     /// Disposal method.
@@ -157,9 +161,9 @@ pub struct Frame<'a> {
     pub buffer: Cow<'a, [u8]>,
 }
 
-impl Default for Frame<'_> {
+impl Default for GifFrame<'_> {
     fn default() -> Self {
-        Frame {
+        GifFrame {
             delay: 0,
             dispose: DisposalMethod::Keep,
             transparent: None,
@@ -174,11 +178,11 @@ impl Default for Frame<'_> {
         }
     }
 }
-impl Frame<'static> {
+impl GifFrame<'static> {
     /// Leaves empty buffer and empty palette behind
     #[inline]
     pub(crate) fn take(&mut self) -> Self {
-        Frame {
+        GifFrame {
             delay: self.delay,
             dispose: self.dispose,
             transparent: self.transparent,

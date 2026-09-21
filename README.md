@@ -76,7 +76,7 @@ to discuss what you would like to change.
 
 [ratatui/ratatui](https://github.com/ratatui/ratatui)
 
-[mlemesle/Rustemon](https://github.com/mlemesle/rustemon)
+[mlemesle/rustemon](https://github.com/mlemesle/rustemon)
 
 [image-rs/image-gif](https://github.com/image-rs/image-gif)
 

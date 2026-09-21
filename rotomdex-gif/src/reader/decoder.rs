@@ -10,7 +10,7 @@ use core::num::NonZeroUsize;
 use core::error;
 
 use crate::MemoryLimit;
-use crate::common::{AnyExtension, Block, DisposalMethod, Extension, Frame};
+use crate::common::{AnyExtension, Block, DisposalMethod, Extension, GifFrame};
 use crate::reader::DecodeOptions;
 
 use weezl::{BitOrder, LzwError, LzwStatus, decode::Decoder as LzwDecoder};
@@ -268,7 +268,7 @@ impl FrameDecoder {
     ///
     /// If you get an error about invalid min code size, the buffer was probably pixels, not compressed data.
     #[inline]
-    pub fn decode_lzw_encoded_frame(&mut self, frame: &mut Frame<'_>) -> Result<(), DecodingError> {
+    pub fn decode_lzw_encoded_frame(&mut self, frame: &mut GifFrame<'_>) -> Result<(), DecodingError> {
         let pixel_bytes = self
             .pixel_converter
             .check_buffer_size(frame, &self.memory_limit)?;
@@ -284,7 +284,7 @@ impl FrameDecoder {
     /// Pixels are always deinterlaced, so update `frame.interlaced` afterwards if you're putting the buffer back into the frame.
     pub fn decode_lzw_encoded_frame_into_buffer(
         &mut self,
-        frame: &Frame<'_>,
+        frame: &GifFrame<'_>,
         buf: &mut [u8],
     ) -> Result<(), DecodingError> {
         let (&min_code_size, mut data) = frame.buffer.split_first().unwrap_or((&2, &[]));
@@ -304,7 +304,7 @@ impl FrameDecoder {
     /// Number of bytes required for `decode_lzw_encoded_frame_into_buffer`
     #[inline]
     #[must_use]
-    pub fn buffer_size(&self, frame: &Frame<'_>) -> usize {
+    pub fn buffer_size(&self, frame: &GifFrame<'_>) -> usize {
         self.pixel_converter.buffer_size(frame).unwrap()
     }
 }
@@ -414,7 +414,7 @@ pub struct StreamingDecoder {
     /// ext buffer
     ext: ExtensionData,
     /// Frame data
-    current: Option<Frame<'static>>,
+    current: Option<GifFrame<'static>>,
     /// Needs to emit `HeaderEnd` once
     header_end_reached: bool,
 }
@@ -536,20 +536,20 @@ impl StreamingDecoder {
     /// Current frame info as a mutable ref.
     #[must_use]
     #[track_caller]
-    pub fn current_frame_mut(&mut self) -> &mut Frame<'static> {
+    pub fn current_frame_mut(&mut self) -> &mut GifFrame<'static> {
         self.current.as_mut().unwrap()
     }
 
     /// Current frame info as a ref.
     #[track_caller]
     #[must_use]
-    pub fn current_frame(&self) -> &Frame<'static> {
+    pub fn current_frame(&self) -> &GifFrame<'static> {
         self.current.as_ref().unwrap()
     }
 
     /// Current frame info as a mutable ref.
     #[inline(always)]
-    fn try_current_frame(&mut self) -> Result<&mut Frame<'static>, DecodingError> {
+    fn try_current_frame(&mut self) -> Result<&mut GifFrame<'static>, DecodingError> {
         self.current
             .as_mut()
             .ok_or_else(|| DecodingError::format("bad state"))
@@ -894,7 +894,7 @@ impl StreamingDecoder {
         }
         let control = &self.ext.data;
 
-        let frame = self.current.get_or_insert_with(Frame::default);
+        let frame = self.current.get_or_insert_with(GifFrame::default);
         let control_flags = control[0];
         frame.needs_user_input = control_flags & 0b10 != 0;
         frame.dispose = match DisposalMethod::from_u8((control_flags & 0b11100) >> 2) {
@@ -908,7 +908,7 @@ impl StreamingDecoder {
 
     fn add_frame(&mut self) {
         if self.current.is_none() {
-            self.current = Some(Frame::default());
+            self.current = Some(GifFrame::default());
         }
     }
 }

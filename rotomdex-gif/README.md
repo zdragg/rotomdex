@@ -2,7 +2,7 @@
 
 Derived from [image-rs/image-gif](https://github.com/image-rs/image-gif), version 0.14.2. 
 
-[`src/gif_decoder.rs`](src/gif_decoder.rs) derived from [image-rs/image](https://github.com/image-rs/image), version 0.25.10.
+[`src/wrapper.rs`](src/wrapper.rs) derived from [image-rs/image](https://github.com/image-rs/image), version 0.25.10.
 
 ## Changes made
 

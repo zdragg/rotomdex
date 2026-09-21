@@ -97,12 +97,12 @@ pub(crate) struct RgbaImage {
     pixels: Vec<u8>,
 }
 
-impl From<rotomdex_gif::Frame<'_>> for RgbaImage {
-    fn from(frame: rotomdex_gif::Frame) -> Self {
+impl From<rotomdex_gif::RgbaImageBuffer> for RgbaImage {
+    fn from(buffer: rotomdex_gif::RgbaImageBuffer) -> Self {
         Self {
-            width: frame.width as usize,
-            height: frame.height as usize,
-            pixels: frame.buffer.into_owned(),
+            width: buffer.width as usize,
+            height: buffer.height as usize,
+            pixels: buffer.data,
         }
     }
 }
@@ -244,11 +244,11 @@ impl Animation {
     }
 }
 
-impl From<Vec<rotomdex_gif::Frame<'_>>> for Animation {
-    fn from(frames: Vec<rotomdex_gif::Frame>) -> Self {
+impl From<Vec<rotomdex_gif::RgbaFrame>> for Animation {
+    fn from(frames: Vec<rotomdex_gif::RgbaFrame>) -> Self {
         let frames: Vec<_> = frames
             .into_iter()
-            .map(|frame| (frame.delay, RgbaImage::from(frame)))
+            .map(|frame| (frame.delay, RgbaImage::from(frame.buffer)))
             .collect();
 
         let bounds = frames
@@ -260,7 +260,7 @@ impl From<Vec<rotomdex_gif::Frame<'_>>> for Animation {
         let frames: Vec<_> = frames
             .into_iter()
             .map(|(delay, image)| {
-                total_duration += Duration::from_millis(delay as u64 * 10);
+                total_duration += Duration::from_millis(delay);
                 let image = if let Some(bounds) = bounds {
                     image.crop(bounds)
                 } else {

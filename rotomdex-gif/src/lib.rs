@@ -11,19 +11,18 @@
 extern crate alloc;
 
 mod common;
-mod gif_decoder;
 mod reader;
+mod wrapper;
 
-pub use gif_decoder::{GifDecoder, GifFrameIterator};
+pub use wrapper::*;
 
-pub use crate::common::{AnyExtension, DisposalMethod, Extension, Frame, Repeat};
+pub use crate::common::{
+    AnyExtension, Block, DisposalMethod, Extension, GifFrame, GifRead, Repeat,
+};
 
 pub use crate::reader::{ColorOutput, MemoryLimit};
-pub use crate::reader::{DecodeOptions, Decoder, Version};
+pub use crate::reader::{DecodeOptions, Decoder, DecoderIter};
+pub use crate::reader::{
+    Decoded, FrameDataType, FrameDecoder, OutputBuffer, StreamingDecoder, Version,
+};
 pub use crate::reader::{DecodingError, DecodingFormatError, EmbeddedIoError};
-
-/// Low-level, advanced decoder. Prefer [`Decoder`] instead, which can stream frames too.
-pub mod streaming_decoder {
-    pub use crate::common::Block;
-    pub use crate::reader::{Decoded, FrameDataType, FrameDecoder, OutputBuffer, StreamingDecoder};
-}

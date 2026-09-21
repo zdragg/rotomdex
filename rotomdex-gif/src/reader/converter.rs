@@ -5,7 +5,7 @@ use core::mem;
 
 use super::decoder::{DecodingError, OutputBuffer, PLTE_CHANNELS};
 use crate::MemoryLimit;
-use crate::common::Frame;
+use crate::common::GifFrame;
 
 pub(crate) const N_CHANNELS: usize = 4;
 
@@ -44,7 +44,7 @@ impl PixelConverter {
 
     pub(crate) fn check_buffer_size(
         &self,
-        frame: &Frame<'_>,
+        frame: &GifFrame<'_>,
         memory_limit: &MemoryLimit,
     ) -> Result<usize, DecodingError> {
         let pixel_bytes = memory_limit
@@ -62,7 +62,7 @@ impl PixelConverter {
     #[inline]
     pub(crate) fn read_frame(
         &mut self,
-        frame: &mut Frame<'_>,
+        frame: &mut GifFrame<'_>,
         data_callback: FillBufferCallback<'_>,
         memory_limit: &MemoryLimit,
     ) -> Result<(), DecodingError> {
@@ -83,12 +83,12 @@ impl PixelConverter {
     }
 
     #[inline]
-    pub(crate) const fn buffer_size(&self, frame: &Frame<'_>) -> Option<usize> {
+    pub(crate) const fn buffer_size(&self, frame: &GifFrame<'_>) -> Option<usize> {
         self.line_length(frame).checked_mul(frame.height as usize)
     }
 
     #[inline]
-    pub(crate) const fn line_length(&self, frame: &Frame<'_>) -> usize {
+    pub(crate) const fn line_length(&self, frame: &GifFrame<'_>) -> usize {
         use self::ColorOutput::{Indexed, RGBA};
         match self.color_output {
             RGBA => frame.width as usize * N_CHANNELS,
@@ -100,7 +100,7 @@ impl PixelConverter {
     #[inline(never)]
     pub(crate) fn fill_buffer(
         &mut self,
-        current_frame: &Frame<'_>,
+        current_frame: &GifFrame<'_>,
         mut buf: &mut [u8],
         data_callback: FillBufferCallback<'_>,
     ) -> Result<usize, DecodingError> {
@@ -138,7 +138,9 @@ impl PixelConverter {
                             buf = rest;
 
                             for (rgba, idx) in pixels
-                                .chunks_exact_mut(N_CHANNELS)
+                                .as_chunks_mut::<N_CHANNELS>()
+                                .0
+                                .iter_mut()
                                 .zip(self.buffer.iter().copied().take(bytes_decoded))
                             {
                                 let plte_offset = PLTE_CHANNELS * idx as usize;
@@ -189,7 +191,7 @@ impl PixelConverter {
     /// Set `frame.interlaced = false` afterwards if you're putting the buffer back into the `Frame`
     pub(crate) fn read_into_buffer(
         &mut self,
-        frame: &Frame<'_>,
+        frame: &GifFrame<'_>,
         buf: &mut [u8],
         data_callback: FillBufferCallback<'_>,
     ) -> Result<(), DecodingError> {
