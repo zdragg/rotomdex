@@ -3381,7 +3381,6 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.13.2",
  "hashbrown 0.17.1",
- "rapidhash",
  "unicode-properties",
  "unicode-width 0.2.2",
 ]

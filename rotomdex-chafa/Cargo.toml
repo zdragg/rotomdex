@@ -7,7 +7,6 @@ license.workspace = true
 
 [dependencies]
 bitflags.workspace = true
-hashbrown = { version = "0.17.1", default-features = false }
-rapidhash.workspace = true
+hashbrown = { version = "0.17.1", default-features = false, features = ["default-hasher"] }
 unicode-properties = "0.1"
 unicode-width = "0.2"
