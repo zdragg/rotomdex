@@ -268,7 +268,10 @@ impl FrameDecoder {
     ///
     /// If you get an error about invalid min code size, the buffer was probably pixels, not compressed data.
     #[inline]
-    pub fn decode_lzw_encoded_frame(&mut self, frame: &mut GifFrame<'_>) -> Result<(), DecodingError> {
+    pub fn decode_lzw_encoded_frame(
+        &mut self,
+        frame: &mut GifFrame<'_>,
+    ) -> Result<(), DecodingError> {
         let pixel_bytes = self
             .pixel_converter
             .check_buffer_size(frame, &self.memory_limit)?;

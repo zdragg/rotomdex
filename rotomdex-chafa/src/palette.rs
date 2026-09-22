@@ -7,7 +7,7 @@
 //! `pick_color_fixed_256` deliberately scans the cube/grays *before* the 16 ANSI
 //! colors so ties favour the higher-index universal colors.
 
-use crate::color::{color_diff, Color};
+use crate::color::{Color, color_diff};
 
 /// Palette index for a transparent pixel.
 pub const INDEX_TRANSPARENT: i32 = 256;
