@@ -8,4 +8,4 @@ Derived from [mevanlc/chafa-syms-rs](https://github.com/mevanlc/chafa-syms-rs), 
 
 # Original license
 
-See original license under [LICENSE-GPL](LICENSE-GPL).
+See original license under [LICENSE-LGPL](LICENSE-LGPL).
