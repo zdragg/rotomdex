@@ -3,6 +3,7 @@ mod retrier;
 
 use std::{borrow::Cow, path::PathBuf};
 
+use color_eyre::eyre::eyre;
 use http::StatusCode;
 use http_cache_reqwest::{Cache, CacheMode, HttpCache, HttpCacheOptions};
 use relative_path::{RelativePath, RelativePathBuf};
@@ -20,7 +21,7 @@ pub(crate) struct CachedClient {
 }
 
 #[derive(Debug, Snafu)]
-enum OnlineFetchError {
+enum CachedFetchError {
     #[snafu(display("{path} cannot be attached to {base_url}"))]
     JoinUrl {
         source: url::ParseError,
@@ -35,11 +36,13 @@ enum OnlineFetchError {
     InvalidStatusCode { status_code: StatusCode },
 }
 
-impl OtherTransportError for OnlineFetchError {}
+impl OtherTransportError for CachedFetchError {}
 
 impl CachedClient {
-    pub fn new(cache_dir: PathBuf) -> Self {
-        let cache_manager = http_cache_reqwest::CACacheManager::new(cache_dir, false);
+    pub fn new(cache_dir: PathBuf) -> color_eyre::eyre::Result<Self> {
+        let cache_manager =
+            http_cache_reqwest::RedbManager::new(cache_dir).map_err(|e| eyre!(e))?;
+
         let cache = Cache(HttpCache {
             mode: CacheMode::Default,
             manager: cache_manager,
@@ -52,7 +55,7 @@ impl CachedClient {
             .with(cache)
             .build();
 
-        Self { inner: client }
+        Ok(Self { inner: client })
     }
 }
 

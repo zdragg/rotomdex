@@ -39,6 +39,9 @@ async fn main() -> Result<()> {
         app_name: "rotomdex".to_string(),
     })?;
 
+    fs::create_dir_all(strategy.data_dir())?;
+    fs::create_dir_all(strategy.cache_dir())?;
+
     let resource_git_repo_dir = strategy.in_data_dir("resource");
 
     if cli.download {
@@ -46,7 +49,12 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    fs::create_dir_all(strategy.data_dir())?;
+    let config = if cli.offline {
+        PathConfig::Offline(resource_git_repo_dir)
+    } else {
+        PathConfig::Cache(strategy.in_cache_dir("http-cache.redb"))
+    };
+
     let log = fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -57,12 +65,6 @@ async fn main() -> Result<()> {
         .try_init()
         .map_err(|err| eyre!(err))?;
 
-    let config = if cli.offline {
-        PathConfig::Offline(resource_git_repo_dir)
-    } else {
-        PathConfig::Cache(strategy.cache_dir())
-    };
-
     let result = run(config).await;
 
     ratatui::restore();
@@ -70,14 +72,16 @@ async fn main() -> Result<()> {
 }
 
 enum PathConfig {
+    /// Path to `redb` file
     Cache(PathBuf),
+    /// Path to repository containing `zdragg/rotomdex-data` files
     Offline(PathBuf),
 }
 
 const FRAMES_PER_SECOND: f32 = 33.3;
 async fn run(config: PathConfig) -> Result<()> {
     let client = match config {
-        PathConfig::Cache(cache_dir) => Client::new(CachedClient::new(cache_dir)),
+        PathConfig::Cache(cache_dir) => Client::new(CachedClient::new(cache_dir)?),
         PathConfig::Offline(resource_path) => Client::new(OfflineClient::new(resource_path)),
     };
     let session_rw = crate::session_rw::SessionRw::new();

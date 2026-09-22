@@ -36,12 +36,18 @@ gix = {
   ]
 }
 http = "1.5.0"
-http-cache-reqwest = "0.16.0"
+http-cache-reqwest = "=1.0.0-alpha.9"
 prodash = { version = "31.0.0", default-features = false, features = ["progress-tree", "render-line", "render-line-autoconfigure", "render-line-crossterm"] }
 ratatui = { workspace = true, features = ["crossterm"] }
 relative-path.workspace = true
-reqwest = { version = "0.12.28", default-features = false, features = ["json", "rustls-tls"] }
-reqwest-middleware = "0.4.2"
+reqwest = {
+  version = "0.13.5",
+  default-features = false,
+  features = [
+    "json",
+  ]
+}
+reqwest-middleware = "0.5.2"
 rotomdex-api.workspace = true
 rotomdex-core = { workspace = true, features = ["std"] }
 serde.workspace = true
