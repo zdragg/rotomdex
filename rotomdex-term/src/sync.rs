@@ -32,12 +32,35 @@ pub(super) fn download_repo(repo_path: &Path) -> Result<()> {
     );
 
     let result = if repo_path.join(".git").exists() {
-        update_repo(repo_path, &mut progress, &should_interrupt)
+        match update_repo(repo_path, &mut progress, &should_interrupt) {
+            Ok(()) => Ok(()),
+            Err(_) => reclone_repo(repo_path, &mut progress, &should_interrupt),
+        }
     } else {
         clone_repo(repo_path, &mut progress, &should_interrupt)
     };
     renderer.shutdown_and_wait();
     result
+}
+
+fn reclone_repo(
+    repo_path: &Path,
+    progress: &mut Item,
+    should_interrupt: &AtomicBool,
+) -> Result<()> {
+    match fs::remove_dir_all(repo_path) {
+        Ok(()) => {}
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+        Err(err) => {
+            return Err(err).wrap_err_with(|| {
+                format!(
+                    "Failed to remove invalid resource repository {}",
+                    repo_path.display()
+                )
+            });
+        }
+    }
+    clone_repo(repo_path, progress, should_interrupt)
 }
 
 fn clone_repo(repo_path: &Path, progress: &mut Item, should_interrupt: &AtomicBool) -> Result<()> {
