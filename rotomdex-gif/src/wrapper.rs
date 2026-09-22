@@ -242,14 +242,7 @@ impl<R: GifRead> Iterator for GifFrameIterator<R> {
         let non_disposed_frame = self.non_disposed_frame.as_mut().unwrap();
 
         let frame = match self.reader.next_frame_info() {
-            Ok(frame_info) => {
-                if let Some(frame) = frame_info {
-                    FrameInfo::new_from_frame(frame)
-                } else {
-                    // no more frames
-                    return None;
-                }
-            }
+            Ok(frame_info) => FrameInfo::new_from_frame(frame_info?),
             Err(err) => {
                 if matches!(err, DecodingError::UnexpectedEof) {
                     // end of file reached, no more frames
