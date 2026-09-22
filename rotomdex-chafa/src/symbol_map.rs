@@ -564,13 +564,11 @@ fn parse_symbol_tag(token: &str) -> Result<TokenKind, SelectorParseError> {
     }
     // Expect "..last".
     let rest = &token[consumed..];
-    if let Some(after) = rest.strip_prefix("..") {
-        if let Some((last, c2)) = parse_code_point(after) {
-            if c2 == after.len() {
+    if let Some(after) = rest.strip_prefix("..")
+        && let Some((last, c2)) = parse_code_point(after)
+            && c2 == after.len() {
                 return Ok(TokenKind::Range(first, last));
             }
-        }
-    }
     Err(SelectorParseError(format!(
         "Unrecognized symbol tag '{token}'."
     )))

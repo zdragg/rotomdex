@@ -180,11 +180,10 @@ fn find_best_blank_char(symbol_map: &SymbolMap, fill_map: Option<&SymbolMap>) ->
     if symbol_map.has_symbol(' ') || fill_map.is_some_and(|f| f.has_symbol(' ')) {
         return 0x20;
     }
-    if let Some(f) = fill_map {
-        if let Some(c) = nearest_char(f, 0) {
+    if let Some(f) = fill_map
+        && let Some(c) = nearest_char(f, 0) {
             return c;
         }
-    }
     nearest_char(symbol_map, 0).unwrap_or(0x20)
 }
 
@@ -192,18 +191,15 @@ fn find_best_solid_char(symbol_map: &SymbolMap, fill_map: Option<&SymbolMap>) ->
     if symbol_map.has_symbol('\u{2588}') || fill_map.is_some_and(|f| f.has_symbol('\u{2588}')) {
         return 0x2588;
     }
-    if let Some(f) = fill_map {
-        if let Some((c, hd)) = nearest_char_hd(f, u64::MAX) {
-            if hd <= 32 {
+    if let Some(f) = fill_map
+        && let Some((c, hd)) = nearest_char_hd(f, u64::MAX)
+            && hd <= 32 {
                 return c;
             }
-        }
-    }
-    if let Some((c, hd)) = nearest_char_hd(symbol_map, u64::MAX) {
-        if hd <= 32 {
+    if let Some((c, hd)) = nearest_char_hd(symbol_map, u64::MAX)
+        && hd <= 32 {
             return c;
         }
-    }
     0
 }
 

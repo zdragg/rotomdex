@@ -44,7 +44,7 @@ impl Client {
     {
         let path = path.as_ref();
         let body = self.get_bytes(&path).await?;
-        Ok(Self::serialize(body).await?)
+        Self::serialize(body).await
     }
 
     /// Fetches a resource under `path` using the provided transport, and returns raw bytes.
