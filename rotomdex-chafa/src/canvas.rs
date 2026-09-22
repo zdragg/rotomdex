@@ -155,7 +155,9 @@ impl Canvas {
         let (dw, dh) = (self.width_pixels(), self.height_pixels());
         let scaled = smolscale::scale_rgba8(&src_bytes, w, h, dw, dh);
         let mut grid: Vec<Color> = scaled
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| Color::new(p[0], p[1], p[2], p[3]))
             .collect();
         if pixops::has_alpha(&grid) {
