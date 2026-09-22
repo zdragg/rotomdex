@@ -2,6 +2,7 @@ mod machine;
 use alloc::{string::String, vec::Vec};
 use itertools::Itertools;
 pub(crate) use machine::*;
+use snafu::{ResultExt, Snafu};
 use tracing::info_span;
 
 use core::{
@@ -10,10 +11,8 @@ use core::{
     task::{Context, Poll},
 };
 
-use color_eyre::eyre::{Result, eyre};
 use rotomdex_api::{
-    Follow,
-    client::Client,
+    Client, Follow,
     model::{moves::Move, pokemon::PokemonMove, resource::NamedApiResource},
 };
 use strum::{Display, EnumCount, EnumString, VariantArray};
@@ -22,8 +21,9 @@ use crate::{
     Settings, VersionGroup,
     data::{
         AsyncResource, ModelType,
-        resource::{Derivable, Fetchable},
+        resource::{ArbitraryResourceError, Derivable, Fetchable, ResourceResult},
     },
+    misc::strum::StrumParseError,
 };
 
 #[derive(Debug)]
@@ -33,7 +33,11 @@ pub(crate) struct ModelMoves {
 
 impl Derivable for ModelMoves {
     type Request = Vec<PokemonMove>;
-    fn derive(request: Self::Request, client: &Client, settings: crate::Settings) -> Result<Self> {
+    fn derive(
+        request: Self::Request,
+        client: &Client,
+        settings: crate::Settings,
+    ) -> ResourceResult<Self> {
         let mut move_baskets = [const { vec![] }; ModelMoveLearnMethod::COUNT];
         for m in request {
             for move_version in &m.version_group_details {
@@ -187,9 +191,31 @@ pub(crate) struct ModelMove {
     pub(crate) machine: Option<AsyncResource<ModelMachine>>,
 }
 
+#[derive(Debug, Snafu)]
+enum MoveError {
+    #[snafu(display("{name} is an invalid type"))]
+    InvalidType {
+        name: String,
+        #[snafu(source(from(strum::ParseError, StrumParseError)))]
+        source: StrumParseError,
+    },
+    #[snafu(display("{name} is an invalid damage class"))]
+    InvalidDamageClass {
+        name: String,
+        #[snafu(source(from(strum::ParseError, StrumParseError)))]
+        source: StrumParseError,
+    },
+}
+
+impl ArbitraryResourceError for MoveError {}
+
 impl Fetchable for ModelMove {
     type Request = (NamedApiResource<Move>, bool); // bool -> is_machine
-    async fn fetch(request: Self::Request, client: Client, settings: Settings) -> Result<Self> {
+    async fn fetch(
+        request: Self::Request,
+        client: Client,
+        settings: Settings,
+    ) -> ResourceResult<Self> {
         let (api, is_machine) = request;
 
         let move_ = api.follow(&client).await?;
@@ -198,16 +224,19 @@ impl Fetchable for ModelMove {
         let power = move_.power.map(|x| x as u32);
         let accuracy = move_.accuracy.map(|x| x as u32);
         let effect_chance = move_.effect_chance.map(|x| x as u32);
-        let type_ = move_
-            .type_
-            .name
+
+        let type_name = move_.type_.name;
+        let type_ = type_name
             .parse::<ModelType>()
-            .map_err(|e| eyre!(e))?;
-        let damage_class = move_
-            .damage_class
-            .name
-            .parse::<ModelDamageClass>()
-            .map_err(|err| eyre!(err))?;
+            .context(InvalidTypeSnafu { name: type_name })?;
+
+        let damage_class_name = move_.damage_class.name;
+        let damage_class =
+            damage_class_name
+                .parse::<ModelDamageClass>()
+                .context(InvalidDamageClassSnafu {
+                    name: damage_class_name,
+                })?;
 
         let (effect, short_effect) = move_
             .effect_entries

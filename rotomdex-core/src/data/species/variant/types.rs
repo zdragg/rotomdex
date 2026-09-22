@@ -1,17 +1,21 @@
 use core::task::{Context, Poll};
 
-use alloc::{borrow::Cow, vec::Vec};
-use color_eyre::eyre::{Result, eyre};
+use alloc::{borrow::Cow, string::String, vec::Vec};
 use colorgrad::{GradientBuilder, LinearGradient};
 use ratatui::text::Span;
 use rotomdex_api::{
-    client::Client,
+    Client,
     model::pokemon::{PokemonType, PokemonTypePast},
 };
+use snafu::{OptionExt, ResultExt, Snafu};
 use strum::{Display, EnumCount, EnumIter, EnumString, IntoEnumIterator};
 use tracing::info_span;
 
-use crate::{Generation, data::resource::Derivable};
+use crate::{
+    Generation,
+    data::resource::{ArbitraryResourceError, Derivable, ResourceResult},
+    misc::strum::StrumParseError,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ModelTypes {
@@ -19,9 +23,27 @@ pub(crate) struct ModelTypes {
     pub(crate) secondary: Option<ModelType>,
 }
 
+#[derive(Debug, Snafu)]
+enum TypesError {
+    #[snafu(display("{name} is an invalid type name"))]
+    InvalidType {
+        name: String,
+        #[snafu(source(from(strum::ParseError, StrumParseError)))]
+        source: StrumParseError,
+    },
+    #[snafu(display("no primary type (in slot 1) found"))]
+    NoPrimaryType,
+}
+
+impl ArbitraryResourceError for TypesError {}
+
 impl Derivable for ModelTypes {
     type Request = (Vec<PokemonType>, Vec<PokemonTypePast>);
-    fn derive(request: Self::Request, _client: &Client, settings: crate::Settings) -> Result<Self> {
+    fn derive(
+        request: Self::Request,
+        _client: &Client,
+        settings: crate::Settings,
+    ) -> ResourceResult<Self> {
         let (current, past) = request;
         let target_generation = settings.version.generation();
 
@@ -36,20 +58,22 @@ impl Derivable for ModelTypes {
             .map(|(_, types)| types)
             .unwrap_or(current);
 
-        let primary = relevant_types
+        let primary_name = relevant_types
             .iter()
             .find(|model| model.slot == 1)
-            .map(|model| model.type_.name.parse())
-            .transpose()
-            .map_err(|e: strum::ParseError| eyre!(e))?
-            .ok_or_else(|| eyre!("no primary type found"))?;
+            .map(|model| &model.type_.name)
+            .context(NoPrimaryTypeSnafu)?;
+        let primary = primary_name
+            .parse()
+            .context(InvalidTypeSnafu { name: primary_name })?;
 
-        let secondary = relevant_types
+        let maybe_secondary_name = relevant_types
             .iter()
             .find(|model| model.slot == 2)
-            .map(|model| model.type_.name.parse())
-            .transpose()
-            .map_err(|e: strum::ParseError| eyre!(e))?;
+            .map(|model| &model.type_.name);
+        let secondary = maybe_secondary_name
+            .map(|name| name.parse().context(InvalidTypeSnafu { name }))
+            .transpose()?;
 
         Ok(Self { primary, secondary })
     }

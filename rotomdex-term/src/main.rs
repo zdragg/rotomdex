@@ -11,10 +11,11 @@ use color_eyre::eyre::{Result, eyre};
 use crossterm::event::{Event, EventStream, KeyCode};
 use etcetera::{AppStrategy, AppStrategyArgs};
 use ratatui::prelude::Widget;
-use rotomdex_core::{Client, DexKeyCode, DexKeyModifiers, MaybeExit, RotomDexCore};
+use rotomdex_api::Client;
+use rotomdex_core::{DexKeyCode, DexKeyModifiers, MaybeExit, RotomDexCore};
 use tokio_stream::StreamExt;
 
-use crate::client::{CachedClient, OfflineClient};
+use crate::client::{offline::OfflineClient, online::CachedClient};
 
 #[derive(Debug, Parser)]
 struct Cli {

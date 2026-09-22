@@ -5,27 +5,27 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-async-trait = "0.1.92"
-bitflags = "2.13.1"
-chafa-syms-rs = "0.1.1"
-color-eyre = "0.6.5"
-colorgrad = "0.8.0"
+bitflags.workspace = true
+colorgrad = { version = "0.8.0", default-features = false }
 csscolorparser = { version = "0.8.4", default-features = false }
 embassy-time = "0.5.1"
 futures = { version = "0.3.34", default-features = false, features = ["alloc"] }
-itertools = "0.15.0"
+itertools = { version = "0.15.0", default-features = false, features = ["use_alloc"] }
 konst = { version = "0.4.3", default-features = false, features = ["iter"] }
+libm = "0.2.16"
 lru = "0.18.4"
 minipng = { version = "1.0.0", features = ["adler"] }
-rapidhash = "4.5.1"
-ratatui = { version = "0.30.2", default-features = false, features = ["layout-cache", "macros", "unstable-rendered-line-info"] }
-relative-path = { version = "2.0.1", default-features = false }
+rapidhash.workspace = true
+ratatui.workspace = true
+relative-path.workspace = true
 rotomdex-api.workspace = true
+rotomdex-chafa.workspace = true
 rotomdex-gif.workspace = true
 serde.workspace = true
+snafu.workspace = true
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
-tracing = "0.1.44"
+tracing = { version = "0.1.44", default-features = false, features = [] }
 tui-big-text = "0.8.8"
 
 [features]
-std = ["relative-path/std", "rotomdex-api/std", "embassy-time/std"]
+std = ["embassy-time/std", "rotomdex-api/std"]

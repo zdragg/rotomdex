@@ -1,6 +1,12 @@
 [workspace]
 resolver = "3"
-members = ["rotomdex-api", "rotomdex-core", "rotomdex-gif", "rotomdex-term"]
+members = [
+  "rotomdex-api",
+  "rotomdex-chafa",
+  "rotomdex-core",
+  "rotomdex-gif",
+  "rotomdex-term",
+]
 default-members = ["rotomdex-term"]
 
 [workspace.package]
@@ -11,17 +17,27 @@ repository = "https://github.com/zdragg/rotomdex"
 license = "AGPL-3.0-only"
 
 [workspace.dependencies]
+async-trait = { version = "0.1.92" }
+bitflags = { version = "2.13.1", default-features = false }
+rapidhash = { version = "4.5.1", default-features = false }
+ratatui = { version = "0.30.2", default-features = false, features = ["layout-cache", "macros", "unstable-rendered-line-info"] }
+relative-path = { version = "2.0.1", default-features = false }
 rotomdex-api = { path = "rotomdex-api/" }
+rotomdex-chafa = { path = "rotomdex-chafa/" }
 rotomdex-core = { path = "rotomdex-core/" }
 rotomdex-gif = { path = "rotomdex-gif/" }
 serde = { version = "1.0.229", default-features = false, features = ["alloc"] }
 serde_json = { version = "1.0.151", default-features = false, features = ["alloc"] }
-
-[profile.dev]
-debug = 0
+snafu = { version = "0.9.2", default-features = false, features = ["alloc", "rust_1_81"] }
 
 [profile.dev.package."*"]
-opt-level = 3  # chafa is very intensive
+opt-level = 3
+
+[profile.dev.package.rotomdex-chafa]
+opt-level = 3
+
+[profile.dev.package.rotomdex-gif]
+opt-level = 3
 
 [profile.release]
 opt-level = 3

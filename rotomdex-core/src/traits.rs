@@ -1,5 +1,3 @@
-pub use rotomdex_api::client::{CachedTransport, Error as ApiError, RelativePath, RelativePathBuf};
-
 use crate::Session;
 
 pub trait SessionRw {

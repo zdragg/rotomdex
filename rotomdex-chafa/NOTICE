@@ -1,0 +1,16 @@
+chafa-syms-rs is a Rust port of portions of Chafa:
+
+  https://hpjansson.org/chafa/
+  https://github.com/hpjansson/chafa
+
+The port includes code and generated data derived from Chafa's symbol rendering
+core, symbol definition headers, terminal palettes, printer behavior, pixel
+pipeline, and bundled smolscale resampler.
+
+Original Chafa copyright notices identify Hans Petter Jansson as the primary
+copyright holder. Chafa proper is licensed under the GNU Lesser General Public
+License version 3 or later. Chafa's bundled smolscale component is available
+under either the BSD 4-clause license or the GNU Lesser General Public License
+version 3; this project uses the LGPL version 3 option.
+
+This repository is distributed under LGPL-3.0-only as stated in Cargo.toml.

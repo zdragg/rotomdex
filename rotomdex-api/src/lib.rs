@@ -15,8 +15,10 @@ pub mod moves;
 pub mod pokemon;
 pub mod utility;
 
-pub mod client;
-pub mod error;
+mod client;
+pub use client::*;
+mod error;
+pub use error::*;
 
 mod endpoint;
 pub(crate) use endpoint::endpoint;

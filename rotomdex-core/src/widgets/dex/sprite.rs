@@ -1,11 +1,11 @@
 use core::{cell::RefCell, char, num::NonZeroUsize};
 
 use alloc::rc::Rc;
-use chafa_syms_rs::{Canvas, CanvasConfig, CanvasMode, CellOut, PixelType};
 use embassy_time::Duration;
 use lru::LruCache;
 use rapidhash::v3::rapidhash_v3;
 use ratatui::{prelude::*, widgets::Widget};
+use rotomdex_chafa::{Canvas, CanvasConfig, CanvasMode, CellOut, PixelType};
 
 use crate::data::{ModelVariant, RgbaImage};
 

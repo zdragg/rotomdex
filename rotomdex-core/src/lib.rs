@@ -6,18 +6,19 @@ extern crate alloc;
 
 mod data;
 mod settings;
+mod traits;
+mod widgets;
+
+pub(crate) mod misc;
+
+pub use settings::*;
+pub use traits::*;
 
 use alloc::{
     boxed::Box,
     string::{String, ToString},
 };
 use embassy_time::Instant;
-pub use rotomdex_api::client::Client;
-pub use settings::*;
-mod traits;
-pub use traits::*;
-mod widgets;
-
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
 use crate::{
@@ -36,7 +37,7 @@ pub struct RotomDexCore {
 }
 
 impl RotomDexCore {
-    pub fn new(client: Client, session_rw: impl SessionRw + 'static) -> Self {
+    pub fn new(client: rotomdex_api::Client, session_rw: impl SessionRw + 'static) -> Self {
         let Session {
             pkmn_name,
             settings,

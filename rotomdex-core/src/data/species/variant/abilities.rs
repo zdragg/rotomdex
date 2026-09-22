@@ -1,13 +1,14 @@
 use core::cmp::Reverse;
 use core::task::{Context, Poll};
 
-use crate::data::resource::{AsyncResource, Derivable, Fetchable};
+use crate::data::resource::{
+    ArbitraryResourceError, AsyncResource, Derivable, Fetchable, ResourceResult,
+};
 use crate::{Generation, Settings, VersionGroup};
 use alloc::string::String;
 use alloc::vec::Vec;
-use color_eyre::eyre::{Result, eyre};
 use itertools::Itertools;
-use rotomdex_api::client::Client;
+use rotomdex_api::Client;
 use rotomdex_api::model::pokemon::PokemonAbilityPast;
 use rotomdex_api::{
     Follow,
@@ -16,6 +17,7 @@ use rotomdex_api::{
         resource::NamedApiResource,
     },
 };
+use snafu::Snafu;
 use tracing::{Span, info_span};
 
 #[allow(clippy::upper_case_acronyms)]
@@ -40,18 +42,37 @@ pub(crate) enum ModelAbilities {
     },
 }
 
+#[derive(Debug, Snafu)]
+enum AbilitiesError {
+    #[snafu(display("expected ability slot 1 or 2 or 3, found {slot}"))]
+    InvalidAbilitySlot { slot: i64 },
+
+    #[snafu(display(
+        "found invalid ability set primary:{primary}, secondary:{secondary}, hidden:{hidden}"
+    ))]
+    InvalidAbilitySet {
+        primary: bool,
+        secondary: bool,
+        hidden: bool,
+    },
+}
+
+impl ArbitraryResourceError for AbilitiesError {}
+
 impl Derivable for ModelAbilities {
     type Request = (Vec<PokemonAbility>, Vec<PokemonAbilityPast>);
-    fn derive(request: Self::Request, client: &Client, settings: Settings) -> Result<Self> {
+    fn derive(request: Self::Request, client: &Client, settings: Settings) -> ResourceResult<Self> {
         let (current, past) = request;
 
         let mut slots: [Option<NamedApiResource<Ability>>; 3] = [const { None }; 3];
 
-        let mut apply_ability = |ability: PokemonAbility| {
-            let idx = if let 1..=3 = ability.slot {
+        let mut apply_ability = |ability: PokemonAbility| -> ResourceResult<()> {
+            let slot = ability.slot;
+
+            let idx = if let 1..=3 = slot {
                 (ability.slot - 1) as usize
             } else {
-                return Err(eyre!("invalid ability slot"));
+                InvalidAbilitySlotSnafu { slot }.fail()?
             };
 
             slots[idx] = ability.ability;
@@ -96,7 +117,12 @@ impl Derivable for ModelAbilities {
                 secondary,
                 hidden,
             },
-            _ => return Err(eyre!("invalid ability set found")),
+            _ => InvalidAbilitySetSnafu {
+                primary: slots[0].is_some(),
+                secondary: slots[1].is_some(),
+                hidden: slots[2].is_some(),
+            }
+            .fail()?,
         };
 
         Ok(res)
@@ -157,7 +183,11 @@ pub(crate) struct ModelAbility {
 
 impl Fetchable for ModelAbility {
     type Request = NamedApiResource<Ability>;
-    async fn fetch(request: Self::Request, client: Client, settings: Settings) -> Result<Self> {
+    async fn fetch(
+        request: Self::Request,
+        client: Client,
+        settings: Settings,
+    ) -> ResourceResult<Self> {
         let ability = request.follow(&client).await?;
         let name = ability.name;
 

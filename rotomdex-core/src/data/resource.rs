@@ -6,16 +6,39 @@ use core::{
 };
 
 use alloc::boxed::Box;
-use color_eyre::eyre::{Report, Result};
 use futures::future::LocalBoxFuture;
-use rotomdex_api::client::Client;
+use rotomdex_api::Client;
+use snafu::Snafu;
 use tracing::{Instrument, Span};
 
 use crate::Settings;
 
+pub(crate) type ResourceResult<T> = core::result::Result<T, ResourceError>;
+
+#[derive(Debug, Snafu)]
+pub(crate) enum ResourceError {
+    #[snafu(transparent)]
+    ApiError { source: rotomdex_api::Error },
+
+    #[snafu(transparent)]
+    Arbitrary {
+        source: Box<dyn core::error::Error + Send + Sync + 'static>,
+    },
+}
+
+pub(crate) trait ArbitraryResourceError: core::error::Error + Send + Sync + 'static {}
+
+impl<E: ArbitraryResourceError> From<E> for ResourceError {
+    fn from(value: E) -> Self {
+        Self::Arbitrary {
+            source: Box::new(value),
+        }
+    }
+}
+
 pub(crate) trait Derivable: Sized {
     type Request;
-    fn derive(request: Self::Request, client: &Client, settings: Settings) -> Result<Self>;
+    fn derive(request: Self::Request, client: &Client, settings: Settings) -> ResourceResult<Self>;
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()>;
 
@@ -24,7 +47,7 @@ pub(crate) trait Derivable: Sized {
 
 pub(crate) enum SyncResource<T: Derivable> {
     Loaded(T),
-    Failed(Report),
+    Failed(ResourceError),
 }
 
 impl<T: Derivable> SyncResource<T> {
@@ -57,7 +80,11 @@ impl<T: Derivable> SyncResource<T> {
 
 pub(crate) trait Fetchable: Sized + 'static {
     type Request;
-    async fn fetch(request: Self::Request, client: Client, settings: Settings) -> Result<Self>;
+    async fn fetch(
+        request: Self::Request,
+        client: Client,
+        settings: Settings,
+    ) -> ResourceResult<Self>;
 
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()>;
 
@@ -77,10 +104,10 @@ pub(crate) enum AsyncResource<T: Fetchable> {
     Loading {
         deferred: Cell<bool>,
         deferred_waker: RefCell<Option<Waker>>,
-        future: LocalBoxFuture<'static, Result<T>>,
+        future: LocalBoxFuture<'static, ResourceResult<T>>,
     },
     Loaded(T),
-    Failed(Report),
+    Failed(ResourceError),
 }
 
 impl<T: Fetchable> AsyncResource<T> {
@@ -149,7 +176,8 @@ impl<T: Fetchable> AsyncResource<T> {
         }
     }
 
-    pub(crate) fn as_loaded_without_undefer(&self) -> Option<&T> {
+    /// Accesses inner resource while keeping defer status.
+    pub(crate) fn as_loaded_defer(&self) -> Option<&T> {
         if let Self::Loaded(inner) = self {
             Some(inner)
         } else {
@@ -171,10 +199,7 @@ impl<T: fmt::Debug + Fetchable> fmt::Debug for AsyncResource<T> {
 
 impl<T: PartialEq + Fetchable> PartialEq for AsyncResource<T> {
     fn eq(&self, other: &Self) -> bool {
-        match (
-            self.as_loaded_without_undefer(),
-            other.as_loaded_without_undefer(),
-        ) {
+        match (self.as_loaded_defer(), other.as_loaded_defer()) {
             (Some(me), Some(other)) => me == other,
             (None, None) => true,
             _ => false,
@@ -185,10 +210,7 @@ impl<T: PartialEq + Fetchable> PartialEq for AsyncResource<T> {
 /// Mark all unloaded resources as greater. When sorting, these go to the back.
 impl<T: PartialOrd + Fetchable> PartialOrd for AsyncResource<T> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        match (
-            self.as_loaded_without_undefer(),
-            other.as_loaded_without_undefer(),
-        ) {
+        match (self.as_loaded_defer(), other.as_loaded_defer()) {
             (Some(me), Some(other)) => me.partial_cmp(other),
             (Some(_me), None) => Some(Ordering::Less),
             (None, Some(_other)) => Some(Ordering::Greater),
@@ -202,10 +224,7 @@ impl<T: Eq + Fetchable> Eq for AsyncResource<T> {}
 /// Mark all unloaded resources as greater. When sorting, these go to the back.
 impl<T: Ord + Fetchable> Ord for AsyncResource<T> {
     fn cmp(&self, other: &Self) -> Ordering {
-        match (
-            self.as_loaded_without_undefer(),
-            other.as_loaded_without_undefer(),
-        ) {
+        match (self.as_loaded_defer(), other.as_loaded_defer()) {
             (Some(me), Some(other)) => me.cmp(other),
             (Some(_me), None) => Ordering::Less,
             (None, Some(_other)) => Ordering::Greater,

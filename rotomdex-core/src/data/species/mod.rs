@@ -5,17 +5,16 @@ use alloc::string::String;
 use alloc::vec::Vec;
 pub(crate) use evolution_chain::*;
 pub(crate) use flavor_text::*;
-use rotomdex_api::client::Client;
+use rotomdex_api::Client;
 pub(crate) use variant::*;
 
 use core::task::{Context, Poll};
 
-use color_eyre::eyre::{Result, eyre};
 use ratatui::style::Color;
 use tracing::Span;
 
 use crate::Settings;
-use crate::data::resource::{AsyncResource, Fetchable, SyncResource};
+use crate::data::resource::{AsyncResource, Fetchable, ResourceResult, SyncResource};
 use crate::data::species::evolution_chain::ModelEvolutionChain;
 
 #[derive(Debug)]
@@ -30,13 +29,13 @@ pub(crate) struct ModelSpecies {
 
 impl Fetchable for ModelSpecies {
     type Request = String;
-    async fn fetch(request: Self::Request, client: Client, settings: Settings) -> Result<Self> {
-        let species_result =
-            rotomdex_api::pokemon::pokemon_species::get_by_name(&request, &client).await;
-        if let Err(rotomdex_api::error::Error::NotFound) = species_result {
-            return Err(eyre!("pokémon \"{request}\" not found"));
-        }
-        let species = species_result?;
+    async fn fetch(
+        request: Self::Request,
+        client: Client,
+        settings: Settings,
+    ) -> ResourceResult<Self> {
+        let species =
+            rotomdex_api::pokemon::pokemon_species::get_by_name(&request, &client).await?;
 
         let national_dex = species.id as u32;
 

@@ -1,0 +1,13 @@
+[package]
+name = "rotomdex-chafa"
+version.workspace = true
+edition.workspace = true
+description = "Pure-Rust port of chafa's symbol-rendering core: tunable Unicode symbol rendering of raster graphics."
+license.workspace = true
+
+[dependencies]
+bitflags.workspace = true
+hashbrown = { version = "0.17.1", default-features = false }
+rapidhash.workspace = true
+unicode-properties = "0.1"
+unicode-width = "0.2"

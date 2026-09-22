@@ -1,22 +1,37 @@
 use core::{
     fmt::{self, Display},
+    num::ParseIntError,
     task::{Context, Poll},
 };
 
-use color_eyre::eyre::eyre;
+use alloc::string::String;
 use rotomdex_api::{
-    Follow,
-    client::Client,
+    Client, Follow,
     model::{machines::Machine, resource::ApiResource},
 };
+use snafu::{ResultExt, Snafu};
 
-use crate::{Settings, data::resource::Fetchable};
+use crate::{
+    Settings,
+    data::resource::{ArbitraryResourceError, Fetchable, ResourceResult},
+};
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub(crate) struct ModelMachine {
     pub(crate) type_: ModelMachineType,
     pub(crate) id: u32,
 }
+
+#[derive(Debug, Snafu)]
+enum MachineError {
+    #[snafu(display("{name} has an unknown machine type"))]
+    InvalidMachineName { name: String },
+
+    #[snafu(display("{name} has an invalid machine number"))]
+    InvalidMachineNumber { source: ParseIntError, name: String },
+}
+
+impl ArbitraryResourceError for MachineError {}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum ModelMachineType {
@@ -41,17 +56,23 @@ impl Fetchable for ModelMachine {
         request: Self::Request,
         client: Client,
         _settings: Settings,
-    ) -> color_eyre::eyre::Result<Self> {
+    ) -> ResourceResult<Self> {
         let machine = request.follow(&client).await?;
-        let (type_, id) = if let Some(rest) = machine.item.name.strip_prefix("tm") {
-            (ModelMachineType::Machine, rest.parse::<u32>()?)
-        } else if let Some(rest) = machine.item.name.strip_prefix("tr") {
-            (ModelMachineType::Record, rest.parse::<u32>()?)
-        } else if let Some(rest) = machine.item.name.strip_prefix("hm") {
-            (ModelMachineType::Hidden, rest.parse::<u32>()?)
+        let name = machine.item.name;
+
+        let (type_, number) = if let Some(number) = name.strip_prefix("tm") {
+            (ModelMachineType::Machine, number)
+        } else if let Some(number) = name.strip_prefix("tr") {
+            (ModelMachineType::Record, number)
+        } else if let Some(number) = name.strip_prefix("hm") {
+            (ModelMachineType::Hidden, number)
         } else {
-            return Err(eyre!("Machine id cannot be parsed"));
+            InvalidMachineNameSnafu { name: &name }.fail()?
         };
+
+        let id = number
+            .parse::<u32>()
+            .context(InvalidMachineNumberSnafu { name })?;
 
         Ok(Self { type_, id })
     }

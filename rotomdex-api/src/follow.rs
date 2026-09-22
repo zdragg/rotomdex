@@ -1,11 +1,10 @@
-use relative_path::RelativePath;
-use serde::de::DeserializeOwned;
-
 use crate::{
     client::Client,
     error::Error,
     model::resource::{ApiResource, NamedApiResource},
 };
+use relative_path::RelativePath;
+use serde::de::DeserializeOwned;
 
 #[allow(async_fn_in_trait)]
 pub trait Follow<T: DeserializeOwned> {
@@ -14,12 +13,12 @@ pub trait Follow<T: DeserializeOwned> {
 
 impl<T: DeserializeOwned> Follow<T> for NamedApiResource<T> {
     async fn follow(&self, client: &Client) -> Result<T, Error> {
-        client.get(RelativePath::new(&self.url)).await
+        client.get(&RelativePath::new(&self.url)).await
     }
 }
 
 impl<T: DeserializeOwned> Follow<T> for ApiResource<T> {
     async fn follow(&self, client: &Client) -> Result<T, Error> {
-        client.get(RelativePath::new(&self.url)).await
+        client.get(&RelativePath::new(&self.url)).await
     }
 }

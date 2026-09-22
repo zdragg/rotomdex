@@ -1,7 +1,7 @@
 pub(crate) mod resource;
 mod species;
 use alloc::borrow::ToOwned;
-use rotomdex_api::client::Client;
+use rotomdex_api::Client;
 pub(crate) use species::*;
 
 use crate::{Settings, data::resource::AsyncResource};

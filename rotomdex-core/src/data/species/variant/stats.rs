@@ -1,15 +1,18 @@
 use core::task::{Context, Poll};
 
-use alloc::vec::Vec;
-use color_eyre::eyre::{Result, eyre};
+use alloc::{string::String, vec::Vec};
 use itertools::Itertools;
 use rotomdex_api::{
-    client::Client,
+    Client,
     model::pokemon::{PokemonStat, PokemonStatPast},
 };
+use snafu::Snafu;
 use tracing::info_span;
 
-use crate::{Generation, data::resource::Derivable};
+use crate::{
+    Generation,
+    data::resource::{ArbitraryResourceError, Derivable, ResourceResult},
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ModelStats {
@@ -21,13 +24,37 @@ pub(crate) struct ModelStats {
     pub(crate) spe: u32,
 }
 
+#[derive(Debug, Snafu)]
+enum StatsError {
+    #[snafu(display("{name} is an invalid stat name"))]
+    InvalidStatName { name: String },
+    #[snafu(display(
+        "stats are missing, available stats: hp: {hp}, atk: {atk}, def: {def}, spa: {spa}, spd: {spd}, spe: {spe}"
+    ))]
+    MissingStats {
+        hp: bool,
+        atk: bool,
+        def: bool,
+        spa: bool,
+        spd: bool,
+        spe: bool,
+    },
+}
+
+impl ArbitraryResourceError for StatsError {}
+
 impl Derivable for ModelStats {
     type Request = (Vec<PokemonStat>, Vec<PokemonStatPast>);
-    fn derive(request: Self::Request, _client: &Client, settings: crate::Settings) -> Result<Self> {
+    fn derive(
+        request: Self::Request,
+        _client: &Client,
+        settings: crate::Settings,
+    ) -> ResourceResult<Self> {
         let (current, past) = request;
         let mut stats: [Option<u32>; 6] = [None; 6];
-        let mut apply_stat = |stat: PokemonStat| {
-            let stat_index = match stat.stat.name.as_str() {
+        let mut apply_stat = |stat: PokemonStat| -> ResourceResult<()> {
+            let name = stat.stat.name;
+            let stat_index = match name.as_str() {
                 "hp" => 0,
                 "attack" => 1,
                 "defense" => 2,
@@ -35,7 +62,7 @@ impl Derivable for ModelStats {
                 "special-defense" => 4,
                 "speed" => 5,
                 "special" => 6,
-                _ => return Err(eyre!("invalid stat name found")),
+                _ => InvalidStatNameSnafu { name }.fail()?,
             };
             // Gen 1 stat patch's "special" is applied to both SpA and SpD
             if stat_index == 6 {
@@ -76,7 +103,15 @@ impl Derivable for ModelStats {
             Some(spe),
         ] = stats
         else {
-            return Err(eyre!("missing stat"));
+            MissingStatsSnafu {
+                hp: stats[0].is_some(),
+                atk: stats[1].is_some(),
+                def: stats[2].is_some(),
+                spa: stats[3].is_some(),
+                spd: stats[4].is_some(),
+                spe: stats[5].is_some(),
+            }
+            .fail()?
         };
 
         Ok(Self {

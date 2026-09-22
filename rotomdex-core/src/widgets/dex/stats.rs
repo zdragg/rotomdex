@@ -89,9 +89,9 @@ fn get_bar(stat: u32, stat_name: &str) -> Bar<'_> {
         .unwrap();
     let color = grad.at(ratio as f32).clamp();
     let tui_color = ratatui::style::Color::Rgb(
-        (color.r * 255.0).round() as u8,
-        (color.g * 255.0).round() as u8,
-        (color.b * 255.0).round() as u8,
+        libm::roundf(color.r * 255.0) as u8,
+        libm::roundf(color.g * 255.0) as u8,
+        libm::roundf(color.b * 255.0) as u8,
     );
     Bar::with_label(stat_name, stat as u64).style(tui_color)
 }

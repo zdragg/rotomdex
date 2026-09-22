@@ -2,15 +2,15 @@ use core::task::{Context, Poll};
 
 use alloc::borrow::ToOwned;
 use alloc::vec::Vec;
-use color_eyre::eyre::Result;
 use embassy_time::Duration;
 use relative_path::RelativePath;
-use rotomdex_api::client::Client;
+use rotomdex_api::Client;
 use rotomdex_api::model::pokemon::PokemonSprites;
+use snafu::{ResultExt, Snafu};
 use tracing::{Instrument, Span};
 
 use crate::Settings;
-use crate::data::resource::Fetchable;
+use crate::data::resource::{ArbitraryResourceError, Fetchable, ResourceResult};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ModelSprite {
@@ -18,18 +18,33 @@ pub(crate) struct ModelSprite {
     animated: Option<Animation>,
 }
 
+#[derive(Debug, Snafu)]
+enum SpriteError {
+    #[snafu(display("cannot decode png: {source}"))]
+    Minipng { source: minipng::Error },
+    #[snafu(display("cannot decode gif: {source}"))]
+    Gif { source: rotomdex_gif::DecodingError },
+}
+
+impl ArbitraryResourceError for SpriteError {}
+
 impl Fetchable for ModelSprite {
     type Request = PokemonSprites;
-    async fn fetch(request: Self::Request, client: Client, _settings: Settings) -> Result<Self> {
-        let image: Result<Option<RgbaImage>> = async {
+    async fn fetch(
+        request: Self::Request,
+        client: Client,
+        _settings: Settings,
+    ) -> ResourceResult<Self> {
+        let image: ResourceResult<Option<RgbaImage>> = async {
             if let Some(image_link) = request.front_default {
-                let png_bytes = client.get_raw(RelativePath::new(&image_link)).await?;
+                let png_bytes = client.get_bytes(RelativePath::new(&image_link)).await?;
 
-                let png_header = minipng::decode_png_header(&png_bytes)?;
+                let png_header = minipng::decode_png_header(&png_bytes).context(MinipngSnafu)?;
                 let mut buffer = vec![0; png_header.required_bytes_rgba8bpc()];
 
-                let mut image = minipng::decode_png(&png_bytes, &mut buffer)?;
-                image.convert_to_rgba8bpc()?;
+                let mut image =
+                    minipng::decode_png(&png_bytes, &mut buffer).context(MinipngSnafu)?;
+                image.convert_to_rgba8bpc().context(MinipngSnafu)?;
 
                 let image = RgbaImage::from(image);
 
@@ -46,15 +61,16 @@ impl Fetchable for ModelSprite {
         .instrument(tracing::info_span!("fetch_static"))
         .await;
 
-        let animation: Result<Option<Animation>> = async {
+        let animation: ResourceResult<Option<Animation>> = async {
             if let Some(animation_link) = request.other.showdown.front_default {
-                let animation_bytes = client.get_raw(RelativePath::new(&animation_link)).await?;
+                let animation_bytes = client.get_bytes(RelativePath::new(&animation_link)).await?;
 
-                let decoder = rotomdex_gif::GifDecoder::new(animation_bytes.as_ref())?;
+                let decoder =
+                    rotomdex_gif::GifDecoder::new(animation_bytes.as_ref()).context(GifSnafu)?;
 
                 let frames_result: Result<Vec<_>, rotomdex_gif::DecodingError> =
                     decoder.into_frames().collect();
-                let frames = frames_result?;
+                let frames = frames_result.context(GifSnafu)?;
 
                 Ok(Some(frames.into()))
             } else {

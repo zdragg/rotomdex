@@ -5,17 +5,18 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use color_eyre::eyre::Result;
 use rotomdex_api::{
-    Follow,
-    client::Client,
+    Client, Follow,
     model::{
         evolution::{ChainLink, EvolutionChain, EvolutionDetail},
         resource::ApiResource,
     },
 };
 
-use crate::{Settings, VersionGroup, data::resource::Fetchable};
+use crate::{
+    Settings, VersionGroup,
+    data::resource::{Fetchable, ResourceResult},
+};
 
 #[derive(Debug)]
 pub(crate) struct ModelEvolutionChain {
@@ -24,7 +25,11 @@ pub(crate) struct ModelEvolutionChain {
 
 impl Fetchable for ModelEvolutionChain {
     type Request = ApiResource<EvolutionChain>;
-    async fn fetch(request: Self::Request, client: Client, settings: Settings) -> Result<Self> {
+    async fn fetch(
+        request: Self::Request,
+        client: Client,
+        settings: Settings,
+    ) -> ResourceResult<Self> {
         let chain = request.follow(&client).await?;
         Ok(Self {
             base: ModelChainLink::new(chain.chain, settings)?,
@@ -52,7 +57,7 @@ pub(crate) struct ModelChainLink {
 }
 
 impl ModelChainLink {
-    fn new(link: ChainLink, settings: Settings) -> Result<Self> {
+    fn new(link: ChainLink, settings: Settings) -> ResourceResult<Self> {
         Ok(Self {
             species_name: link.species.name,
             evolution_detail: ModelEvolutionDetail::new(link.evolution_details, settings)?,
@@ -60,7 +65,7 @@ impl ModelChainLink {
                 .evolves_to
                 .into_iter()
                 .map(|link| ModelChainLink::new(link, settings))
-                .collect::<Result<Vec<_>>>()?,
+                .collect::<ResourceResult<Vec<_>>>()?,
         })
     }
     fn get_view_with_child(
@@ -218,7 +223,7 @@ impl ModelEvolutionDetail {
         requirements
     }
 
-    fn new(detail: Vec<EvolutionDetail>, settings: Settings) -> Result<Self> {
+    fn new(detail: Vec<EvolutionDetail>, settings: Settings) -> ResourceResult<Self> {
         let detail = detail
             .into_iter()
             .filter_map(|detail| {

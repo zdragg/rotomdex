@@ -2,10 +2,13 @@ use core::task::{Context, Poll};
 
 use alloc::{string::String, vec::Vec};
 use itertools::Itertools;
-use rotomdex_api::{client::Client, model::resource::FlavorText};
+use rotomdex_api::{Client, model::resource::FlavorText};
 use tracing::info_span;
 
-use crate::{Version, data::resource::Derivable};
+use crate::{
+    Version,
+    data::resource::{Derivable, ResourceResult},
+};
 
 #[derive(Debug)]
 pub(crate) struct ModelFlavorText {
@@ -18,7 +21,7 @@ impl Derivable for ModelFlavorText {
         request: Self::Request,
         _client: &Client,
         settings: crate::Settings,
-    ) -> color_eyre::eyre::Result<Self> {
+    ) -> ResourceResult<Self> {
         let text = request.into_iter().find_map(|entry| {
             if entry.version?.name.parse::<Version>().ok()? != settings.version {
                 return None;

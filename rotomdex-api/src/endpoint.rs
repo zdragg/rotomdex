@@ -12,12 +12,12 @@ macro_rules! endpoint {
         use crate::error::Error;
 
         pub async fn get_by_id(id: i64, client: &Client) -> Result<$type, Error> {
-            let path = format!("/api/v2/{}/{id}", $name);
+            let path = format!("/api/v2/{}/{id}/", $name);
             client.get(RelativePath::new(&path)).await
         }
 
         pub async fn get_by_name(name: &str, client: &Client) -> Result<$type, Error> {
-            let path = format!("/api/v2/{}/{name}", $name);
+            let path = format!("/api/v2/{}/{name}/", $name);
             client.get(RelativePath::new(&path)).await
         }
     };
@@ -35,12 +35,12 @@ macro_rules! endpoint {
                 use super::Error;
 
                 pub async fn get_by_id(id: i64, client: &Client) -> Result<$sub_type, Error> {
-                    let sub_path = format!("/api/v2/{}/{}/{}", $name, id, stringify!($sub));
+                    let sub_path = format!("/api/v2/{}/{}/{}/", $name, id, stringify!($sub));
                     client.get(RelativePath::new(&sub_path)).await
                 }
 
                 pub async fn get_by_name(name: &str, client: &Client) -> Result<$sub_type, Error> {
-                    let sub_path = format!("/api/v2/{}/{}/{}", $name, name, stringify!($sub));
+                    let sub_path = format!("/api/v2/{}/{}/{}/", $name, name, stringify!($sub));
                     client.get(RelativePath::new(&sub_path)).await
                 }
             }

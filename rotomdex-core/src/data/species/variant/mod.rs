@@ -12,17 +12,15 @@ pub(crate) use types::*;
 
 use core::task::{Context, Poll};
 
-use color_eyre::eyre::Result;
 use rotomdex_api::{
-    Follow,
-    client::Client,
+    Client, Follow,
     model::{pokemon::Pokemon, resource::NamedApiResource},
 };
 use tracing::Span;
 
 use crate::{
     Settings,
-    data::resource::{AsyncResource, Fetchable, SyncResource},
+    data::resource::{AsyncResource, Fetchable, ResourceResult, SyncResource},
 };
 
 #[derive(Debug)]
@@ -41,7 +39,11 @@ pub(crate) struct ModelVariant {
 
 impl Fetchable for ModelVariant {
     type Request = NamedApiResource<Pokemon>;
-    async fn fetch(request: Self::Request, client: Client, settings: Settings) -> Result<Self> {
+    async fn fetch(
+        request: Self::Request,
+        client: Client,
+        settings: Settings,
+    ) -> ResourceResult<Self> {
         let variant = request.follow(&client).await?;
 
         Ok(Self {
