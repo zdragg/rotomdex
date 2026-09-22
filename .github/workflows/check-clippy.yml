@@ -14,5 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features --workspace
