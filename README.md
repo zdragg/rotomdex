@@ -81,3 +81,5 @@ to discuss what you would like to change.
 [image-rs/image-gif](https://github.com/image-rs/image-gif)
 
 [image-rs/image](https://github.com/image-rs/image)
+
+[mevanlc/chafa-syms-rs](https://github.com/mevanlc/chafa-syms-rs)
