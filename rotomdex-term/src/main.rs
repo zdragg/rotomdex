@@ -20,12 +20,16 @@ use crate::client::{offline::OfflineClient, online::CachedClient};
 #[derive(Debug, Parser)]
 struct Cli {
     /// Use the locally downloaded PokéAPI data and sprites.
-    #[arg(long)]
+    #[arg(long, short)]
     offline: bool,
 
     /// Download or update the offline PokéAPI data and sprites.
-    #[arg(long)]
+    #[arg(long, short)]
     download: bool,
+
+    /// Folder to store resources portable in
+    #[arg(long, short)]
+    portable: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -33,16 +37,22 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
     let cli = Cli::parse();
 
-    let strategy = etcetera::choose_app_strategy(AppStrategyArgs {
-        top_level_domain: "dev".to_string(),
-        author: "zerodrag".to_string(),
-        app_name: "rotomdex".to_string(),
-    })?;
+    let (data, cache) = match cli.portable {
+        Some(dir) => (dir.join("data"), dir.join("cache")),
+        None => {
+            let strategy = etcetera::choose_app_strategy(AppStrategyArgs {
+                top_level_domain: "dev".to_string(),
+                author: "zerodrag".to_string(),
+                app_name: "rotomdex".to_string(),
+            })?;
+            (strategy.data_dir(), strategy.cache_dir())
+        }
+    };
 
-    fs::create_dir_all(strategy.data_dir())?;
-    fs::create_dir_all(strategy.cache_dir())?;
+    fs::create_dir_all(&data)?;
+    fs::create_dir_all(&cache)?;
 
-    let resource_git_repo_dir = strategy.in_data_dir("resource");
+    let resource_git_repo_dir = data.join("resource");
 
     if cli.download {
         sync::download_repo(&resource_git_repo_dir)?;
@@ -52,13 +62,13 @@ async fn main() -> Result<()> {
     let config = if cli.offline {
         PathConfig::Offline(resource_git_repo_dir)
     } else {
-        PathConfig::Cache(strategy.in_cache_dir("http-cache.redb"))
+        PathConfig::Cache(cache.join("http-cache.redb"))
     };
 
     let log = fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(strategy.in_data_dir("app.log"))?;
+        .open(data.join("app.log"))?;
     tracing_subscriber::fmt()
         .with_ansi(false)
         .with_writer(Mutex::new(log))

@@ -52,9 +52,19 @@ rotomdex
 
 # Download assets required for offline mode
 rotomdex --download
+rotomdex -d
 
 # Run in offline mode
 rotomdex --offline
+rotomdex -o
+
+# Use a defined path for storing cache and downloaded assets
+rotomdex --portable ./custom-path # ./custom-path/{data/, cache/}
+rotomdex -p ./custom-path
+
+# Combine: download assets to ./custom-path, then run from this path
+rotomdex -dp ./custom-path
+rotomdex -op ./custom-path
 ```
 
 ## Feature requests
