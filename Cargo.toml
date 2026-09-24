@@ -4,10 +4,11 @@ members = [
   "rotomdex-api",
   "rotomdex-chafa",
   "rotomdex-core",
+  "rotomdex-frontend-kindle",
+  "rotomdex-frontend-term",
   "rotomdex-gif",
-  "rotomdex-term",
 ]
-default-members = ["rotomdex-term"]
+default-members = ["rotomdex-frontend-term"]
 
 [workspace.package]
 version = "0.1.0"

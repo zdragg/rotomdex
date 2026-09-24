@@ -3319,6 +3319,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rotomdex-frontend-kindle"
+version = "0.1.0"
+
+[[package]]
 name = "rotomdex-gif"
 version = "0.1.0"
 dependencies = [

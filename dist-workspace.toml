@@ -7,6 +7,7 @@ members = ["cargo:."]
 cargo-dist-version = "0.33.0"
 # CI backends to support
 ci = "github"
+# Which actions to run on pull requests
 pr-run-mode = "skip"
 # The installers to generate for each app
 installers = ["shell", "powershell", "msi"]
