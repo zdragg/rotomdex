@@ -8,3 +8,10 @@ license.workspace = true
 dist = false
 
 [dependencies]
+anyhow = { version = "1.0.104", default-features = false }
+embassy-executor = { version = "0.10.0", features = ["executor-thread", "platform-std"] }
+embassy-time = { workspace = true, features = ["std"] }
+embedded-graphics-simulator = "0.8.0"
+libm = "0.2.16"
+mousefood = "0.5.2"
+ratatui.workspace = true

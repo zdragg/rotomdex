@@ -20,6 +20,7 @@ license = "AGPL-3.0-only"
 [workspace.dependencies]
 async-trait = { version = "0.1.92" }
 bitflags = { version = "2.13.1", default-features = false }
+embassy-time = "0.5.1"
 rapidhash = { version = "4.5.1", default-features = false }
 ratatui = { version = "0.30.2", default-features = false, features = ["layout-cache", "macros", "unstable-rendered-line-info"] }
 relative-path = { version = "2.0.1", default-features = false }
